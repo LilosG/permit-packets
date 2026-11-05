@@ -1,7 +1,7 @@
 """Render an EV charger permit packet as a 7-page draft PDF.
 
-The checklist follows the Town of Oro Valley's EV charger submittal criteria.
-A real build swaps in the buyer's city.
+The checklist comes from the job's jurisdiction. The site plan is the property
+to scale when there's a plan, and a labeled schematic when there isn't.
 """
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
+from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
     BaseDocTemplate,
     Flowable,
@@ -25,6 +26,7 @@ from reportlab.platypus import (
 )
 
 from permit_packets.ev_charger import BURIAL_DEPTH_IN, LOCATION_LABELS, EvPacket
+from permit_packets.site_plan import AerialSitePlan
 
 INK = colors.HexColor("#15212c")
 MUTED = colors.HexColor("#566572")
@@ -37,7 +39,9 @@ WATERMARK = colors.HexColor("#e9edf0")
 WIDTH, HEIGHT = letter
 MARGIN = 0.7 * inch
 CONTENT = WIDTH - 2 * MARGIN
-PAGE_COUNT = 7
+SECTION_PAGES = {
+    "application": 2, "site_plan": 3, "one_line": 4, "load": 5, "equipment": 6, "review": 7,
+}
 
 
 def _style(name: str, **kwargs) -> ParagraphStyle:
@@ -53,8 +57,10 @@ H1 = _style("h1", font="Helvetica-Bold", fontSize=19, leading=23)
 H2 = _style("h2", font="Helvetica-Bold", fontSize=11.5, leading=15, spaceBefore=4, spaceAfter=4)
 BODY = _style("body", fontSize=9.4, leading=13)
 SMALL = _style("small", fontSize=8.2, leading=11, color=MUTED)
+CREDIT = _style("credit", fontSize=6.6, leading=8.4, color=MUTED)
 CELL = _style("cell", fontSize=8.8, leading=11.5)
 CELL_BOLD = _style("cell-bold", font="Helvetica-Bold", fontSize=8.8, leading=11.5)
+FLAG = _style("flag", fontSize=8.3, leading=11, spaceAfter=3, leftIndent=15, firstLineIndent=-15)
 LABEL = _style("label", font="Helvetica-Bold", fontSize=7.4, leading=10, color=COPPER)
 
 
@@ -76,6 +82,9 @@ def _table(rows, widths, *, head: bool = True, extra=()) -> Table:
         style.append(("BACKGROUND", (0, 0), (-1, 0), PALE))
     table.setStyle(TableStyle(style + list(extra)))
     return table
+
+
+TIGHT = [("TOPPADDING", (0, 0), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]
 
 
 def _heads(*labels: str) -> list[Paragraph]:
@@ -103,8 +112,29 @@ def _page(canvas, doc) -> None:
         MARGIN, 0.34 * inch,
         "Draft for review by a licensed electrician. Confirm against the city's current requirements before use.",
     )
-    canvas.drawRightString(WIDTH - MARGIN, 0.34 * inch, f"Page {doc.page} of {PAGE_COUNT}")
     canvas.restoreState()
+
+
+class NumberedCanvas(Canvas):
+    """Holds each page until the end, so the footer can say the real page count."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._pages: list[dict] = []
+
+    def showPage(self) -> None:
+        self._pages.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self) -> None:
+        total = len(self._pages)
+        for page in self._pages:
+            self.__dict__.update(page)
+            self.setFont("Helvetica", 8)
+            self.setFillColor(MUTED)
+            self.drawRightString(WIDTH - MARGIN, 0.34 * inch, f"Page {self._pageNumber} of {total}")
+            super().showPage()
+        super().save()
 
 
 class SitePlan(Flowable):
@@ -328,51 +358,82 @@ class Trench(Flowable):
         c.drawString(4, grade + 6, "Finished grade")
 
 
+def _checklist_row(packet: EvPacket, section: str) -> tuple[str, str]:
+    job = packet.job
+    plan = job.plan
+    if section == "application":
+        missing = job.jurisdiction.needs_parcel_number and not (plan and plan.parcel_number)
+        return "Page 2: add the parcel number" if missing else "Page 2: fields ready for the city's form", (
+            "Open" if missing else "Ready")
+    if section == "site_plan":
+        if plan:
+            return f"Page 3: to scale, 1 in = {plan.scale_ft_per_in} ft", "Ready"
+        return "Page 3: schematic only, replace it", "Open"
+    if section == "equipment":
+        return "Page 6: add manufacturer sheets", "Attach"
+    if section == "ventilation":
+        return "Only if this charger requires venting", "Check"
+    if section == "hoa":
+        return "Homeowner to confirm before work starts", "Open"
+    return f"Page {SECTION_PAGES[section]}", "Ready"
+
+
 def _cover(packet: EvPacket) -> list:
     job = packet.job
-    story = [_p("EV Charger Permit Packet", H1), _p(job.address, BODY), Spacer(1, 10)]
+    jurisdiction = job.jurisdiction
+    checklist_cell = (
+        f"{jurisdiction.label}\nFrom the city's published checklist"
+        if jurisdiction.known else f"{jurisdiction.label}\nGeneral checklist, city rules added in setup"
+    )
+    parcel = f"\nParcel {job.plan.parcel_number}" if job.plan and job.plan.parcel_number else ""
+    story = [_p("EV Charger Permit Packet", H1), _p(job.address, BODY), Spacer(1, 8)]
     story += [
         _table(
             [[_p("JOB", LABEL), _p("CONTRACTOR", LABEL), _p("CHECKLIST", LABEL)],
-             [_p(f"{job.home.square_feet:,} sq ft home\n"
+             [_p(f"{job.home.square_feet:,} sq ft home{parcel}\n"
                  f"Charger at {LOCATION_LABELS[job.location]}\nCustomer: {job.customer}"),
               _p(f"{job.contractor}\nLicense {job.license_number}"),
-              _p("Town of Oro Valley, AZ\nUsed for this demo")]],
+              _p(checklist_cell)]],
             [CONTENT / 3] * 3,
         ),
-        Spacer(1, 12),
+        Spacer(1, 8),
     ]
-    checklist = [
-        ("Completed permit application", "Page 2: fields ready for the city's form", "Ready"),
-        ("Site plan with charger and main panel", "Page 3", "Ready"),
-        ("Charger design and UL listing information", "Page 6: add manufacturer sheets", "Attach"),
-        ("One-line diagram with conductors, conduit and overcurrent protection", "Page 4", "Ready"),
-        ("Load calculation for a new 240 V circuit", "Page 5", "Ready"),
-        ("HOA or subdivision rules", "Homeowner to confirm before work starts", "Open"),
-    ]
+    rows = []
+    for requirement in jurisdiction.checklist:
+        where, status = _checklist_row(packet, requirement.section)
+        rows.append([_p(requirement.item), _p(where), _p(status, CELL_BOLD)])
     story += [
         _p("Checklist", H2),
         _table(
-            [_heads("Required", "In this packet", "Status")]
-            + [[_p(a), _p(b), _p(c, CELL_BOLD)] for a, b, c in checklist],
-            [2.9 * inch, CONTENT - 3.6 * inch, 0.7 * inch],
+            [_heads("Required", "In this packet", "Status")] + rows,
+            [3.9 * inch, CONTENT - 4.55 * inch, 0.65 * inch], extra=TIGHT,
         ),
-        Spacer(1, 12),
+        Spacer(1, 6),
         _p("Engineering checks", H2),
         _table(
             [_heads("Check", "Result", "Status")]
             + [[_p(check.name), _p(check.result), _p("Pass" if check.passed else "Fix", CELL_BOLD)]
                for check in packet.checks],
-            [1.6 * inch, CONTENT - 2.3 * inch, 0.7 * inch],
+            [1.6 * inch, CONTENT - 2.25 * inch, 0.65 * inch], extra=TIGHT,
         ),
-        Spacer(1, 12),
+        Spacer(1, 6),
         _p("Flagged for your review", H2),
     ]
-    story += [_p(f"[  ]  {flag}", BODY) for flag in packet.flags]
+    half = (len(packet.flags) + 1) // 2
+    columns = [packet.flags[:half], packet.flags[half:]]
+    story.append(Table(
+        [[[_p(f"[  ]  {flag}", FLAG) for flag in column] for column in columns]],
+        colWidths=[CONTENT / 2, CONTENT / 2],
+        style=TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8), ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]),
+    ))
     return story
 
 
-def _application(packet: EvPacket) -> list:
+def scope_of_work(packet: EvPacket) -> str:
     job = packet.job
     circuit = packet.circuit
     destination = (
@@ -387,18 +448,33 @@ def _application(packet: EvPacket) -> list:
         if packet.load.computed_amps <= job.service_amps
         else "Service capacity must be resolved before submittal."
     )
-    scope = (
-        f"Install one {job.charger_amps} A, 240 V Level 2 EV charger at the {LOCATION_LABELS[job.location]}. "
+    charger = f" ({job.charger_model})" if job.charger_model else ""
+    return (
+        f"Install one {job.charger_amps} A, 240 V Level 2 EV charger{charger}, {job.connection}, "
+        f"at the {LOCATION_LABELS[job.location]}. "
         f"Add a {circuit.breaker} A, 2-pole breaker to the existing {job.service_amps} A main panel. "
         f"{route} a new dedicated {job.run_ft} ft branch circuit {destination}. {service_note}"
     )
-    rows = [
+
+
+def application_fields(packet: EvPacket) -> list[tuple[str, str]]:
+    job = packet.job
+    return [
         ("Project address", job.address),
+        ("Parcel number", job.plan.parcel_number if job.plan and job.plan.parcel_number else "Not on file"),
+        ("Jurisdiction", job.jurisdiction.label),
         ("Property owner", job.customer),
         ("Permit type", "Electrical, residential EV charger"),
+        ("Charger", job.charger_model or "Add make and model"),
         ("Contractor", job.contractor),
         ("License number", job.license_number),
     ]
+
+
+def _application(packet: EvPacket) -> list:
+    job = packet.job
+    scope = scope_of_work(packet)
+    rows = application_fields(packet)
     inspections = [("Final", "Panel, breaker, charger, labeling, and manufacturer instructions on site")]
     if job.trench_ft:
         inspections.insert(0, ("Underground", "Open trench, conduit and burial depth, before backfill"))
@@ -444,6 +520,7 @@ def _one_line(packet: EvPacket) -> list:
 
 def _load(packet: EvPacket) -> list:
     load = packet.load
+    code = packet.job.jurisdiction.code_name
     right = lambda text, style: Paragraph(
         f"{text:,.0f}", ParagraphStyle(f"{style.name}-right", parent=style, alignment=2))
     rows = [_heads("Load", "Basis", "VA")]
@@ -468,7 +545,7 @@ def _load(packet: EvPacket) -> list:
     )
     return [
         _p("Load Calculation", H1),
-        _p("Optional dwelling method, NEC 220.82, with the EV charger added at 100% of nameplate. "
+        _p(f"Optional dwelling method, {code} 220.82, with the EV charger added at 100% of nameplate. "
            "Confirm the method the city accepts.", SMALL),
         Spacer(1, 10),
         _table(rows, [2.5 * inch, CONTENT - 3.5 * inch, 1 * inch]),
@@ -487,7 +564,10 @@ def _load(packet: EvPacket) -> list:
 
 def _equipment(packet: EvPacket) -> list:
     rows = [
-        ("EV charger", f"Level 2, {packet.job.charger_amps} A, 240 V, {packet.charger_va:,} VA", "UL listed, NEC Article 625"),
+        ("EV charger",
+         f"{packet.job.charger_model or 'Level 2'}, {packet.job.charger_amps} A, 240 V, "
+         f"{packet.charger_va:,} VA, {packet.job.connection}",
+         f"UL listed, {packet.job.jurisdiction.code_name} Article 625"),
         ("Breaker", f"{packet.circuit.breaker} A, 2-pole, matched to existing panel", "Listed for the panel"),
     ]
     if packet.disconnect_amps:
@@ -532,15 +612,49 @@ def _review(packet: EvPacket) -> list:
     ]
 
 
-def render_ev_packet_pdf(packet: EvPacket) -> bytes:
-    site_plan = [
-        _p("Site Plan", H1),
-        _p("Shows the location of the charger, the main panel and the new circuit.", SMALL),
-        Spacer(1, 10),
-        SitePlan(packet),
+def _site_plan(packet: EvPacket) -> list:
+    job = packet.job
+    plan = job.plan
+    if plan is None:
+        return [
+            _p("Site Plan", H1),
+            _p("Shows the location of the charger, the main panel and the new circuit.", SMALL),
+            Spacer(1, 10),
+            SitePlan(packet),
+        ]
+    legend = [
+        f"P  Main panel, {job.service_amps} A (existing)",
+        f"EV  {job.charger_amps} A charger (new)",
     ]
+    if packet.disconnect_amps:
+        legend.append(f"D  {packet.disconnect_amps} A disconnect (new)")
+    route = f"New circuit {'underground' if job.trench_ft else 'route'}, {plan.measured_route_ft} ft measured on plan"
+    legend.append(route)
+    if plan.lot:
+        legend.append("Dashed yellow: lot line")
+    measures = [f"Wire run with rises: {job.run_ft} ft"]
+    setback = plan.charger_to_lot_line_ft
+    if setback is not None:
+        measures.append(f"Charger to nearest lot line: {setback} ft")
+    measures.append(f"Scale 1 in = {plan.scale_ft_per_in} ft when printed at 100%")
+    measures.append("Not a survey. Field verify all dimensions.")
+    return [
+        _p("Site Plan", H1),
+        _p(job.address + (f". Parcel {plan.parcel_number}." if plan.parcel_number else "."), SMALL),
+        Spacer(1, 6),
+        AerialSitePlan(
+            plan, disconnect=bool(packet.disconnect_amps), underground=bool(job.trench_ft), width=CONTENT,
+        ),
+        Spacer(1, 6),
+        _table([[_p("\n".join(legend)), _p("\n".join(measures))]], [CONTENT / 2, CONTENT / 2], head=False),
+        Spacer(1, 3),
+        _p(". ".join(credit.rstrip(".") for credit in plan.credits) + ".", CREDIT),
+    ]
+
+
+def render_ev_packet_pdf(packet: EvPacket) -> bytes:
     sections = [
-        _cover(packet), _application(packet), site_plan, _one_line(packet),
+        _cover(packet), _application(packet), _site_plan(packet), _one_line(packet),
         _load(packet), _equipment(packet), _review(packet),
     ]
     story: list = []
@@ -557,5 +671,5 @@ def render_ev_packet_pdf(packet: EvPacket) -> bytes:
     frame = Frame(MARGIN, 0.6 * inch, CONTENT, HEIGHT - 1.2 * inch,
                   leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
     doc.addPageTemplates([PageTemplate(id="page", frames=[frame], onPage=_page)])
-    doc.build(story)
+    doc.build(story, canvasmaker=NumberedCanvas)
     return buffer.getvalue()

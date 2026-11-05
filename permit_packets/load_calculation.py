@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 GENERAL_VA_PER_SQ_FT = 3
 SMALL_APPLIANCE_CIRCUIT_VA = 1500
 LAUNDRY_CIRCUIT_VA = 1500
-MINIMUM_DRYER_VA = 5000
 FULL_DEMAND_VA = 10000
 REMAINDER_DEMAND = 0.4
 
@@ -73,7 +72,6 @@ def calculate_load(
     volts: int = 240,
 ) -> LoadCalculation:
     added = list(added_loads or [])
-    dryer = max(MINIMUM_DRYER_VA, home.dryer_va) if home.dryer_va else 0
     lines = [
         LoadLine("General lighting", f"{home.square_feet:,} sq ft x {GENERAL_VA_PER_SQ_FT} VA",
                  home.square_feet * GENERAL_VA_PER_SQ_FT),
@@ -84,7 +82,7 @@ def calculate_load(
     ]
     appliances = (
         ("Range", home.range_va), ("Cooktop", home.cooktop_va), ("Oven", home.oven_va),
-        ("Dryer", dryer), ("Water heater", home.water_heater_va),
+        ("Dryer", home.dryer_va), ("Water heater", home.water_heater_va),
         ("Dishwasher", home.dishwasher_va), ("Disposal", home.disposal_va),
         ("Microwave", home.microwave_va), ("Hot tub or pool", home.hot_tub_or_pool_va),
         ("Other fixed loads", home.other_va),
