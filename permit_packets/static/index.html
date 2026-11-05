@@ -291,7 +291,9 @@ ul.plain { margin: 0; padding: 0; list-style: none; }
       : 'See the checks below, then change the job.';
     const stats = [
       ['Service load', `${result.computed_amps} A`],
-      ['Spare capacity', `${result.spare_amps} A`],
+      result.spare_amps < 0
+        ? ['Over capacity by', `${-result.spare_amps} A`]
+        : ['Spare capacity', `${result.spare_amps} A`],
       ['Breaker', `${result.breaker} A`],
       ['Wire', result.wire],
     ];
