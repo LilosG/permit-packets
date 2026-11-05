@@ -24,10 +24,11 @@ from permit_packets.property_lookup import (
     AerialUnavailable,
     fetch_aerial,
     find_property,
+    property_at,
     suggest_addresses,
     tidy_address,
 )
-from permit_packets.property_plan import PlanView, PropertyPlan, plan_scale
+from permit_packets.property_plan import PlanView, PropertyPlan, clip_to, plan_scale, zoomed_scale
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
@@ -321,35 +322,106 @@ BOX = [[-110.9702, 32.3998], [-110.9698, 32.3998], [-110.9698, 32.4002], [-110.9
 LOT_BOX = [[-110.9705, 32.3995], [-110.9695, 32.3995], [-110.9695, 32.4005], [-110.9705, 32.4005], [-110.9705, 32.3995]]
 
 
-def _services(request: httpx.Request) -> httpx.Response:
+CENSUS_MATCH["result"]["addressMatches"][0]["addressComponents"] = {"streetName": "MAIN"}
+
+
+def _lot(number: str = "10 MAIN ST") -> dict:
+    return {"attributes": {"PARCEL": "224265700", "ADDRESS_OL": number}, "geometry": {"rings": [LOT_BOX]}}
+
+
+def _services(request: httpx.Request, *, by_address=True, by_point=True, photon=()) -> httpx.Response:
     host = request.url.host
     if host == "geocoding.geo.census.gov":
         return httpx.Response(200, json=CENSUS_MATCH)
+    if host == "photon.komoot.io":
+        return httpx.Response(200, json={"features": list(photon)})
     if "USA_Structures" in request.url.path:
         return httpx.Response(200, json={"features": [
-            {"attributes": {"PROP_ADDR": "99 OTHER ST"}, "geometry": {"rings": [[[x + .0001, y] for x, y in BOX]]}},
-            {"attributes": {"PROP_ADDR": "10 MAIN ST"}, "geometry": {"rings": [BOX]}},
+            {"attributes": {}, "geometry": {"rings": [[[x + .001, y] for x, y in BOX]]}},
+            {"attributes": {}, "geometry": {"rings": [BOX]}},
         ]})
     if host == "gisdata.pima.gov":
-        return httpx.Response(200, json={"features": [
-            {"attributes": {"PARCEL": "224265700"}, "geometry": {"rings": [LOT_BOX]}},
-        ]})
+        searched = "where" in request.url.params
+        return httpx.Response(200, json={"features": [_lot()] if (by_address if searched else by_point) else []})
     return httpx.Response(404)
 
 
-def test_find_property_returns_city_building_and_lot():
-    client = httpx.Client(transport=httpx.MockTransport(_services))
-    found = find_property("10 Main St, Oro Valley, AZ", client)
+def _client(**options) -> httpx.Client:
+    return httpx.Client(transport=httpx.MockTransport(lambda request: _services(request, **options)))
+
+
+def test_find_property_uses_the_county_record_for_the_exact_house():
+    found = find_property("10 Main St, Oro Valley, AZ", _client())
     assert found.address == "10 Main St, Oro Valley, AZ 85737"
+    assert tidy_address("1200 N 3RD AVE, SAN DIEGO, CA, 92101") == "1200 N 3rd Ave, San Diego, CA 92101"
     assert found.jurisdiction is ORO_VALLEY
+    assert found.located_by == "county"
+    assert found.address_confirmed is True
     assert found.parcel_number == "224265700"
     assert len(found.lot) == 4
-    assert found.primary_building == 1
-    assert tidy_address("1200 N 3RD AVE, SAN DIEGO, CA, 92101") == "1200 N 3rd Ave, San Diego, CA 92101"
+    assert found.buildings[found.primary_building]
     assert all(0 < value < 1000 for point in found.lot for value in point)
 
 
-def test_only_the_parcel_number_is_requested_from_the_county():
+def test_the_house_point_from_the_map_beats_the_street_estimate():
+    house = {"properties": {"housenumber": "10", "street": "Main Street"},
+             "geometry": {"coordinates": [-110.9700, 32.4000]}}
+    found = find_property("10 Main St", _client(by_address=False, photon=[house]))
+    assert found.located_by == "map"
+
+
+def test_a_far_away_house_with_the_same_number_is_ignored():
+    house = {"properties": {"housenumber": "10", "street": "Main Street"},
+             "geometry": {"coordinates": [-112.0, 33.4]}}
+    found = find_property("10 Main St", _client(by_address=False, photon=[house]))
+    assert found.located_by == "street"
+
+
+def test_a_street_estimate_says_when_the_parcel_is_someone_else():
+    def other_parcel(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "gisdata.pima.gov":
+            return httpx.Response(200, json={
+                "features": [] if "where" in request.url.params else [_lot("99 MAIN ST")]})
+        return _services(request)
+
+    found = find_property("10 Main St", httpx.Client(transport=httpx.MockTransport(other_parcel)))
+    assert found.located_by == "street"
+    assert found.address_confirmed is False
+    assert found.parcel_house_number == "99"
+
+
+def test_tapping_a_house_moves_to_it(client, monkeypatch):
+    seen = {}
+
+    def fake(**fields):
+        seen.update(fields)
+        return property_at(client=_client(), **fields)
+
+    monkeypatch.setattr("app.property_at", fake)
+    body = {"address": "10 Main St", "city": "Oro Valley", "state": "AZ", "county_fips": "04019",
+            "house_number": "10", "latitude": 32.4, "longitude": -110.97, "anchor_latitude": 32.4,
+            "anchor_longitude": -110.97, "scale_ft_per_in": 30, "tap": [500, 500]}
+    response = client.post("/api/property/view", json=body)
+    assert response.status_code == 200
+    assert seen["located_by"] == "tap"
+    assert seen["point"] == pytest.approx((32.4, -110.97))
+    zoomed = client.post("/api/property/view", json={**body, "tap": None, "zoom": 1})
+    assert zoomed.json()["view"]["scale_ft_per_in"] == 40
+
+
+def test_a_merged_building_is_trimmed_at_the_lot_line():
+    lot = [(100.0, 100.0), (300.0, 100.0), (300.0, 300.0), (100.0, 300.0)]
+    merged = [(200.0, 150.0), (500.0, 150.0), (500.0, 250.0), (200.0, 250.0)]
+    assert max(point[0] for point in clip_to(merged, lot)) == 300
+
+
+def test_zoom_stops_at_the_ends_of_the_scale_list():
+    assert zoomed_scale(20, -1) == 20
+    assert zoomed_scale(30, 1) == 40
+    assert zoomed_scale(100, 1) == 100
+
+
+def test_only_parcel_and_address_fields_are_requested_from_the_county():
     seen = []
 
     def spy(request: httpx.Request) -> httpx.Response:
@@ -357,8 +429,9 @@ def test_only_the_parcel_number_is_requested_from_the_county():
         return _services(request)
 
     find_property("10 Main St, Oro Valley, AZ", httpx.Client(transport=httpx.MockTransport(spy)))
-    county = next(request for request in seen if request.url.host == "gisdata.pima.gov")
-    assert county.url.params["outFields"] == "PARCEL"
+    county = [request for request in seen if request.url.host == "gisdata.pima.gov"]
+    assert county
+    assert {request.url.params["outFields"] for request in county} == {"PARCEL,ADDRESS_OL"}
 
 
 def test_an_unknown_address_says_so():
@@ -374,6 +447,7 @@ def test_a_lookup_survives_when_the_county_is_down():
     found = find_property("10 Main St, Oro Valley, AZ", httpx.Client(transport=httpx.MockTransport(county_down)))
     assert found.lot == []
     assert found.parcel_number == ""
+    assert found.address_confirmed is None
     assert found.buildings
 
 

@@ -47,6 +47,16 @@ class PlanView:
         half = self.half_size_mercator
         return x - half, y - half, x + half, y + half
 
+    def to_latlon(self, x: float, y: float) -> Point:
+        center_x, center_y = self.mercator_center()
+        per_unit = 2 * self.half_size_mercator / PLAN_UNITS
+        map_x = center_x + (x - PLAN_UNITS / 2) * per_unit
+        map_y = center_y + (PLAN_UNITS / 2 - y) * per_unit
+        return (
+            math.degrees(2 * math.atan(math.exp(map_y / EARTH_RADIUS_M)) - math.pi / 2),
+            math.degrees(map_x / EARTH_RADIUS_M),
+        )
+
     def to_plan(self, latitude: float, longitude: float) -> Point:
         x, y = mercator(latitude, longitude)
         center_x, center_y = self.mercator_center()
@@ -55,6 +65,12 @@ class PlanView:
             round(PLAN_UNITS / 2 + (x - center_x) / per_unit, 1),
             round(PLAN_UNITS / 2 - (y - center_y) / per_unit, 1),
         )
+
+
+def zoomed_scale(scale: int, step: int) -> int:
+    """The next engineer's scale. A step of +1 zooms out, -1 zooms in."""
+    index = ENGINEER_SCALES_FT_PER_IN.index(scale) if scale in ENGINEER_SCALES_FT_PER_IN else 0
+    return ENGINEER_SCALES_FT_PER_IN[max(0, min(index + step, len(ENGINEER_SCALES_FT_PER_IN) - 1))]
 
 
 def mercator(latitude: float, longitude: float) -> Point:
@@ -94,6 +110,44 @@ def simplify(points: list[Point], tolerance: float) -> list[Point]:
     if far <= tolerance:
         return [points[0], points[-1]]
     return simplify(points[: index + 1], tolerance)[:-1] + simplify(points[index:], tolerance)
+
+
+def contains(polygon: list[Point], point: Point) -> bool:
+    inside = False
+    x, y = point
+    for (x1, y1), (x2, y2) in zip(polygon, polygon[1:] + polygon[:1]):
+        if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+            inside = not inside
+    return inside
+
+
+def clip_to(outline: list[Point], boundary: list[Point]) -> list[Point]:
+    """Sutherland-Hodgman. Building data sometimes merges neighbors across a lot line."""
+    area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(boundary, boundary[1:] + boundary[:1]))
+    ring = boundary if area > 0 else boundary[::-1]
+
+    def inside(point: Point, a: Point, b: Point) -> bool:
+        return (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0]) >= 0
+
+    def crossing(p: Point, q: Point, a: Point, b: Point) -> Point:
+        dx, dy = q[0] - p[0], q[1] - p[1]
+        ex, ey = b[0] - a[0], b[1] - a[1]
+        t = ((a[0] - p[0]) * ey - (a[1] - p[1]) * ex) / (dx * ey - dy * ex)
+        return (round(p[0] + t * dx, 1), round(p[1] + t * dy, 1))
+
+    clipped = outline
+    for a, b in zip(ring, ring[1:] + ring[:1]):
+        source, clipped = clipped, []
+        for p, q in zip(source, source[1:] + source[:1]):
+            if inside(q, a, b):
+                if not inside(p, a, b):
+                    clipped.append(crossing(p, q, a, b))
+                clipped.append(q)
+            elif inside(p, a, b):
+                clipped.append(crossing(p, q, a, b))
+        if not clipped:
+            return outline
+    return clipped
 
 
 def centroid(polygon: list[Point]) -> Point:
