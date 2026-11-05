@@ -185,6 +185,9 @@ class SitePlan(Flowable):
         c.rect(x(panel[0]) - 7, y(panel[1]) - 5, 7, 10, stroke=0, fill=1)
         c.setFillColor(INK)
         c.rect(x(charger[0]) - 7, y(charger[1]) - 5, 7, 10, stroke=0, fill=1)
+        if self.packet.disconnect_amps:
+            c.setFillColor(GREEN)
+            c.rect(x(charger[0]) - 7, y(charger[1]) + 7, 7, 10, stroke=0, fill=1)
 
         lx = x(80) + 20
         ly = y(112)
@@ -270,15 +273,13 @@ class OneLine(Flowable):
             c.line(left + box_w, mid, right, mid)
 
         label_x = (xs[1] + box_w + xs[2]) / 2
-        conduit = packet.underground_conduit or packet.interior_conduit
-        conduit_type = "PVC" if packet.underground_conduit else "EMT"
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 7.2)
         c.drawCentredString(label_x, mid + 15, "New circuit")
         c.setFont("Helvetica", 6.8)
         c.drawCentredString(label_x, mid + 5, f"2 #{circuit.wire.size} Cu THWN-2")
         c.drawCentredString(label_x, mid - 10, f"1 #{circuit.ground} Cu EGC")
-        c.drawCentredString(label_x, mid - 20, f"{conduit} {conduit_type}, {job.run_ft} ft")
+        c.drawCentredString(label_x, mid - 20, f"{job.run_ft} ft, see schedule")
 
         ground_x = xs[1] + box_w / 2
         c.setStrokeColor(GREEN)
@@ -373,8 +374,9 @@ def _cover(packet: EvPacket) -> list:
 def _application(packet: EvPacket) -> list:
     job = packet.job
     circuit = packet.circuit
-    disconnect = (
-        f", then to a new {packet.disconnect_amps} A disconnect" if packet.disconnect_amps else ""
+    destination = (
+        f"to a new {packet.disconnect_amps} A disconnect, then to the charger"
+        if packet.disconnect_amps else "to the charger"
     )
     route = (
         f"Trench about {job.trench_ft} ft and run" if job.trench_ft else "Run"
@@ -387,7 +389,7 @@ def _application(packet: EvPacket) -> list:
     scope = (
         f"Install one {job.charger_amps} A, 240 V Level 2 EV charger at the {LOCATION_LABELS[job.location]}. "
         f"Add a {circuit.breaker} A, 2-pole breaker to the existing {job.service_amps} A main panel. "
-        f"{route} a new dedicated {job.run_ft} ft branch circuit{disconnect} to the charger. {service_note}"
+        f"{route} a new dedicated {job.run_ft} ft branch circuit {destination}. {service_note}"
     )
     rows = [
         ("Project address", job.address),
