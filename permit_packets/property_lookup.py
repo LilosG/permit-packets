@@ -187,7 +187,7 @@ def geocode(client: httpx.Client, address: str) -> Match:
         raise AddressNotFound("The address service didn't respond. Try again.") from error
     if not matches:
         raise AddressNotFound(
-            "That address wasn't found. Include the city and state, or use the sample layout."
+            "That exact address wasn't found. Check the street name, and include the city and state."
         )
     match = matches[0]
     geographies = match["geographies"]
@@ -232,7 +232,9 @@ def _fits(properties: dict, house_number: str, wanted: list[str], direction: str
     street = str(properties.get("street") or properties.get("name") or "").lower().split()
     if house_number and properties.get("housenumber") not in (None, house_number):
         return False
-    if wanted and not any(word.startswith(wanted[0]) for word in street):
+    place = street + str(properties.get("city") or "").lower().split()
+    # The first two words name the street. Later ones may be a city with another postal name.
+    if not all(any(word.startswith(part) for word in place) for part in wanted[:2]):
         return False
     found = next((DIRECTION_WORDS[word] for word in street[:1] if word in DIRECTION_WORDS), None)
     return not (direction and found and direction != found)

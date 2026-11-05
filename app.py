@@ -40,6 +40,7 @@ from permit_packets.schemas import (
 STATIC = Path(__file__).parent / "permit_packets" / "static"
 SESSION_COOKIE = "permit_demo_session"
 SESSION_SECONDS = 12 * 60 * 60
+SAMPLE_PARCEL = "000-00-000-000"
 
 app = FastAPI(title="Permit Packets", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -163,6 +164,11 @@ def property_aerial(payload: AerialRequest) -> dict:
     return {"image": base64.b64encode(image).decode(), "credit": credit}
 
 
+def _sample_address(payload: EvJobRequest) -> str:
+    place = ", ".join(part for part in (payload.city, payload.state) if part)
+    return f"123 Sample St, {place}" if place else "123 Sample St"
+
+
 def _plan(payload: EvJobRequest) -> PropertyPlan | None:
     plan = payload.plan
     if plan is None:
@@ -174,12 +180,15 @@ def _plan(payload: EvJobRequest) -> PropertyPlan | None:
     return PropertyPlan(
         scale_ft_per_in=plan.scale_ft_per_in, panel=plan.panel, charger=plan.charger, route=plan.route,
         buildings=plan.buildings, primary_building=plan.primary_building, lot=plan.lot,
-        parcel_number=plan.parcel_number, aerial_jpeg=aerial, credits=plan.credits,
+        parcel_number=SAMPLE_PARCEL if payload.sample_mode else plan.parcel_number,
+        aerial_jpeg=aerial, credits=plan.credits,
     )
 
 
 def _packet(payload: EvJobRequest) -> EvPacket:
-    fields = payload.model_dump(exclude={"home", "plan", "city", "state", "jurisdiction_key"})
+    fields = payload.model_dump(exclude={"home", "plan", "city", "state", "jurisdiction_key", "sample_mode"})
+    if payload.sample_mode:
+        fields["address"] = _sample_address(payload)
     return build_ev_packet(EvJob(
         home=HomeLoads(**payload.home.model_dump()),
         jurisdiction=jurisdiction_by_key(payload.jurisdiction_key, payload.city, payload.state),
@@ -211,6 +220,7 @@ def build_packet(payload: EvJobRequest) -> dict:
         ],
         "flags": packet.flags,
         "jurisdiction": _jurisdiction_json(packet.job.jurisdiction),
+        "address": packet.job.address,
         "fields": [
             *({"label": label, "value": value} for label, value in application_fields(packet)),
             {"label": "Scope of work", "value": scope_of_work(packet)},
