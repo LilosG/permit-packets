@@ -61,6 +61,12 @@ class County:
 
 
 COUNTIES = {
+    "32003": County(
+        "https://mapdata.lasvegasnevada.gov/clvgis/rest/services/AdministrativeBoundaries/Parcels/MapServer/0/query",
+        "PARCEL", "Lot lines: Clark County Assessor, City of Las Vegas GIS", "STRNO",
+        lambda number, street: f"STRNO={int(number)} AND STRNAME='{_quoted(street)}'",
+        lambda attributes: str(attributes.get("STRNO") or ""),
+    ),
     "04019": County(
         "https://gisdata.pima.gov/arcgis1/rest/services/GISOpenData/LandRecords/MapServer/12/query",
         "PARCEL", "Lot lines: Pima County GIS", "ADDRESS_OL",

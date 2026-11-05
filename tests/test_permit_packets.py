@@ -22,6 +22,7 @@ from permit_packets.jurisdictions import EL_CAJON, ORO_VALLEY, jurisdiction_for
 from permit_packets.load_calculation import HomeLoads, LoadLine, calculate_load
 from permit_packets.property_lookup import (
     AddressNotFound,
+    COUNTIES,
     AerialUnavailable,
     fetch_aerial,
     find_property,
@@ -445,6 +446,13 @@ def test_only_parcel_and_address_fields_are_requested_from_the_county():
     county = [request for request in seen if request.url.host == "gisdata.pima.gov"]
     assert county
     assert {request.url.params["outFields"] for request in county} == {"PARCEL,ADDRESS_OL"}
+
+
+def test_clark_county_reads_only_parcel_and_address_fields():
+    county = COUNTIES["32003"]
+    assert county.parcel_field == "PARCEL"
+    assert county.address_fields == "STRNO"
+    assert county.address_where("10", "O'NEIL") == "STRNO=10 AND STRNAME='O''NEIL'"
 
 
 def test_an_unknown_address_says_so():
