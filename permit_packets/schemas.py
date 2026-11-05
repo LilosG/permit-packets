@@ -78,6 +78,23 @@ class LookupRequest(BaseModel):
     address: str = Field(min_length=5, max_length=200)
 
 
+class PropertyViewRequest(BaseModel):
+    """A tap on the right house, or a zoom, on the plan already on screen."""
+    address: str = Field(min_length=1, max_length=200)
+    city: str = Field(default="", max_length=80)
+    state: str = Field(default="", max_length=2)
+    county_fips: str = Field(default="", max_length=5)
+    house_number: str = Field(default="", max_length=12)
+    located_by: str = Field(default="street", max_length=10)
+    latitude: float = Field(ge=18, le=72)
+    longitude: float = Field(ge=-180, le=-60)
+    anchor_latitude: float = Field(ge=18, le=72)
+    anchor_longitude: float = Field(ge=-180, le=-60)
+    scale_ft_per_in: int = Field(gt=0, le=200)
+    tap: PlanPoint | None = None
+    zoom: Literal[-1, 1] | None = None
+
+
 class SuggestRequest(BaseModel):
     text: str = Field(min_length=4, max_length=200)
 

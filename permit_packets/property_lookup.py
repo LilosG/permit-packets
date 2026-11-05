@@ -3,7 +3,7 @@
 Sources were chosen so the result can go in a printed permit packet:
 - US Census geocoder and FEMA/ORNL USA Structures are free public data.
 - USGS National Map imagery is public domain.
-- Lot lines come from county GIS, where the county is set up in COUNTY_PARCELS.
+- Lot lines come from county GIS, where the county is set up in COUNTIES.
 - Mapbox satellite is used instead of USGS when MAPBOX_TOKEN is set.
 - Photon, built on OpenStreetMap, suggests addresses as the tech types. The chosen
   address still goes through the Census geocoder, so a suggestion is never trusted
@@ -14,6 +14,7 @@ from __future__ import annotations
 import math
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from io import BytesIO
 
@@ -22,10 +23,14 @@ from PIL import Image, ImageFilter
 
 from permit_packets.jurisdictions import Jurisdiction, jurisdiction_for
 from permit_packets.property_plan import (
+    FEET_PER_METER,
     PLAN_UNITS,
+    PLAN_WIDTH_IN,
     Point,
     PlanView,
     centroid,
+    clip_to,
+    contains,
     ground_distance_ft,
     plan_scale,
 )
@@ -38,15 +43,41 @@ STRUCTURES_URL = (
 USGS_IMAGE_URL = "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage"
 MAPBOX_IMAGE_URL = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/{lon},{lat},{zoom:.2f},0,0/{px}x{px}@2x"
 
-# County GIS layers with lot lines, by county FIPS. Only the parcel number is read.
-COUNTY_PARCELS = {
-    "04019": ("https://gisdata.pima.gov/arcgis1/rest/services/GISOpenData/LandRecords/MapServer/12/query",
-              "PARCEL", "Lot lines: Pima County GIS"),
-    "06073": ("https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",
-              "APN", "Lot lines: San Diego County GIS"),
+
+
+def _quoted(text: str) -> str:
+    return text.replace("'", "''")
+
+
+@dataclass(frozen=True)
+class County:
+    """A county GIS layer. Only parcel and address fields are read, never owner fields."""
+    url: str
+    parcel_field: str
+    credit: str
+    address_fields: str
+    address_where: Callable[[str, str], str]
+    house_number: Callable[[dict], str]
+
+
+COUNTIES = {
+    "04019": County(
+        "https://gisdata.pima.gov/arcgis1/rest/services/GISOpenData/LandRecords/MapServer/12/query",
+        "PARCEL", "Lot lines: Pima County GIS", "ADDRESS_OL",
+        lambda number, street: f"ADDRESS_OL LIKE '{_quoted(number)} %{_quoted(street)}%'",
+        lambda attributes: str(attributes.get("ADDRESS_OL") or "").split(" ", 1)[0],
+    ),
+    "06073": County(
+        "https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",
+        "APN", "Lot lines: San Diego County GIS", "SITUS_ADDRESS",
+        lambda number, street: f"SITUS_ADDRESS={int(number)} AND SITUS_STREET='{_quoted(street)}'",
+        lambda attributes: str(attributes.get("SITUS_ADDRESS") or ""),
+    ),
 }
 
 BUILDING_SEARCH_M = 90
+# A better location for the address has to agree roughly with the Census street match.
+MAX_LOCATION_DISAGREEMENT_FT = 2000
 STRUCTURES_CREDIT = "Building outlines: FEMA/ORNL USA Structures"
 USGS_CREDIT = "Map services and data available from U.S. Geological Survey, National Geospatial Program."
 MAPBOX_CREDIT = "Imagery © Mapbox © OpenStreetMap © Maxar"
@@ -94,6 +125,15 @@ class Match:
     city: str
     state: str
     county_fips: str
+    house_number: str = ""
+    street_name: str = ""
+
+
+@dataclass(frozen=True)
+class Parcel:
+    outline: list[LatLon]
+    number: str
+    house_number: str
 
 
 @dataclass(frozen=True)
@@ -101,7 +141,13 @@ class FoundProperty:
     address: str
     city: str
     state: str
+    county_fips: str
+    house_number: str
     jurisdiction: Jurisdiction
+    anchor: LatLon
+    located_by: str  # county, map, street or tap
+    address_confirmed: bool | None
+    parcel_house_number: str
     view: PlanView
     buildings: list[list[Point]]
     primary_building: int | None
@@ -150,6 +196,8 @@ def geocode(client: httpx.Client, address: str) -> Match:
         city=city or county.get("NAME", ""),
         state=parts[-2].strip() if len(parts) >= 3 else "",
         county_fips=county.get("GEOID", ""),
+        house_number=match["matchedAddress"].split(" ", 1)[0],
+        street_name=match.get("addressComponents", {}).get("streetName", ""),
     )
 
 
@@ -236,45 +284,80 @@ def _arcgis_features(client: httpx.Client, url: str, params: dict) -> list[dict]
         return []
 
 
-def nearby_buildings(client: httpx.Client, match: Match) -> list[dict]:
+def buildings_around(client: httpx.Client, point: LatLon, radius_m: float) -> list[dict]:
     return _arcgis_features(client, STRUCTURES_URL, {
-        "geometry": f"{match.longitude},{match.latitude}", "distance": BUILDING_SEARCH_M,
-        "units": "esriSRUnit_Meter", "outFields": "PROP_ADDR,SQFEET",
+        "geometry": f"{point[1]},{point[0]}", "distance": round(radius_m),
+        "units": "esriSRUnit_Meter", "outFields": "SQFEET",
     })
 
 
-def pick_building(features: list[dict], match: Match) -> dict | None:
-    """The building at this address: its house number, else the closest to the point."""
+def pick_building(features: list[dict], point: LatLon) -> dict | None:
+    """The building holding the point, else the closest one."""
     if not features:
         return None
-    number = match.address.split(" ", 1)[0]
-    same_number = [
-        feature for feature in features
-        if (feature["attributes"].get("PROP_ADDR") or "").split(" ", 1)[0] == number
-    ]
-
-    def distance(feature: dict) -> float:
-        return ground_distance_ft((match.latitude, match.longitude), _center(feature))
-
-    return min(same_number or features, key=distance)
+    holding = [feature for feature in features if contains(_rings(feature), point)]
+    return min(holding or features, key=lambda feature: ground_distance_ft(point, _center(feature)))
 
 
 def _center(feature: dict) -> LatLon:
     return centroid(_rings(feature))
 
 
-def parcel_at(client: httpx.Client, county_fips: str, point: LatLon) -> tuple[list[LatLon], str]:
-    county = COUNTY_PARCELS.get(county_fips)
+def _parcel_fields(county: County) -> str:
+    return f"{county.parcel_field},{county.address_fields}"
+
+
+def _parcel(county: County, feature: dict) -> Parcel:
+    attributes = feature["attributes"]
+    return Parcel(
+        _rings(feature), str(attributes.get(county.parcel_field) or "").strip(), county.house_number(attributes),
+    )
+
+
+def parcel_at(client: httpx.Client, county_fips: str, point: LatLon) -> Parcel | None:
+    county = COUNTIES.get(county_fips)
     if not county:
-        return [], ""
-    url, number_field, _ = county
-    features = _arcgis_features(client, url, {
-        "geometry": f"{point[1]},{point[0]}", "outFields": number_field,
+        return None
+    features = _arcgis_features(client, county.url, {
+        "geometry": f"{point[1]},{point[0]}", "outFields": _parcel_fields(county),
     })
-    if not features:
-        return [], ""
-    feature = features[0]
-    return _rings(feature), str(feature["attributes"].get(number_field) or "").strip()
+    return _parcel(county, features[0]) if features else None
+
+
+def parcel_for_address(client: httpx.Client, match: Match) -> Parcel | None:
+    county = COUNTIES.get(match.county_fips)
+    if not county or not match.house_number.isdigit() or not match.street_name:
+        return None
+    features = _arcgis_features(client, county.url, {
+        "where": county.address_where(match.house_number, match.street_name),
+        "outFields": _parcel_fields(county),
+    })
+    features = [feature for feature in features if _rings(feature)]
+    return _parcel(county, features[0]) if len(features) == 1 else None
+
+
+def map_location(client: httpx.Client, match: Match, address: str) -> LatLon | None:
+    """The house's own map point, when OpenStreetMap has this exact number."""
+    try:
+        response = client.get(PHOTON_URL, timeout=SUGGEST_TIMEOUT, headers={"User-Agent": USER_AGENT}, params={
+            "q": address, "limit": 5, "lang": "en", "layer": "house", "bbox": "-125,24,-66,50",
+        })
+        response.raise_for_status()
+        features = response.json().get("features", [])
+    except (httpx.HTTPError, ValueError):
+        return None
+    street = match.street_name.lower()
+    for feature in features:
+        properties = feature.get("properties", {})
+        if properties.get("housenumber") != match.house_number:
+            continue
+        if not street or street not in str(properties.get("street", "")).lower():
+            continue
+        longitude, latitude = feature["geometry"]["coordinates"]
+        point = (latitude, longitude)
+        if ground_distance_ft(point, (match.latitude, match.longitude)) <= MAX_LOCATION_DISAGREEMENT_FT:
+            return point
+    return None
 
 
 def _extent_ft(points: list[LatLon]) -> tuple[float, LatLon]:
@@ -285,46 +368,113 @@ def _extent_ft(points: list[LatLon]) -> tuple[float, LatLon]:
     return max(tall, wide), ((south + north) / 2, (west + east) / 2)
 
 
-def find_property(address: str, client: httpx.Client | None = None) -> FoundProperty:
-    owns_client = client is None
-    client = client or httpx.Client(follow_redirects=True)
-    try:
-        match = geocode(client, address)
-        features = nearby_buildings(client, match)
-        primary = pick_building(features, match)
-        anchor = _center(primary) if primary else (match.latitude, match.longitude)
-        lot, parcel_number = parcel_at(client, match.county_fips, anchor)
-    finally:
-        if owns_client:
-            client.close()
+def assemble_property(
+    client: httpx.Client,
+    *,
+    address: str,
+    city: str,
+    state: str,
+    county_fips: str,
+    house_number: str,
+    point: LatLon,
+    located_by: str,
+    parcel: Parcel | None = None,
+    scale: int | None = None,
+    center: LatLon | None = None,
+) -> FoundProperty:
+    radius = max(BUILDING_SEARCH_M, (scale or 0) * PLAN_WIDTH_IN / FEET_PER_METER * 0.75)
+    features = buildings_around(client, point, radius)
+    primary = pick_building(features, point)
+    anchor = _center(primary) if primary and located_by == "street" else point
+    parcel = parcel or parcel_at(client, county_fips, anchor)
+    lot = parcel.outline if parcel else []
+    if lot and primary:
+        middle = centroid(lot)
+        inside = [
+            feature for feature in features
+            if contains(lot, _center(feature)) or contains(_rings(feature), middle)
+        ]
+        primary = pick_building(inside, middle) or primary
 
     frame = lot or (_rings(primary) if primary else [])
-    extent, center = _extent_ft(frame) if frame else (0, anchor)
+    extent, frame_center = _extent_ft(frame) if frame else (0, anchor)
     if not lot:
         extent = max(extent, 150)
-    view = PlanView(center[0], center[1], plan_scale(extent))
+    view = PlanView(*(center or frame_center), scale or plan_scale(extent))
 
-    plan_lot = [view.to_plan(lat, lon) for lat, lon in lot]
     buildings: list[list[Point]] = []
     primary_index = None
     for feature in features:
         outline = [view.to_plan(lat, lon) for lat, lon in _rings(feature)]
-        visible = all(0 <= value <= PLAN_UNITS for value in centroid(outline))
-        if not visible:
+        if not all(0 <= value <= PLAN_UNITS for value in centroid(outline)):
             continue
         if feature is primary:
             primary_index = len(buildings)
+            if lot:
+                outline = clip_to(outline, [view.to_plan(lat, lon) for lat, lon in lot])
         buildings.append(outline)
 
     credits = [STRUCTURES_CREDIT] if features else []
     if lot:
-        credits.append(COUNTY_PARCELS[match.county_fips][2])
+        credits.append(COUNTIES[county_fips].credit)
+    on_record = parcel.house_number if parcel else ""
     return FoundProperty(
-        address=match.address, city=match.city, state=match.state,
-        jurisdiction=jurisdiction_for(match.city, match.state),
-        view=view, buildings=buildings, primary_building=primary_index,
-        lot=plan_lot, parcel_number=parcel_number, credits=credits,
+        address=address, city=city, state=state, county_fips=county_fips, house_number=house_number,
+        jurisdiction=jurisdiction_for(city, state), anchor=anchor, located_by=located_by,
+        address_confirmed=(on_record == house_number) if on_record and house_number else None,
+        parcel_house_number=on_record, view=view, buildings=buildings, primary_building=primary_index,
+        lot=[view.to_plan(lat, lon) for lat, lon in lot],
+        parcel_number=parcel.number if parcel else "", credits=credits,
     )
+
+
+def find_property(address: str, client: httpx.Client | None = None) -> FoundProperty:
+    """Locate the house itself. The Census only estimates a position along the street."""
+    owns_client = client is None
+    client = client or httpx.Client(follow_redirects=True)
+    try:
+        match = geocode(client, address)
+        parcel = parcel_for_address(client, match)
+        map_point = None if parcel else map_location(client, match, match.address)
+        if parcel:
+            point, located_by = centroid(parcel.outline), "county"
+        elif map_point:
+            point, located_by = map_point, "map"
+        else:
+            point, located_by = (match.latitude, match.longitude), "street"
+        return assemble_property(
+            client, address=match.address, city=match.city, state=match.state,
+            county_fips=match.county_fips, house_number=match.house_number,
+            point=point, located_by=located_by, parcel=parcel,
+        )
+    finally:
+        if owns_client:
+            client.close()
+
+
+def property_at(
+    *,
+    address: str,
+    city: str,
+    state: str,
+    county_fips: str,
+    house_number: str,
+    point: LatLon,
+    located_by: str,
+    scale: int | None = None,
+    center: LatLon | None = None,
+    client: httpx.Client | None = None,
+) -> FoundProperty:
+    owns_client = client is None
+    client = client or httpx.Client(follow_redirects=True)
+    try:
+        return assemble_property(
+            client, address=address, city=city, state=state, county_fips=county_fips,
+            house_number=house_number, point=point, located_by=located_by, scale=scale, center=center,
+        )
+    finally:
+        if owns_client:
+            client.close()
 
 
 def _finish(image_bytes: bytes) -> bytes:

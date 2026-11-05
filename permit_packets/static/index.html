@@ -65,6 +65,12 @@ ul.plain { margin: 0; padding: 0; list-style: none; }
 .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: manipulation; cursor: crosshair; }
 .loading { position: absolute; left: 12px; top: 12px; padding: 5px 10px; background: var(--ink); color: #fff; font-size: 13px; }
+.zoom { position: absolute; right: 10px; top: 10px; display: grid; gap: 1px; background: var(--ink); border: 1px solid var(--ink); }
+.zoom button { width: 40px; height: 40px; padding: 0; border: 0; border-radius: 0; background: #fff; color: var(--ink); font-size: 22px; line-height: 1; }
+.located { margin-top: 6px; font-size: 14px; font-weight: 500; }
+.located.good { color: var(--green); }
+.located.check { color: var(--red); }
+.pick-note { position: absolute; left: 12px; right: 62px; bottom: 12px; padding: 8px 10px; background: var(--ink); color: #fff; font-size: 14px; }
 .titleblock { display: flex; flex-direction: column; border-left: 1.5px solid var(--ink); }
 .titleblock > div { padding: 14px 16px; border-bottom: 1.5px solid var(--ink); }
 .titleblock > div:last-child { flex: 1; border-bottom: 0; }
@@ -163,9 +169,11 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
           <img id="aerial" alt="Aerial photo of the property" hidden>
           <svg id="overlay" viewBox="0 0 1000 1000" role="application" aria-label="Plan of the property. Tap to place the panel, the charger and any bends."></svg>
           <span class="loading" id="aerial-status" role="status"></span>
+          <div class="zoom"><button type="button" id="zoom-in" aria-label="Zoom in">+</button><button type="button" id="zoom-out" aria-label="Zoom out">&minus;</button></div>
+          <div class="pick-note" id="pick-note" hidden>Zoom out if you need to, then tap the right house.</div>
         </div>
         <div class="titleblock">
-          <div><span class="tb-label">Property</span><div class="tb-value" id="tb-address"></div><div class="tb-label" id="tb-parcel"></div></div>
+          <div><span class="tb-label">Property</span><div class="tb-value" id="tb-address"></div><div class="tb-label" id="tb-parcel"></div><div class="located" id="tb-located"></div><button type="button" class="link" id="wrong-house">Wrong house? Tap the right one</button></div>
           <div><span class="tb-label">Jurisdiction</span><div class="tb-value" id="tb-city"></div><a class="checklist-link" id="tb-checklist" target="_blank" rel="noopener"></a></div>
           <div>
             <div class="tools">
@@ -335,6 +343,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   let aerialCredit = null;
   let marks = { panel: null, charger: null, bends: [] };
   let tool = 'panel';
+  let picking = false;
   let runEdited = false;
   let packetUrl = null;
   let lastJob = null;
@@ -411,6 +420,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
       Math.round((event.clientX - box.left) / box.width * 1000),
       Math.round((event.clientY - box.top) / box.height * 1000),
     ];
+    if (picking) { setPicking(false); changeView({ tap: point }); return; }
     if (tool === 'panel') { marks.panel = point; tool = marks.charger ? 'bend' : 'charger'; }
     else if (tool === 'charger') { marks.charger = point; tool = 'bend'; }
     else marks.bends.push(point);
@@ -517,8 +527,68 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   });
   addressInput.addEventListener('blur', closeSuggestions);
 
+  function locatedNote(found) {
+    if (found.address_confirmed === true) return ['good', 'Matched to the county record'];
+    if (found.address_confirmed === false) return ['check', `County lists this parcel as number ${found.parcel_house_number}. Check the house.`];
+    if (found.located_by === 'map') return ['good', 'Matched to the house on the map'];
+    if (found.located_by === 'tap') return ['good', 'House chosen by you'];
+    return ['check', 'Estimated from the street. Check this is the right house.'];
+  }
+
+  function showProperty(found) {
+    property = found;
+    aerial = null;
+    aerialCredit = null;
+    marks = { panel: null, charger: null, bends: [] };
+    tool = 'panel';
+    runEdited = false;
+    $('#aerial').hidden = true;
+    $('#tb-address').textContent = found.address;
+    $('#tb-parcel').textContent = found.parcel_number ? `Parcel ${found.parcel_number}` : 'Parcel lines not set up for this county';
+    const [tone, note] = locatedNote(found);
+    $('#tb-located').className = `located ${tone}`;
+    $('#tb-located').textContent = note;
+    $('#tb-city').textContent = found.jurisdiction.label;
+    const link = $('#tb-checklist');
+    link.textContent = found.jurisdiction.known ? `${found.jurisdiction.checklist.length}-item checklist loaded` : 'General checklist. City rules are added in setup.';
+    if (found.jurisdiction.source_url) link.href = found.jurisdiction.source_url; else link.removeAttribute('href');
+    $('#tb-scale').textContent = `Plan scale: 1 in = ${found.view.scale_ft_per_in} ft`;
+    $('#bar-city').textContent = found.jurisdiction.label;
+    $('#site').hidden = false;
+    drawPlan();
+    loadAerial(found);
+  }
+
+  async function changeView(change) {
+    const found = property;
+    const status = $('#aerial-status');
+    status.hidden = false;
+    status.textContent = 'Updating the plan';
+    try {
+      const response = await api('/api/property/view', {
+        address: found.address, city: found.city, state: found.state, county_fips: found.county_fips,
+        house_number: found.house_number, located_by: found.located_by,
+        latitude: found.view.latitude, longitude: found.view.longitude,
+        anchor_latitude: found.anchor.latitude, anchor_longitude: found.anchor.longitude,
+        scale_ft_per_in: found.view.scale_ft_per_in, ...change,
+      });
+      showProperty(await response.json());
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  }
+
+  function setPicking(on) {
+    picking = on;
+    $('#pick-note').hidden = !on;
+  }
+  $('#wrong-house').addEventListener('click', () => setPicking(!picking));
+  $('#zoom-out').addEventListener('click', () => changeView({ zoom: 1 }));
+  $('#zoom-in').addEventListener('click', () => changeView({ zoom: -1 }));
+
   $('#find').addEventListener('submit', async (event) => {
     event.preventDefault();
+    setPicking(false);
     suggestRequest += 1;
     clearTimeout(suggestTimer);
     closeSuggestions();
@@ -529,24 +599,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     try {
       const response = await api('/api/property', { address: $('#address').value });
       const found = await response.json();
-      property = found;
-      aerial = null;
-      aerialCredit = null;
-      marks = { panel: null, charger: null, bends: [] };
-      tool = 'panel';
-      runEdited = false;
-      $('#aerial').hidden = true;
-      $('#tb-address').textContent = found.address;
-      $('#tb-parcel').textContent = found.parcel_number ? `Parcel ${found.parcel_number}` : 'Parcel lines not set up for this county';
-      $('#tb-city').textContent = found.jurisdiction.label;
-      const link = $('#tb-checklist');
-      link.textContent = found.jurisdiction.known ? `${found.jurisdiction.checklist.length}-item checklist loaded` : 'General checklist. City rules are added in setup.';
-      if (found.jurisdiction.source_url) link.href = found.jurisdiction.source_url; else link.removeAttribute('href');
-      $('#tb-scale').textContent = `Plan scale: 1 in = ${found.view.scale_ft_per_in} ft`;
-      $('#bar-city').textContent = found.jurisdiction.label;
-      $('#site').hidden = false;
-      drawPlan();
-      loadAerial(found);
+      showProperty(found);
       $('#site').scrollIntoView({ behavior: TICK_MS ? 'smooth' : 'auto', block: 'start' });
     } catch (error) {
       property = null;

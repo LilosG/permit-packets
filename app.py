@@ -21,16 +21,19 @@ from permit_packets.preview import packet_documents_zip, packet_page_images
 from permit_packets.property_lookup import (
     AddressNotFound,
     AerialUnavailable,
+    FoundProperty,
     fetch_aerial,
     find_property,
+    property_at,
     suggest_addresses,
 )
-from permit_packets.property_plan import PlanView, PropertyPlan
+from permit_packets.property_plan import PlanView, PropertyPlan, zoomed_scale
 from permit_packets.schemas import (
     AerialRequest,
     EvJobRequest,
     LoginRequest,
     LookupRequest,
+    PropertyViewRequest,
     SuggestRequest,
 )
 
@@ -100,16 +103,17 @@ def address_suggestions(payload: SuggestRequest) -> dict:
     return {"suggestions": suggest_addresses(payload.text)}
 
 
-@app.post("/api/property", dependencies=[Depends(require_session)])
-def look_up_property(payload: LookupRequest) -> dict:
-    try:
-        found = find_property(payload.address)
-    except AddressNotFound as error:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from error
+def _property_json(found: FoundProperty) -> dict:
     return {
         "address": found.address,
         "city": found.city,
         "state": found.state,
+        "county_fips": found.county_fips,
+        "house_number": found.house_number,
+        "located_by": found.located_by,
+        "address_confirmed": found.address_confirmed,
+        "parcel_house_number": found.parcel_house_number,
+        "anchor": {"latitude": found.anchor[0], "longitude": found.anchor[1]},
         "jurisdiction": _jurisdiction_json(found.jurisdiction),
         "view": {
             "latitude": found.view.latitude,
@@ -123,6 +127,30 @@ def look_up_property(payload: LookupRequest) -> dict:
         "parcel_number": found.parcel_number,
         "credits": found.credits,
     }
+
+
+@app.post("/api/property", dependencies=[Depends(require_session)])
+def look_up_property(payload: LookupRequest) -> dict:
+    try:
+        return _property_json(find_property(payload.address))
+    except AddressNotFound as error:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from error
+
+
+@app.post("/api/property/view", dependencies=[Depends(require_session)])
+def change_property_view(payload: PropertyViewRequest) -> dict:
+    fields = dict(
+        address=payload.address, city=payload.city, state=payload.state,
+        county_fips=payload.county_fips, house_number=payload.house_number,
+    )
+    view = PlanView(payload.latitude, payload.longitude, payload.scale_ft_per_in)
+    if payload.tap:
+        return _property_json(property_at(**fields, point=view.to_latlon(*payload.tap), located_by="tap"))
+    scale = zoomed_scale(payload.scale_ft_per_in, payload.zoom or 0)
+    return _property_json(property_at(
+        **fields, point=(payload.anchor_latitude, payload.anchor_longitude), located_by=payload.located_by,
+        scale=scale, center=(payload.latitude, payload.longitude),
+    ))
 
 
 @app.post("/api/property/aerial", dependencies=[Depends(require_session)])
