@@ -549,6 +549,9 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
       loadAerial(found);
       $('#site').scrollIntoView({ behavior: TICK_MS ? 'smooth' : 'auto', block: 'start' });
     } catch (error) {
+      property = null;
+      $('#site').hidden = true;
+      $('#bar-city').textContent = 'Demo';
       $('#find-error').textContent = error.message;
       $('#find-error').hidden = false;
     } finally {
