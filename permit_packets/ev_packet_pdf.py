@@ -157,8 +157,9 @@ class SitePlan(Flowable):
             charger = (70, 101)
         elif job.location == "attached_garage":
             building(12, 74, 30, 22, ["ATTACHED", "GARAGE"], fill=colors.white)
-            route = [panel, (72, 58), (72, 80), (42, 80)]
-            charger = (42, 80)
+            # Inside the house, up through the shared wall to the garage.
+            route = [panel, (38, 58), (38, 79), (40, 79)]
+            charger = (42, 79)
         else:
             route = [panel, (66, 44)]
             charger = (66, 44)
