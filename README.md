@@ -19,7 +19,7 @@ Every packet is marked as a demo. Results are drafts and need review before anyo
 | Address and city | US Census geocoder | Free public service |
 | Building outlines | FEMA/ORNL USA Structures | Public data |
 | Aerial | USGS National Map, NAIP Plus | Public domain, credit requested |
-| Lot lines | County GIS, set in `COUNTY_PARCELS` | Check each county's terms before a paid build |
+| Lot lines | County GIS, set in `COUNTIES` (Pima, San Diego, Clark) | Check each county's terms before a paid build |
 | Sharper, faster aerial (optional) | Mapbox satellite, when `MAPBOX_TOKEN` is set | Attribution required |
 
 Don't use Google imagery here. Its terms bar exporting or tracing Maps content, and commercial use of satellite imagery is restricted.
