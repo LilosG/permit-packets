@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>EV Permit Packet Demo</title>
+<style>
+:root { --ink: #15212c; --muted: #566572; --rule: #cfd7dd; --paper: #f4f6f7; --sheet: #fff; --copper: #a8551f; --green: #1f7a58; --red: #b42318; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { background: var(--ink); color: #fff; padding: 22px 16px; }
+header div, main { max-width: 1120px; margin: 0 auto; }
+header p { margin: 0 0 4px; color: #e7b18c; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+h1 { margin: 0; font-size: 24px; line-height: 1.2; }
+header span { display: block; margin-top: 4px; color: #c5ced5; font-size: 14px; }
+main { padding: 20px 16px 40px; }
+form { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+.stack { display: grid; gap: 16px; min-width: 0; }
+aside { position: sticky; top: 16px; display: grid; gap: 16px; }
+section { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 18px; min-width: 0; }
+h2 { margin: 0 0 12px; font-size: 15px; }
+h3 { margin: 16px 0 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.note { margin: -8px 0 12px; color: var(--muted); font-size: 13px; }
+.fields { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fields.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 500; }
+input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; color: var(--ink); font: inherit; }
+input:focus, select:focus, button:focus-visible { outline: 2px solid var(--copper); outline-offset: 1px; }
+button { width: 100%; padding: 11px 14px; border: 1px solid var(--ink); border-radius: 4px; background: var(--ink); color: #fff; font: 600 14px/1 inherit; font-family: inherit; cursor: pointer; }
+button.secondary { margin-top: 8px; background: #fff; color: var(--ink); }
+button:disabled { cursor: not-allowed; opacity: .4; }
+#error { margin-top: 12px; padding: 8px 10px; border: 1px solid #f3c2bd; border-radius: 4px; background: #fdf0ef; color: var(--red); font-size: 13px; }
+#summary { font-weight: 600; }
+dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 12px 0 0; font-size: 13px; }
+dt { color: var(--muted); }
+dd { margin: 0; font-weight: 600; }
+ul { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+li { margin-top: 5px; }
+.pass { color: var(--green); font-weight: 600; }
+.fix { color: var(--red); font-weight: 600; }
+@media (max-width: 860px) { form { grid-template-columns: minmax(0, 1fr); } aside { position: static; order: 2; } .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .fields, .fields.two { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<header><div>
+  <p>Demo</p>
+  <h1>EV Permit Packet</h1>
+  <span>Enter one job and get a draft packet for review. Uses the Oro Valley checklist.</span>
+</div></header>
+<main>
+  <form id="job-form">
+    <div class="stack">
+      <section><h2>Job</h2><div class="fields two"><div><label for="customer">Customer</label><input id="customer" name="customer" type="text" value="Sample Homeowner" required></div><div><label for="address">Job address</label><input id="address" name="address" type="text" value="123 Sample St, Oro Valley, AZ 85737" required></div><div><label for="contractor">Contractor</label><input id="contractor" name="contractor" type="text" value="Sample Electric, LLC" required></div><div><label for="license_number">License number</label><input id="license_number" name="license_number" type="text" value="ROC 000000" required></div></div></section>
+      <section><h2>Panel and charger</h2><div class="fields"><div><label for="service_amps">Service size (A)</label><input id="service_amps" name="service_amps" type="number" min="0" value="200" required></div><div><label for="open_breaker_spaces">Open breaker spaces</label><input id="open_breaker_spaces" name="open_breaker_spaces" type="number" min="0" value="2" required></div><div><label for="charger_amps">Charger amps</label><input id="charger_amps" name="charger_amps" type="number" min="0" value="48" required></div><div><label for="run_ft">Circuit run (ft)</label><input id="run_ft" name="run_ft" type="number" min="0" value="58" required></div><div><label for="trench_ft">Underground (ft)</label><input id="trench_ft" name="trench_ft" type="number" min="0" value="55" required></div>
+        <div><label for="location">Charger location</label><select id="location" name="location">
+          <option value="detached_garage">Detached garage</option>
+          <option value="attached_garage">Attached garage</option>
+          <option value="exterior_wall">Exterior wall</option>
+        </select></div></div></section>
+      <section><h2>Existing home loads</h2><p class="note">Use nameplate values. Enter 0 for anything gas or not in the home.</p>
+        <div class="fields"><div><label for="square_feet">Square feet</label><input id="square_feet" name="square_feet" data-home type="number" min="0" value="3100" required></div><div><label for="small_appliance_circuits">Small appliance circuits</label><input id="small_appliance_circuits" name="small_appliance_circuits" data-home type="number" min="0" value="2" required></div><div><label for="laundry_circuits">Laundry circuits</label><input id="laundry_circuits" name="laundry_circuits" data-home type="number" min="0" value="1" required></div><div><label for="range_va">Range (VA)</label><input id="range_va" name="range_va" data-home type="number" min="0" value="12000" required></div><div><label for="cooktop_va">Cooktop (VA)</label><input id="cooktop_va" name="cooktop_va" data-home type="number" min="0" value="0" required></div><div><label for="oven_va">Oven (VA)</label><input id="oven_va" name="oven_va" data-home type="number" min="0" value="0" required></div><div><label for="dryer_va">Dryer (VA)</label><input id="dryer_va" name="dryer_va" data-home type="number" min="0" value="5000" required></div><div><label for="water_heater_va">Water heater (VA)</label><input id="water_heater_va" name="water_heater_va" data-home type="number" min="0" value="4500" required></div><div><label for="dishwasher_va">Dishwasher (VA)</label><input id="dishwasher_va" name="dishwasher_va" data-home type="number" min="0" value="1200" required></div><div><label for="disposal_va">Disposal (VA)</label><input id="disposal_va" name="disposal_va" data-home type="number" min="0" value="900" required></div><div><label for="microwave_va">Microwave (VA)</label><input id="microwave_va" name="microwave_va" data-home type="number" min="0" value="1500" required></div><div><label for="hot_tub_or_pool_va">Hot tub or pool (VA)</label><input id="hot_tub_or_pool_va" name="hot_tub_or_pool_va" data-home type="number" min="0" value="1800" required></div><div><label for="other_va">Other fixed loads (VA)</label><input id="other_va" name="other_va" data-home type="number" min="0" value="0" required></div><div><label for="heating_va">Heating (VA)</label><input id="heating_va" name="heating_va" data-home type="number" min="0" value="0" required></div><div><label for="cooling_va">Air conditioning (VA)</label><input id="cooling_va" name="cooling_va" data-home type="number" min="0" value="7200" required></div></div></section>
+    </div>
+    <aside>
+      <section>
+        <button type="submit">Run the checks</button>
+        <button id="download" class="secondary" type="button" disabled>Download packet (PDF)</button>
+        <div id="error" role="alert" hidden></div>
+      </section>
+      <section id="results" hidden>
+        <div id="summary"></div>
+        <dl id="sizing"></dl>
+        <h3>Checks</h3><ul id="checks"></ul>
+        <h3>Flagged for review</h3><ul id="flags"></ul>
+      </section>
+    </aside>
+  </form>
+</main>
+<script>
+    const el = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) throw new Error(`Missing ${selector}`);
+      return node;
+    };
+    const esc = (value) => String(value ?? '')
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+
+    const form = el('#job-form');
+    const download = el('#download');
+    const errorBox = el('#error');
+
+    function jobData() {
+      const data = {};
+      const home = {};
+      form.querySelectorAll('input, select').forEach((field) => {
+        if (field.dataset.home !== undefined) home[field.name] = Number(field.value);
+        else data[field.name] = field.type === 'number' ? Number(field.value) : field.value;
+      });
+      return { ...data, home };
+    }
+
+    async function post(path) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jobData()),
+      });
+      if (response.ok) return response;
+      const body = await response.json().catch(() => ({}));
+      const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
+      throw new Error(detail || `API returned ${response.status}`);
+    }
+
+    function showError(error) {
+      errorBox.textContent = error instanceof Error ? error.message : 'Request failed.';
+      errorBox.removeAttribute('hidden');
+    }
+
+    function render(result) {
+      el('#summary').textContent = result.ready ? 'All checks pass' : 'This job needs a fix before submittal';
+      const sizing = [
+        ['Service load', `${result.computed_amps} A`],
+        ['Spare capacity', `${result.spare_amps} A`],
+        ['Breaker', `${result.breaker} A`],
+        ['Wire', result.wire],
+        ['Ground', result.ground],
+        ['Voltage drop', `${result.voltage_drop_percent}%`],
+      ];
+      if (result.underground_conduit) sizing.push(['Underground', `${result.underground_conduit} PVC`]);
+      sizing.push(['Above ground', `${result.interior_conduit} EMT`]);
+      if (result.disconnect_amps) sizing.push(['Disconnect', `${result.disconnect_amps} A`]);
+      el('#sizing').innerHTML = sizing
+        .map(([name, value]) => `<div><dt>${esc(name)}</dt><dd>${esc(value)}</dd></div>`)
+        .join('');
+      el('#checks').innerHTML = result.checks
+        .map((check) => `<li><span class="${check.passed ? 'pass' : 'fix'}">${check.passed ? 'Pass' : 'Fix'}</span> ${esc(check.name)}: ${esc(check.result)}</li>`)
+        .join('');
+      el('#flags').innerHTML = result.flags.map((flag) => `<li>${esc(flag)}</li>`).join('');
+      el('#results').removeAttribute('hidden');
+    }
+
+    form.addEventListener('input', () => { download.disabled = true; });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      errorBox.setAttribute('hidden', '');
+      try {
+        const response = await post('/api/ev/check');
+        render(await response.json());
+        download.disabled = false;
+      } catch (error) {
+        showError(error);
+      }
+    });
+
+    download.addEventListener('click', async () => {
+      download.disabled = true;
+      errorBox.setAttribute('hidden', '');
+      try {
+        const response = await post('/api/ev/pdf');
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'ev-permit-packet-demo.pdf';
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        showError(error);
+      } finally {
+        download.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
