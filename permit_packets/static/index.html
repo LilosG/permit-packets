@@ -235,6 +235,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
         <label class="choice"><input type="checkbox" data-load="cooling_va" data-va="7200" checked><span>Air conditioning</span></label>
         <label class="choice"><input type="checkbox" data-load="heating_va" data-va="10000"><span>Electric heat</span></label>
         <label class="choice"><input type="checkbox" data-load="hot_tub_or_pool_va" data-va="1800" checked><span>Pool or hot tub</span></label>
+        <label class="choice"><input type="checkbox" name="has_solar"><span>Solar</span></label>
       </div></fieldset>
       <details>
         <summary>Exact nameplate values and contractor</summary>
@@ -625,7 +626,9 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
 
   $('#to-job').addEventListener('click', () => {
     syncRun();
-    $('#job-lead').textContent = `${property.address}, using the ${property.jurisdiction.label} checklist.`;
+    $('#job-lead').textContent = property.jurisdiction.known
+      ? `${property.address}, using the ${property.jurisdiction.label} checklist.`
+      : `${property.address}, using the general checklist. ${property.jurisdiction.name}'s rules are added in setup.`;
     show(2);
   });
   $('#use-sample').addEventListener('click', () => {
@@ -641,7 +644,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   form.elements.run_ft.addEventListener('input', () => { runEdited = true; });
   form.elements.trench_ft.addEventListener('input', () => { runEdited = true; });
   $$('input[name=location]').forEach((input) => input.addEventListener('change', syncRun));
-  $$('#appliances input').forEach((box) => box.addEventListener('change', () => {
+  $$('#appliances input[data-load]').forEach((box) => box.addEventListener('change', () => {
     form.elements[box.dataset.load].value = box.checked ? box.dataset.va : 0;
   }));
 
@@ -649,7 +652,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     const data = new FormData(form);
     const job = {
       customer: data.get('customer'), contractor: data.get('contractor'), license_number: data.get('license_number'),
-      charger_model: data.get('charger_model').trim(), connection: data.get('connection'), location: data.get('location'), home: {},
+      charger_model: data.get('charger_model').trim(), has_solar: data.has('has_solar'), connection: data.get('connection'), location: data.get('location'), home: {},
     };
     ['charger_amps', 'run_ft', 'trench_ft', 'service_amps', 'open_breaker_spaces'].forEach((name) => { job[name] = Number(data.get(name)); });
     $$('[data-home]').forEach((input) => { job.home[input.name] = Number(input.value); });
@@ -728,7 +731,8 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   function renderSubmit(job, result) {
     const place = result.jurisdiction;
     $('#how-city').textContent = `Submitting in ${place.label}`;
-    $('#how-text').textContent = place.submit_how;
+    const sets = place.sets_required > 1 ? ` The city asks for ${place.sets_required} sets.` : '';
+    $('#how-text').textContent = `${place.submit_how}${sets}`;
     const contact = [place.department, place.phone].filter(Boolean).join(', ');
     $('#how-contact').textContent = contact;
     const portal = $('#portal');
@@ -738,9 +742,8 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
       `<div><dt>${esc(field.label)}</dt><dd id="field-${index}">${esc(field.value)}</dd><button type="button" class="copy" data-copy="field-${index}">Copy</button></div>`).join('');
     $('#email-section').hidden = !place.email;
     if (place.email) {
-      const sets = place.sets_required > 1 ? ` (${place.sets_required} sets required)` : '';
       const subject = `EV charger permit submittal: ${job.address}`;
-      const body = `Hello,\n\nAttached is an electrical permit submittal for a residential EV charger${sets}.\n\nAddress: ${job.address}\nContractor: ${job.contractor}, license ${job.license_number}\n\nPlease let me know if anything else is needed.\n\nThank you,\n${job.contractor}`;
+      const body = `Hello,\n\nAttached is an electrical permit submittal for a residential EV charger.\n\nAddress: ${job.address}\nContractor: ${job.contractor}, license ${job.license_number}\n\nPlease let me know if anything else is needed.\n\nThank you,\n${job.contractor}`;
       $('#email').textContent = `To: ${place.email}\nSubject: ${subject}\n\n${body}`;
       $('#email-open').href = `mailto:${place.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     }

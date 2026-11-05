@@ -46,6 +46,7 @@ class EvJob:
     trench_ft: int
     charger_model: str = ""
     connection: Connection = "hardwired"
+    has_solar: bool = False
     jurisdiction: Jurisdiction = ORO_VALLEY
     plan: PropertyPlan | None = None
 
@@ -109,6 +110,8 @@ def _flags(job: EvJob, load: LoadCalculation, circuit: Circuit, disconnect: int 
         )
     if job.connection == "receptacle":
         flags.append("EV receptacles need GFCI protection. Confirm a listed GFCI breaker for this panel.")
+    if job.has_solar:
+        flags.append("This home has solar. Check the panel's bus rating and solar breaker before adding this load.")
     if not job.charger_model:
         flags.append("Add the charger make and model, then attach its data sheet.")
     if job.trench_ft:

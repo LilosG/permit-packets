@@ -8,6 +8,7 @@ from io import BytesIO
 from zipfile import ZipFile
 
 import httpx
+import pypdfium2
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -266,6 +267,18 @@ def test_receptacle_above_a_50_amp_circuit_must_be_hardwired():
     allowed = build_ev_packet(_job(connection="receptacle", charger_amps=40))
     assert allowed.ready
     assert any("GFCI" in flag for flag in allowed.flags)
+
+
+def test_solar_adds_a_flag():
+    assert not any("solar" in flag for flag in build_ev_packet(_job()).flags)
+    assert any("solar" in flag for flag in build_ev_packet(_job(has_solar=True)).flags)
+
+
+def test_every_lot_line_keeps_its_dimension_when_a_marker_sits_on_it():
+    plan = _plan(panel=(750, 500), charger=(600, 500), route=[])
+    packet = build_ev_packet(_job(plan=plan, location="attached_garage", trench_ft=0, charger_amps=40))
+    text = pypdfium2.PdfDocument(render_ev_packet_pdf(packet))[2].get_textpage().get_text_bounded()
+    assert text.count("105 ft") == 4
 
 
 def test_city_comes_from_the_address_and_unknown_cities_are_labeled():

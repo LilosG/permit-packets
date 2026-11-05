@@ -59,6 +59,7 @@ class EvJobRequest(BaseModel):
     charger_amps: int = Field(ge=16, le=80)
     charger_model: str = Field(default="", max_length=120)
     connection: Literal["hardwired", "receptacle"] = "hardwired"
+    has_solar: bool = False
     location: Literal["attached_garage", "detached_garage", "exterior_wall"]
     run_ft: int = Field(gt=0, le=500)
     trench_ft: int = Field(default=0, ge=0, le=500)

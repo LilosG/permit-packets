@@ -21,6 +21,8 @@ PAPER = colors.HexColor("#eef1f3")
 PLAN_PT = PLAN_WIDTH_IN * inch
 MAX_LOT_LABELS = 12
 MIN_LOT_LABEL_FT = 12
+# Where along a lot line its dimension can go, tried in order so markers don't hide it.
+LABEL_POSITIONS = (0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9)
 
 
 class AerialSitePlan(Flowable):
@@ -50,15 +52,15 @@ class AerialSitePlan(Flowable):
             path.close()
         self.canv.drawPath(path, stroke=1, fill=0)
 
-    def _label(self, x: float, y: float, text: str, *, bold: bool = False, avoid: bool = True) -> None:
+    def _label(self, x: float, y: float, text: str, *, bold: bool = False) -> bool:
         c = self.canv
         font = "Helvetica-Bold" if bold else "Helvetica"
         size = 7.4
         width = stringWidth(text, font, size) + 7
         height = 11.5
         box = (x - width / 2, y - height / 2, x + width / 2, y + height / 2)
-        if avoid and any(box[0] < b[2] and box[2] > b[0] and box[1] < b[3] and box[3] > b[1] for b in self.placed):
-            return
+        if any(box[0] < b[2] and box[2] > b[0] and box[1] < b[3] and box[3] > b[1] for b in self.placed):
+            return False
         self.placed.append(box)
         c.setFillColor(colors.white)
         c.setStrokeColor(INK)
@@ -67,6 +69,7 @@ class AerialSitePlan(Flowable):
         c.setFillColor(INK)
         c.setFont(font, size)
         c.drawCentredString(x, y - 2.6, text)
+        return True
 
     def _marker(self, point: Point, color, text: str) -> None:
         c = self.canv
@@ -171,8 +174,13 @@ class AerialSitePlan(Flowable):
             key=lambda edge: -edge.length_ft,
         )
         for edge in edges[:MAX_LOT_LABELS]:
-            x, y = self._xy(((edge.start[0] + edge.end[0]) / 2, (edge.start[1] + edge.end[1]) / 2))
-            self._label(x, y, f"{edge.length_ft} ft")
+            for share in LABEL_POSITIONS:
+                x, y = self._xy((
+                    edge.start[0] + (edge.end[0] - edge.start[0]) * share,
+                    edge.start[1] + (edge.end[1] - edge.start[1]) * share,
+                ))
+                if self._label(x, y, f"{edge.length_ft} ft"):
+                    break
         c.restoreState()
         c.setStrokeColor(INK)
         c.setLineWidth(0.8)
