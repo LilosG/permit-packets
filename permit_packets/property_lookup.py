@@ -5,6 +5,9 @@ Sources were chosen so the result can go in a printed permit packet:
 - USGS National Map imagery is public domain.
 - Lot lines come from county GIS, where the county is set up in COUNTY_PARCELS.
 - Mapbox satellite is used instead of USGS when MAPBOX_TOKEN is set.
+- Photon, built on OpenStreetMap, suggests addresses as the tech types. The chosen
+  address still goes through the Census geocoder, so a suggestion is never trusted
+  on its own.
 """
 from __future__ import annotations
 
@@ -27,6 +30,7 @@ from permit_packets.property_plan import (
     plan_scale,
 )
 
+PHOTON_URL = "https://photon.komoot.io/api/"
 CENSUS_URL = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
 STRUCTURES_URL = (
     "https://services2.arcgis.com/FiaPA4ga0iQKduv3/ArcGIS/rest/services/USA_Structures_View/FeatureServer/0/query"
@@ -50,6 +54,26 @@ LOOKUP_TIMEOUT = httpx.Timeout(14, connect=6)
 AERIAL_TIMEOUT = httpx.Timeout(40, connect=6)
 AERIAL_PIXELS = 1400
 JPEG_QUALITY = 78
+USER_AGENT = "LilosGrowth-PermitPackets/1.0"
+SUGGEST_TIMEOUT = httpx.Timeout(5, connect=3)
+SUGGESTION_LIMIT = 5
+STATE_CODES = {
+    "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA", "Colorado": "CO",
+    "Connecticut": "CT", "Delaware": "DE", "District of Columbia": "DC", "Florida": "FL", "Georgia": "GA",
+    "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA", "Kansas": "KS",
+    "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD", "Massachusetts": "MA",
+    "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO", "Montana": "MT",
+    "Nebraska": "NE", "Nevada": "NV", "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM",
+    "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK",
+    "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD",
+    "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT", "Virginia": "VA", "Washington": "WA",
+    "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY",
+}
+DIRECTION_WORDS = {
+    "n": "n", "north": "n", "s": "s", "south": "s", "e": "e", "east": "e", "w": "w", "west": "w",
+}
+STREET_TYPES = {"st", "street", "ave", "avenue", "dr", "drive", "rd", "road", "ln", "lane", "ct", "court",
+                "blvd", "boulevard", "way", "pl", "place", "cir", "circle"}
 DIRECTIONS = {"N", "S", "E", "W", "NE", "NW", "SE", "SW"}
 LatLon = tuple[float, float]
 
@@ -111,7 +135,7 @@ def geocode(client: httpx.Client, address: str) -> Match:
         raise AddressNotFound("The address service didn't respond. Try again.") from error
     if not matches:
         raise AddressNotFound(
-            "That address wasn't found. Check the street, city and state, or use the sample layout."
+            "That address wasn't found. Include the city and state, or use the sample layout."
         )
     match = matches[0]
     geographies = match["geographies"]
@@ -127,6 +151,72 @@ def geocode(client: httpx.Client, address: str) -> Match:
         state=parts[-2].strip() if len(parts) >= 3 else "",
         county_fips=county.get("GEOID", ""),
     )
+
+
+def _suggestion(properties: dict, house_number: str) -> str | None:
+    """OpenStreetMap lacks many house numbers, so a street match takes the typed number."""
+    state = STATE_CODES.get(properties.get("state", ""))
+    street = properties.get("street") or (properties.get("name") if properties.get("type") == "street" else None)
+    city = properties.get("city") or properties.get("town") or properties.get("district")
+    number = properties.get("housenumber") or house_number
+    if properties.get("countrycode") != "US" or not (state and street and city and number) or "@" in street:
+        return None
+    tail = f" {properties['postcode']}" if properties.get("postcode") else ""
+    return f"{number} {street}, {city}, {state}{tail}"
+
+
+def _street_words(text: str) -> tuple[list[str], str | None]:
+    """The words that name the street, and any direction typed: 'e naranja dr' is (naranja, e)."""
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    if words and words[0][0].isdigit():
+        words = words[1:]
+    direction = next((DIRECTION_WORDS[word] for word in words[:1] if word in DIRECTION_WORDS), None)
+    return [word for word in words if word not in DIRECTION_WORDS and word not in STREET_TYPES], direction
+
+
+def _fits(properties: dict, house_number: str, wanted: list[str], direction: str | None) -> bool:
+    street = str(properties.get("street") or properties.get("name") or "").lower().split()
+    if house_number and properties.get("housenumber") not in (None, house_number):
+        return False
+    if wanted and not any(word.startswith(wanted[0]) for word in street):
+        return False
+    found = next((DIRECTION_WORDS[word] for word in street[:1] if word in DIRECTION_WORDS), None)
+    return not (direction and found and direction != found)
+
+
+def _photon_search(client: httpx.Client, text: str) -> list[dict]:
+    response = client.get(PHOTON_URL, timeout=SUGGEST_TIMEOUT, headers={"User-Agent": USER_AGENT}, params=[
+        ("q", text), ("limit", 20), ("lang", "en"), ("layer", "house"), ("layer", "street"),
+        ("bbox", "-125,24,-66,50"),
+    ])
+    response.raise_for_status()
+    return response.json().get("features", [])
+
+
+def suggest_addresses(text: str, client: httpx.Client | None = None) -> list[str]:
+    """Best effort: when this fails the tech can still type the whole address."""
+    owns_client = client is None
+    client = client or httpx.Client(follow_redirects=True)
+    leading = re.match(r"\s*(\d+[A-Za-z]?)\s", text)
+    house_number = leading.group(1) if leading else ""
+    wanted, direction = _street_words(text)
+    suggestions: list[str] = []
+    searches = [text, text[leading.end():]] if leading else [text]
+    try:
+        for search in searches:
+            for feature in _photon_search(client, search):
+                properties = feature.get("properties", {})
+                suggestion = _suggestion(properties, house_number)
+                if suggestion and suggestion not in suggestions and _fits(properties, house_number, wanted, direction):
+                    suggestions.append(suggestion)
+            if suggestions:
+                break
+    except (httpx.HTTPError, ValueError):
+        pass
+    finally:
+        if owns_client:
+            client.close()
+    return suggestions[:SUGGESTION_LIMIT]
 
 
 def _rings(feature: dict) -> list[LatLon]:

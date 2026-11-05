@@ -15,6 +15,7 @@ Every packet is marked as a demo. Results are drafts and need review before anyo
 
 | Data | Source | Terms |
 |---|---|---|
+| Address suggestions while typing | Photon, built on OpenStreetMap | Free with fair use, credit shown, no uptime promise |
 | Address and city | US Census geocoder | Free public service |
 | Building outlines | FEMA/ORNL USA Structures | Public data |
 | Aerial | USGS National Map, NAIP Plus | Public domain, credit requested |
