@@ -4,25 +4,38 @@ from __future__ import annotations
 import base64
 import os
 import re
+from io import BytesIO
+from zipfile import ZipFile
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from app import app
 
 from permit_packets.circuits import WIRES, conduit_size, size_breaker, size_circuit, voltage_drop
 from permit_packets.ev_charger import EvJob, build_ev_packet
 from permit_packets.ev_packet_pdf import render_ev_packet_pdf
+from permit_packets.jurisdictions import EL_CAJON, ORO_VALLEY, jurisdiction_for
 from permit_packets.load_calculation import HomeLoads, LoadLine, calculate_load
+from permit_packets.property_lookup import (
+    AddressNotFound,
+    AerialUnavailable,
+    fetch_aerial,
+    find_property,
+    tidy_address,
+)
+from permit_packets.property_plan import PlanView, PropertyPlan, plan_scale
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
 
 @pytest.fixture
 def client():
-    logged_in = TestClient(app)
-    logged_in.auth = ("mike", "test-password")
-    return logged_in
+    signed_in = TestClient(app)
+    assert signed_in.post("/api/signin", json={"password": "test-password"}).status_code == 200
+    return signed_in
 
 
 @pytest.fixture
@@ -34,6 +47,23 @@ HOME = HomeLoads(
     square_feet=3100, range_va=12000, dryer_va=5000, water_heater_va=4500, dishwasher_va=1200,
     disposal_va=900, microwave_va=1500, hot_tub_or_pool_va=1800, cooling_va=7200,
 )
+
+
+SQUARE_LOT = [[250, 250], [750, 250], [750, 750], [250, 750]]
+
+
+def _aerial() -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", (64, 64), "#556b2f").save(buffer, format="JPEG")
+    return buffer.getvalue()
+
+
+def _plan(**changes) -> PropertyPlan:
+    values = dict(scale_ft_per_in=30, panel=(400, 500), charger=(600, 500), route=[(500, 400)],
+                  buildings=[[(350, 350), (650, 350), (650, 650), (350, 650)]], primary_building=0,
+                  lot=[tuple(point) for point in SQUARE_LOT], parcel_number="123-456", aerial_jpeg=_aerial(),
+                  credits=["Credit"])
+    return PropertyPlan(**{**values, **changes})
 
 
 def _job(**changes) -> EvJob:
@@ -65,10 +95,10 @@ def test_worked_load_calculation_matches_the_sample_packet():
     assert round(load.spare_amps, 1) == 29.2
 
 
-def test_electric_dryer_has_a_5000_va_minimum_and_gas_counts_nothing():
+def test_dryer_uses_nameplate_and_gas_counts_nothing():
     electric = calculate_load(HomeLoads(square_feet=1000, dryer_va=3000), service_amps=100)
     gas = calculate_load(HomeLoads(square_feet=1000), service_amps=100)
-    assert electric.subtotal_va - gas.subtotal_va == 5000
+    assert electric.subtotal_va - gas.subtotal_va == 3000
 
 
 def test_only_the_larger_of_heating_and_cooling_counts():
@@ -154,49 +184,220 @@ def test_pdf_survives_markup_in_typed_text():
     assert pdf.startswith(b"%PDF")
 
 
-def test_check_route_returns_sizing(client):
-    response = client.post("/api/ev/check", json=_payload())
+def test_packet_route_returns_results_pages_and_pdf(client):
+    response = client.post("/api/ev/packet", json=_payload())
     assert response.status_code == 200
     body = response.json()
     assert body["ready"] is True
     assert (body["breaker"], body["wire"]) == (50, "#8 AWG Cu")
+    assert len(body["pages"]) == 7
+    assert base64.b64decode(body["pages"][0]).startswith(b"\xff\xd8")
+    assert base64.b64decode(body["pdf"]).startswith(b"%PDF")
+    assert any(field["label"] == "Scope of work" for field in body["fields"])
 
 
-def test_pdf_route_returns_a_download(client):
-    response = client.post("/api/ev/pdf", json=_payload())
+def test_documents_route_returns_one_pdf_per_page(client):
+    response = client.post("/api/ev/documents", json=_payload())
     assert response.status_code == 200
-    assert response.headers["content-type"] == "application/pdf"
-    assert response.content.startswith(b"%PDF")
+    names = ZipFile(BytesIO(response.content)).namelist()
+    assert len(names) == 7
+    assert names[2] == "03-site-plan.pdf"
 
 
-def test_preview_route_returns_seven_page_images(client):
-    response = client.post("/api/ev/preview", json=_payload())
+def test_a_plan_with_an_aerial_goes_through_the_route(client):
+    plan = {"scale_ft_per_in": 30, "panel": [400, 500], "charger": [600, 500], "lot": SQUARE_LOT,
+            "aerial_base64": base64.b64encode(_aerial()).decode(), "credits": ["Credit"]}
+    response = client.post("/api/ev/packet", json=_payload(plan=plan))
     assert response.status_code == 200
-    pages = response.json()["pages"]
-    assert len(pages) == 7
-    assert base64.b64decode(pages[0]).startswith(b"\xff\xd8")
+    assert len(response.json()["pages"]) == 7
 
 
-def test_routes_need_a_login(public_client):
-    assert public_client.post("/api/ev/check", json=_payload()).status_code == 401
+def test_routes_need_a_session(public_client):
+    assert public_client.post("/api/ev/packet", json=_payload()).status_code == 401
+    assert public_client.post("/api/property", json={"address": "123 Sample St"}).status_code == 401
 
 
-def test_a_wrong_password_is_refused():
-    client = TestClient(app)
-    client.auth = ("mike", "wrong")
-    assert client.get("/").status_code == 401
+def test_a_wrong_password_is_refused(public_client):
+    assert public_client.post("/api/signin", json={"password": "wrong"}).status_code == 401
 
 
-def test_demo_page_loads(client):
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "Capture the job" in response.text
-    assert "Approve packet" in response.text
+def test_a_forged_cookie_is_refused(public_client):
+    public_client.cookies.set("permit_demo_session", "9999999999.abc")
+    assert public_client.post("/api/ev/packet", json=_payload()).status_code == 401
+
+
+def test_home_shows_sign_in_until_signed_in(public_client, client):
+    assert "Sign in" in public_client.get("/").text
+    page = client.get("/").text
+    assert "Start with the address" in page
+    assert "Approve packet" in page
 
 
 def test_trench_longer_than_the_run_is_refused(client):
-    assert client.post("/api/ev/check", json=_payload(trench_ft=99)).status_code == 422
+    assert client.post("/api/ev/packet", json=_payload(trench_ft=99)).status_code == 422
 
 
 def test_charger_outside_level_2_range_is_refused(client):
-    assert client.post("/api/ev/check", json=_payload(charger_amps=200)).status_code == 422
+    assert client.post("/api/ev/packet", json=_payload(charger_amps=200)).status_code == 422
+
+
+@pytest.mark.parametrize("amps,wire", [(16, "12"), (20, "10"), (28, "8")])
+def test_small_wire_stays_inside_the_breaker_limits(amps, wire):
+    assert size_circuit(amps, 20, continuous=True).wire.size == wire
+
+
+def test_upsized_wire_upsizes_the_ground():
+    circuit = size_circuit(48, 200, continuous=True)
+    assert (circuit.wire.size, circuit.ground) == ("4", "8")
+
+
+def test_over_capacity_names_the_charger_that_fits():
+    packet = build_ev_packet(_job(service_amps=150))
+    assert not packet.ready
+    assert any("A 24 A charger fits" in flag for flag in packet.flags)
+    assert any("No common charger size fits" in flag
+               for flag in build_ev_packet(_job(service_amps=125)).flags)
+
+
+def test_receptacle_above_a_50_amp_circuit_must_be_hardwired():
+    assert not build_ev_packet(_job(connection="receptacle", charger_amps=48)).ready
+    allowed = build_ev_packet(_job(connection="receptacle", charger_amps=40))
+    assert allowed.ready
+    assert any("GFCI" in flag for flag in allowed.flags)
+
+
+def test_city_comes_from_the_address_and_unknown_cities_are_labeled():
+    assert jurisdiction_for("Oro Valley", "AZ") is ORO_VALLEY
+    assert jurisdiction_for("el cajon", "ca") is EL_CAJON
+    other = jurisdiction_for("Mesa", "AZ")
+    assert not other.known
+    assert other.label == "Mesa, AZ"
+
+
+def test_el_cajon_rules_reach_the_flags():
+    packet = build_ev_packet(_job(jurisdiction=EL_CAJON, plan=_plan(parcel_number="")))
+    assert any("parcel number" in flag for flag in packet.flags)
+    assert any("within 50 ft" in flag for flag in packet.flags)
+    assert any("2019 California" in flag for flag in packet.flags)
+
+
+def test_plan_measures_route_and_setback_at_scale():
+    plan = _plan(route=[])
+    assert plan.feet_per_unit == 0.21
+    assert plan.measured_route_ft == 42
+    assert plan.charger_to_lot_line_ft == 32
+    assert sorted(edge.length_ft for edge in plan.lot_edges) == [105, 105, 105, 105]
+
+
+def test_scale_is_the_smallest_engineer_scale_that_fits():
+    assert plan_scale(120) == 20
+    assert plan_scale(170) == 30
+    assert plan_scale(5000) == 100
+
+
+def test_plan_view_puts_its_center_in_the_middle():
+    view = PlanView(32.4, -110.9, 30)
+    assert view.to_plan(32.4, -110.9) == (500.0, 500.0)
+    assert view.to_plan(32.4005, -110.9)[1] < 500
+
+
+@pytest.mark.parametrize("jurisdiction", [ORO_VALLEY, EL_CAJON])
+@pytest.mark.parametrize("plan", [None, "aerial", "outlines"])
+def test_worst_case_packet_stays_seven_pages(jurisdiction, plan):
+    site = {"aerial": _plan(), "outlines": _plan(aerial_jpeg=None), None: None}[plan]
+    job = _job(jurisdiction=jurisdiction, plan=site, service_amps=100, open_breaker_spaces=0, charger_amps=80,
+               run_ft=400, trench_ft=300, connection="receptacle")
+    pdf = render_ev_packet_pdf(build_ev_packet(job))
+    assert len(re.findall(rb"/Type\s*/Page[^s]", pdf)) == 7
+
+
+CENSUS_MATCH = {"result": {"addressMatches": [{
+    "matchedAddress": "10 MAIN ST, ORO VALLEY, AZ, 85737",
+    "coordinates": {"x": -110.97, "y": 32.40},
+    "geographies": {"Incorporated Places": [{"NAME": "Oro Valley town"}], "Counties": [{"GEOID": "04019"}]},
+}]}}
+BOX = [[-110.9702, 32.3998], [-110.9698, 32.3998], [-110.9698, 32.4002], [-110.9702, 32.4002], [-110.9702, 32.3998]]
+LOT_BOX = [[-110.9705, 32.3995], [-110.9695, 32.3995], [-110.9695, 32.4005], [-110.9705, 32.4005], [-110.9705, 32.3995]]
+
+
+def _services(request: httpx.Request) -> httpx.Response:
+    host = request.url.host
+    if host == "geocoding.geo.census.gov":
+        return httpx.Response(200, json=CENSUS_MATCH)
+    if "USA_Structures" in request.url.path:
+        return httpx.Response(200, json={"features": [
+            {"attributes": {"PROP_ADDR": "99 OTHER ST"}, "geometry": {"rings": [[[x + .0001, y] for x, y in BOX]]}},
+            {"attributes": {"PROP_ADDR": "10 MAIN ST"}, "geometry": {"rings": [BOX]}},
+        ]})
+    if host == "gisdata.pima.gov":
+        return httpx.Response(200, json={"features": [
+            {"attributes": {"PARCEL": "224265700"}, "geometry": {"rings": [LOT_BOX]}},
+        ]})
+    return httpx.Response(404)
+
+
+def test_find_property_returns_city_building_and_lot():
+    client = httpx.Client(transport=httpx.MockTransport(_services))
+    found = find_property("10 Main St, Oro Valley, AZ", client)
+    assert found.address == "10 Main St, Oro Valley, AZ 85737"
+    assert found.jurisdiction is ORO_VALLEY
+    assert found.parcel_number == "224265700"
+    assert len(found.lot) == 4
+    assert found.primary_building == 1
+    assert tidy_address("1200 N 3RD AVE, SAN DIEGO, CA, 92101") == "1200 N 3rd Ave, San Diego, CA 92101"
+    assert all(0 < value < 1000 for point in found.lot for value in point)
+
+
+def test_only_the_parcel_number_is_requested_from_the_county():
+    seen = []
+
+    def spy(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return _services(request)
+
+    find_property("10 Main St, Oro Valley, AZ", httpx.Client(transport=httpx.MockTransport(spy)))
+    county = next(request for request in seen if request.url.host == "gisdata.pima.gov")
+    assert county.url.params["outFields"] == "PARCEL"
+
+
+def test_an_unknown_address_says_so():
+    empty = httpx.MockTransport(lambda request: httpx.Response(200, json={"result": {"addressMatches": []}}))
+    with pytest.raises(AddressNotFound, match="wasn't found"):
+        find_property("nowhere", httpx.Client(transport=empty))
+
+
+def test_a_lookup_survives_when_the_county_is_down():
+    def county_down(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500) if request.url.host == "gisdata.pima.gov" else _services(request)
+
+    found = find_property("10 Main St, Oro Valley, AZ", httpx.Client(transport=httpx.MockTransport(county_down)))
+    assert found.lot == []
+    assert found.parcel_number == ""
+    assert found.buildings
+
+
+def test_aerial_comes_back_as_jpeg_with_a_credit():
+    image = httpx.MockTransport(lambda request: httpx.Response(
+        200, content=_aerial(), headers={"content-type": "image/jpeg"}))
+    jpeg, credit = fetch_aerial(PlanView(32.4, -110.9, 30), httpx.Client(transport=image))
+    assert jpeg.startswith(b"\xff\xd8")
+    assert "U.S. Geological Survey" in credit
+
+
+def test_mapbox_is_used_first_when_a_token_is_set(monkeypatch):
+    monkeypatch.setenv("MAPBOX_TOKEN", "pk.test")
+    hosts = []
+
+    def serve(request: httpx.Request) -> httpx.Response:
+        hosts.append(request.url.host)
+        return httpx.Response(200, content=_aerial(), headers={"content-type": "image/jpeg"})
+
+    _, credit = fetch_aerial(PlanView(32.4, -110.9, 30), httpx.Client(transport=httpx.MockTransport(serve)))
+    assert hosts == ["api.mapbox.com"]
+    assert "Mapbox" in credit
+
+
+def test_a_failed_aerial_is_reported():
+    down = httpx.MockTransport(lambda request: httpx.Response(502))
+    with pytest.raises(AerialUnavailable):
+        fetch_aerial(PlanView(32.4, -110.9, 30), httpx.Client(transport=down))

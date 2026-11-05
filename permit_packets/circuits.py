@@ -39,6 +39,9 @@ WIRES = (
 # NEC 250.122, largest breaker each equipment ground size covers.
 GROUND_SIZES = ((15, "14"), (20, "12"), (60, "10"), (100, "8"), (200, "6"))
 
+# NEC 240.4(D), largest breaker allowed on small copper conductors.
+SMALL_CONDUCTOR_BREAKER_LIMIT = {"14": 15, "12": 20, "10": 30}
+
 # NEC Chapter 9 Table 4, 40% fill for three or more wires.
 CONDUIT_FILL_SQ_IN = {
     "PVC": (('1/2"', 0.114), ('3/4"', 0.203), ('1"', 0.333), ('1-1/4"', 0.581), ('1-1/2"', 0.794)),
@@ -70,6 +73,20 @@ def ground_size(breaker: int) -> str:
     return next(size for limit, size in GROUND_SIZES if breaker <= limit)
 
 
+def protected_by(wire: Wire, breaker: int) -> bool:
+    limit = SMALL_CONDUCTOR_BREAKER_LIMIT.get(wire.size, wire.ampacity_75c)
+    return wire.ampacity_75c >= breaker and breaker <= limit
+
+
+def upsized_ground(breaker: int, wire: Wire, smallest: Wire) -> str:
+    """NEC 250.122(B): a larger hot wire needs a proportionally larger ground."""
+    base = next(w for w in WIRES if w.size == ground_size(breaker))
+    # Published wire areas are rounded, so a ratio landing on a size within 1% counts.
+    required = base.circular_mils * wire.circular_mils / smallest.circular_mils * 0.99
+    ground = next((w for w in WIRES if w.circular_mils >= required), wire)
+    return ground.size if ground.circular_mils <= wire.circular_mils else wire.size
+
+
 def voltage_drop(amps: float, one_way_ft: float, wire: Wire, volts: int = 240) -> tuple[float, float]:
     drop = 2 * COPPER_K * amps * one_way_ft / wire.circular_mils
     return drop, drop / volts * 100
@@ -78,7 +95,7 @@ def voltage_drop(amps: float, one_way_ft: float, wire: Wire, volts: int = 240) -
 def size_circuit(load_amps: float, one_way_ft: float, *, continuous: bool, volts: int = 240) -> Circuit:
     required = load_amps * (CONTINUOUS_FACTOR if continuous else 1)
     breaker = size_breaker(required)
-    candidates = [wire for wire in WIRES if wire.ampacity_75c >= breaker]
+    candidates = [wire for wire in WIRES if protected_by(wire, breaker)]
     if not candidates:
         raise ValueError(f"no listed wire size carries {breaker} A")
     smallest = candidates[0]
@@ -93,7 +110,7 @@ def size_circuit(load_amps: float, one_way_ft: float, *, continuous: bool, volts
         required_amps=required,
         breaker=breaker,
         wire=wire,
-        ground=ground_size(breaker),
+        ground=upsized_ground(breaker, wire, smallest),
         voltage_drop_volts=drop,
         voltage_drop_percent=percent,
         upsized_for_voltage_drop=wire is not smallest,
