@@ -18,9 +18,21 @@ from permit_packets.ev_packet_pdf import application_fields, render_ev_packet_pd
 from permit_packets.jurisdictions import Jurisdiction, jurisdiction_by_key
 from permit_packets.load_calculation import HomeLoads
 from permit_packets.preview import packet_documents_zip, packet_page_images
-from permit_packets.property_lookup import AddressNotFound, AerialUnavailable, fetch_aerial, find_property
+from permit_packets.property_lookup import (
+    AddressNotFound,
+    AerialUnavailable,
+    fetch_aerial,
+    find_property,
+    suggest_addresses,
+)
 from permit_packets.property_plan import PlanView, PropertyPlan
-from permit_packets.schemas import AerialRequest, EvJobRequest, LoginRequest, LookupRequest
+from permit_packets.schemas import (
+    AerialRequest,
+    EvJobRequest,
+    LoginRequest,
+    LookupRequest,
+    SuggestRequest,
+)
 
 STATIC = Path(__file__).parent / "permit_packets" / "static"
 SESSION_COOKIE = "permit_demo_session"
@@ -81,6 +93,11 @@ def _jurisdiction_json(jurisdiction: Jurisdiction) -> dict:
         "label": jurisdiction.label,
         "checklist": [requirement.item for requirement in jurisdiction.checklist],
     }
+
+
+@app.post("/api/property/suggest", dependencies=[Depends(require_session)])
+def address_suggestions(payload: SuggestRequest) -> dict:
+    return {"suggestions": suggest_addresses(payload.text)}
 
 
 @app.post("/api/property", dependencies=[Depends(require_session)])

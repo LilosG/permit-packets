@@ -78,6 +78,10 @@ class LookupRequest(BaseModel):
     address: str = Field(min_length=5, max_length=200)
 
 
+class SuggestRequest(BaseModel):
+    text: str = Field(min_length=4, max_length=200)
+
+
 class AerialRequest(BaseModel):
     latitude: float = Field(ge=18, le=72)
     longitude: float = Field(ge=-180, le=-60)

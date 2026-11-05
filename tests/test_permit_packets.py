@@ -24,6 +24,7 @@ from permit_packets.property_lookup import (
     AerialUnavailable,
     fetch_aerial,
     find_property,
+    suggest_addresses,
     tidy_address,
 )
 from permit_packets.property_plan import PlanView, PropertyPlan, plan_scale
@@ -401,3 +402,46 @@ def test_a_failed_aerial_is_reported():
     down = httpx.MockTransport(lambda request: httpx.Response(502))
     with pytest.raises(AerialUnavailable):
         fetch_aerial(PlanView(32.4, -110.9, 30), httpx.Client(transport=down))
+
+
+def _photon(*features: dict) -> httpx.Client:
+    body = {"features": [{"properties": {"countrycode": "US", **feature}} for feature in features]}
+    return httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
+
+
+def test_suggestions_read_as_full_addresses_and_drop_repeats():
+    house = {"housenumber": "15917", "street": "Hidden Valley Drive", "city": "Poway",
+             "state": "California", "postcode": "92064"}
+    assert suggest_addresses("15917 Hidden", _photon(house, house)) == [
+        "15917 Hidden Valley Drive, Poway, CA 92064"]
+
+
+def test_a_street_match_takes_the_typed_house_number():
+    street = {"type": "street", "name": "Oak Street", "city": "Mesa", "state": "Arizona"}
+    assert suggest_addresses("412 Oak St", _photon(street)) == ["412 Oak Street, Mesa, AZ"]
+
+
+def test_suggestions_drop_other_streets_numbers_and_directions():
+    assert suggest_addresses("123 Main St Austin", _photon(
+        {"housenumber": "110", "street": "Inner Campus Drive", "city": "Austin", "state": "Texas"},
+        {"housenumber": "123", "street": "Main Street", "city": "Boston", "state": "Massachusetts"},
+    )) == ["123 Main Street, Boston, MA"]
+    assert suggest_addresses("500 E Washington", _photon(
+        {"housenumber": "500", "street": "West Washington Avenue", "city": "El Cajon", "state": "California"},
+    )) == []
+
+
+def test_suggestions_skip_anything_outside_the_us_or_without_a_city():
+    assert suggest_addresses("12 Main", _photon(
+        {"countrycode": "CA", "housenumber": "12", "street": "Main St", "city": "Toronto", "state": "Ontario"},
+        {"housenumber": "12", "street": "Main St", "state": "Texas"},
+    )) == []
+
+
+def test_suggestions_fail_quietly():
+    down = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(503)))
+    assert suggest_addresses("12 Main", down) == []
+
+
+def test_suggest_route_needs_a_session(public_client):
+    assert public_client.post("/api/property/suggest", json={"text": "12 Main"}).status_code == 401

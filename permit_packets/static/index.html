@@ -53,7 +53,13 @@ button:disabled { cursor: not-allowed; opacity: .4; }
 ul.plain { margin: 0; padding: 0; list-style: none; }
 
 .search { display: flex; gap: 10px; margin-top: 18px; }
-.search input { flex: 1; min-width: 0; padding: 12px; border: 1px solid var(--ink); border-radius: 2px; font: inherit; }
+.combo { position: relative; flex: 1; min-width: 0; }
+.combo input { width: 100%; padding: 12px; border: 1px solid var(--ink); border-radius: 2px; font: inherit; }
+#suggestions { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; margin: 0; padding: 0; list-style: none; border: 1px solid var(--ink); border-top: 0; background: #fff; }
+#suggestions li { padding: 10px 12px; border-top: 1px solid var(--rule); cursor: pointer; }
+#suggestions li:first-child { border-top: 0; }
+#suggestions li[aria-selected="true"], #suggestions li:hover { background: var(--copper-soft); }
+#suggestions li.credit { padding: 5px 12px; color: var(--muted); font-size: 12px; cursor: default; background: #fff; }
 .drawing { display: grid; grid-template-columns: minmax(0, 1fr) 320px; margin-top: 20px; border: 1.5px solid var(--ink); }
 .stage { position: relative; aspect-ratio: 1; background: #dfe5e9; overflow: hidden; }
 .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -142,7 +148,10 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     <h1>Start with the address</h1>
     <p class="lead">The system finds the property and the city, then loads that city's checklist.</p>
     <form class="search" id="find">
-      <input id="address" autocomplete="street-address" aria-label="Job address" placeholder="Street, city, state" maxlength="200" required>
+      <div class="combo">
+        <input id="address" role="combobox" aria-expanded="false" aria-controls="suggestions" aria-autocomplete="list" autocomplete="off" aria-label="Job address" placeholder="Start typing the job address" maxlength="200" required>
+        <ul id="suggestions" role="listbox" aria-label="Address suggestions" hidden></ul>
+      </div>
       <button type="submit" id="find-button">Find property</button>
     </form>
     <div class="error" id="find-error" role="alert" hidden></div>
@@ -437,8 +446,82 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     }
   }
 
+  /* Address suggestions as the tech types. Typing the whole address still works. */
+  const addressInput = $('#address');
+  const suggestionList = $('#suggestions');
+  const SUGGEST_DELAY_MS = 220;
+  let suggestTimer = null;
+  let suggestRequest = 0;
+  let activeSuggestion = -1;
+
+  function closeSuggestions() {
+    suggestionList.hidden = true;
+    suggestionList.innerHTML = '';
+    activeSuggestion = -1;
+    addressInput.setAttribute('aria-expanded', 'false');
+    addressInput.removeAttribute('aria-activedescendant');
+  }
+  function suggestionItems() { return $$('#suggestions li[role=option]'); }
+  function markActive() {
+    suggestionItems().forEach((item, index) => item.setAttribute('aria-selected', String(index === activeSuggestion)));
+    if (activeSuggestion >= 0) addressInput.setAttribute('aria-activedescendant', `suggestion-${activeSuggestion}`);
+    else addressInput.removeAttribute('aria-activedescendant');
+  }
+  function chooseSuggestion(text) {
+    suggestRequest += 1;
+    clearTimeout(suggestTimer);
+    addressInput.value = text;
+    closeSuggestions();
+    $('#find').requestSubmit();
+  }
+  async function loadSuggestions(text, request) {
+    const response = await api('/api/property/suggest', { text }).catch(() => null);
+    const data = response ? await response.json().catch(() => null) : null;
+    if (request !== suggestRequest || document.activeElement !== addressInput) return;
+    const suggestions = data?.suggestions || [];
+    if (!suggestions.length) { closeSuggestions(); return; }
+    suggestionList.innerHTML = suggestions
+      .map((item, index) => `<li role="option" id="suggestion-${index}" aria-selected="false">${esc(item)}</li>`).join('')
+      + '<li class="credit" role="presentation">Suggestions from OpenStreetMap contributors</li>';
+    activeSuggestion = -1;
+    suggestionList.hidden = false;
+    addressInput.setAttribute('aria-expanded', 'true');
+  }
+  addressInput.addEventListener('input', () => {
+    clearTimeout(suggestTimer);
+    suggestRequest += 1;
+    const text = addressInput.value.trim();
+    if (text.length < 4) { closeSuggestions(); return; }
+    const request = suggestRequest;
+    suggestTimer = setTimeout(() => loadSuggestions(text, request), SUGGEST_DELAY_MS);
+  });
+  addressInput.addEventListener('keydown', (event) => {
+    const items = suggestionItems();
+    if (event.key === 'Escape') { closeSuggestions(); return; }
+    if (!items.length) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      activeSuggestion = (activeSuggestion + step + items.length) % items.length;
+      markActive();
+    } else if (event.key === 'Enter' && activeSuggestion >= 0) {
+      event.preventDefault();
+      chooseSuggestion(items[activeSuggestion].textContent);
+    }
+  });
+  /* mousedown fires before the input loses focus, so the list is still there. */
+  suggestionList.addEventListener('mousedown', (event) => {
+    const item = event.target.closest('li[role=option]');
+    event.preventDefault();
+    if (item) chooseSuggestion(item.textContent);
+  });
+  addressInput.addEventListener('blur', closeSuggestions);
+
   $('#find').addEventListener('submit', async (event) => {
     event.preventDefault();
+    suggestRequest += 1;
+    clearTimeout(suggestTimer);
+    closeSuggestions();
     const button = $('#find-button');
     $('#find-error').hidden = true;
     button.disabled = true;
@@ -466,6 +549,9 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
       loadAerial(found);
       $('#site').scrollIntoView({ behavior: TICK_MS ? 'smooth' : 'auto', block: 'start' });
     } catch (error) {
+      property = null;
+      $('#site').hidden = true;
+      $('#bar-city').textContent = 'Demo';
       $('#find-error').textContent = error.message;
       $('#find-error').hidden = false;
     } finally {
