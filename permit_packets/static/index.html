@@ -6,173 +6,363 @@
 <meta name="robots" content="noindex, nofollow">
 <title>EV Permit Packet Demo</title>
 <style>
-:root { --ink: #15212c; --muted: #566572; --rule: #cfd7dd; --paper: #f4f6f7; --sheet: #fff; --copper: #a8551f; --green: #1f7a58; --red: #b42318; }
+:root { --ink: #15212c; --muted: #566572; --rule: #cfd7dd; --paper: #f4f6f7; --sheet: #fff; --copper: #a8551f; --soft: #f4e4d8; --green: #1f7a58; --green-soft: #e4f3ec; --red: #b42318; --red-soft: #fdf0ef; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-header { background: var(--ink); color: #fff; padding: 22px 16px; }
-header div, main { max-width: 1120px; margin: 0 auto; }
-header p { margin: 0 0 4px; color: #e7b18c; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-h1 { margin: 0; font-size: 24px; line-height: 1.2; }
-header span { display: block; margin-top: 4px; color: #c5ced5; font-size: 14px; }
-main { padding: 20px 16px 40px; }
-form { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
-.stack { display: grid; gap: 16px; min-width: 0; }
-aside { position: sticky; top: 16px; display: grid; gap: 16px; }
-section { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 18px; min-width: 0; }
-h2 { margin: 0 0 12px; font-size: 15px; }
-h3 { margin: 16px 0 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
-.note { margin: -8px 0 12px; color: var(--muted); font-size: 13px; }
-.fields { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.fields.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 500; }
-input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; color: var(--ink); font: inherit; }
-input:focus, select:focus, button:focus-visible { outline: 2px solid var(--copper); outline-offset: 1px; }
-button { width: 100%; padding: 11px 14px; border: 1px solid var(--ink); border-radius: 4px; background: var(--ink); color: #fff; font: 600 14px/1 inherit; font-family: inherit; cursor: pointer; }
-button.secondary { margin-top: 8px; background: #fff; color: var(--ink); }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { background: var(--ink); color: #fff; padding: 18px 16px; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 960px; margin: 0 auto; }
+.bar strong { font-size: 18px; }
+.bar span { color: #c5ced5; font-size: 13px; }
+main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
+ol.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 20px; padding: 0; list-style: none; }
+ol.steps li { padding-top: 8px; border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px; font-weight: 600; }
+ol.steps li.done { border-color: var(--green); color: var(--green); }
+ol.steps li.now { border-color: var(--copper); color: var(--ink); }
+section { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 24px; }
+section + section { margin-top: 16px; }
+h1 { margin: 0; font-size: 26px; line-height: 1.2; }
+h2 { margin: 0 0 12px; font-size: 16px; }
+.lead { margin: 6px 0 0; color: var(--muted); }
+.block { margin-top: 24px; }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+label.field { display: block; color: var(--muted); font-size: 13px; font-weight: 500; }
+label.field input { display: block; width: 100%; margin-top: 4px; padding: 10px 11px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; color: var(--ink); font: inherit; }
+fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+legend { margin-bottom: 6px; padding: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice input { position: absolute; opacity: 0; }
+.choice span { display: block; padding: 9px 14px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; cursor: pointer; font-size: 15px; }
+.choice input:checked + span { border-color: var(--ink); background: var(--ink); color: #fff; }
+.choice input:focus-visible + span, button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+details { margin-top: 16px; }
+summary { cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 500; }
+details .grid { margin-top: 12px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 24px; }
+button, a.button { display: inline-block; padding: 12px 20px; border: 1px solid var(--ink); border-radius: 4px; background: var(--ink); color: #fff; font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer; }
+button.quiet, a.quiet { background: #fff; color: var(--ink); }
 button:disabled { cursor: not-allowed; opacity: .4; }
-#error { margin-top: 12px; padding: 8px 10px; border: 1px solid #f3c2bd; border-radius: 4px; background: #fdf0ef; color: var(--red); font-size: 13px; }
-#summary { font-weight: 600; }
-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 12px 0 0; font-size: 13px; }
-dt { color: var(--muted); }
-dd { margin: 0; font-weight: 600; }
-ul { margin: 0; padding: 0; list-style: none; font-size: 13px; }
-li { margin-top: 5px; }
+#error { margin-top: 14px; padding: 10px 12px; border: 1px solid #f3c2bd; border-radius: 4px; background: var(--red-soft); color: var(--red); font-size: 14px; }
+ul.plain { margin: 0; padding: 0; list-style: none; }
+#build-list { margin-top: 20px; }
+#build-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; color: var(--muted); }
+#build-list li::before { content: ""; flex: none; width: 16px; height: 16px; border: 2px solid var(--rule); border-radius: 50%; }
+#build-list li.done { color: var(--ink); }
+#build-list li.done::before { border-color: var(--green); background: var(--green); }
+.status { padding: 16px 18px; border-radius: 4px; background: var(--green-soft); }
+.status.bad { background: var(--red-soft); }
+.status strong { display: block; font-size: 18px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; }
+.stats dt { color: var(--muted); font-size: 13px; }
+.stats dd { margin: 0; font-size: 18px; font-weight: 600; }
+.checks li { padding: 8px 0; border-top: 1px solid var(--rule); font-size: 15px; }
+.checks li:first-child { border-top: 0; }
 .pass { color: var(--green); font-weight: 600; }
 .fix { color: var(--red); font-weight: 600; }
-@media (max-width: 860px) { form { grid-template-columns: minmax(0, 1fr); } aside { position: static; order: 2; } .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 480px) { .fields, .fields.two { grid-template-columns: minmax(0, 1fr); } }
+.flag { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; font-size: 15px; cursor: pointer; }
+.flag input { flex: none; width: 18px; height: 18px; margin-top: 3px; accent-color: var(--green); }
+#pages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+#pages a { display: block; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+#pages img { display: block; width: 100%; height: auto; }
+#review-count { color: var(--muted); font-size: 14px; }
+.done-note { margin-top: 16px; color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (max-width: 640px) {
+  section { padding: 18px; }
+  .grid, .grid.three { grid-template-columns: minmax(0, 1fr); }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  ol.steps li { font-size: 12px; }
+  #pages { grid-template-columns: minmax(0, 1fr); }
+  .actions button, .actions a.button { width: 100%; text-align: center; }
+}
 </style>
 </head>
 <body>
-<header><div>
-  <p>Demo</p>
-  <h1>EV Permit Packet</h1>
-  <span>Enter one job and get a draft packet for review. Uses the Oro Valley checklist.</span>
-</div></header>
+<header><div class="bar"><strong>EV Permit Packet</strong><span>Demo, Oro Valley checklist</span></div></header>
 <main>
-  <form id="job-form">
-    <div class="stack">
-      <section><h2>Job</h2><div class="fields two"><div><label for="customer">Customer</label><input id="customer" name="customer" type="text" value="Sample Homeowner" required></div><div><label for="address">Job address</label><input id="address" name="address" type="text" value="123 Sample St, Oro Valley, AZ 85737" required></div><div><label for="contractor">Contractor</label><input id="contractor" name="contractor" type="text" value="Sample Electric, LLC" required></div><div><label for="license_number">License number</label><input id="license_number" name="license_number" type="text" value="ROC 000000" required></div></div></section>
-      <section><h2>Panel and charger</h2><div class="fields"><div><label for="service_amps">Service size (A)</label><input id="service_amps" name="service_amps" type="number" min="0" value="200" required></div><div><label for="open_breaker_spaces">Open breaker spaces</label><input id="open_breaker_spaces" name="open_breaker_spaces" type="number" min="0" value="2" required></div><div><label for="charger_amps">Charger amps</label><input id="charger_amps" name="charger_amps" type="number" min="0" value="48" required></div><div><label for="run_ft">Circuit run (ft)</label><input id="run_ft" name="run_ft" type="number" min="0" value="58" required></div><div><label for="trench_ft">Underground (ft)</label><input id="trench_ft" name="trench_ft" type="number" min="0" value="55" required></div>
-        <div><label for="location">Charger location</label><select id="location" name="location">
-          <option value="detached_garage">Detached garage</option>
-          <option value="attached_garage">Attached garage</option>
-          <option value="exterior_wall">Exterior wall</option>
-        </select></div></div></section>
-      <section><h2>Existing home loads</h2><p class="note">Use nameplate values. Enter 0 for anything gas or not in the home.</p>
-        <div class="fields"><div><label for="square_feet">Square feet</label><input id="square_feet" name="square_feet" data-home type="number" min="0" value="3100" required></div><div><label for="small_appliance_circuits">Small appliance circuits</label><input id="small_appliance_circuits" name="small_appliance_circuits" data-home type="number" min="0" value="2" required></div><div><label for="laundry_circuits">Laundry circuits</label><input id="laundry_circuits" name="laundry_circuits" data-home type="number" min="0" value="1" required></div><div><label for="range_va">Range (VA)</label><input id="range_va" name="range_va" data-home type="number" min="0" value="12000" required></div><div><label for="cooktop_va">Cooktop (VA)</label><input id="cooktop_va" name="cooktop_va" data-home type="number" min="0" value="0" required></div><div><label for="oven_va">Oven (VA)</label><input id="oven_va" name="oven_va" data-home type="number" min="0" value="0" required></div><div><label for="dryer_va">Dryer (VA)</label><input id="dryer_va" name="dryer_va" data-home type="number" min="0" value="5000" required></div><div><label for="water_heater_va">Water heater (VA)</label><input id="water_heater_va" name="water_heater_va" data-home type="number" min="0" value="4500" required></div><div><label for="dishwasher_va">Dishwasher (VA)</label><input id="dishwasher_va" name="dishwasher_va" data-home type="number" min="0" value="1200" required></div><div><label for="disposal_va">Disposal (VA)</label><input id="disposal_va" name="disposal_va" data-home type="number" min="0" value="900" required></div><div><label for="microwave_va">Microwave (VA)</label><input id="microwave_va" name="microwave_va" data-home type="number" min="0" value="1500" required></div><div><label for="hot_tub_or_pool_va">Hot tub or pool (VA)</label><input id="hot_tub_or_pool_va" name="hot_tub_or_pool_va" data-home type="number" min="0" value="1800" required></div><div><label for="other_va">Other fixed loads (VA)</label><input id="other_va" name="other_va" data-home type="number" min="0" value="0" required></div><div><label for="heating_va">Heating (VA)</label><input id="heating_va" name="heating_va" data-home type="number" min="0" value="0" required></div><div><label for="cooling_va">Air conditioning (VA)</label><input id="cooling_va" name="cooling_va" data-home type="number" min="0" value="7200" required></div></div></section>
-    </div>
-    <aside>
-      <section>
-        <button type="submit">Run the checks</button>
-        <button id="download" class="secondary" type="button" disabled>Download packet (PDF)</button>
-        <div id="error" role="alert" hidden></div>
-      </section>
-      <section id="results" hidden>
-        <div id="summary"></div>
-        <dl id="sizing"></dl>
-        <h3>Checks</h3><ul id="checks"></ul>
-        <h3>Flagged for review</h3><ul id="flags"></ul>
-      </section>
-    </aside>
+  <ol class="steps" aria-label="Progress">
+    <li data-step="1">1. Capture the job</li>
+    <li data-step="2">2. Build the packet</li>
+    <li data-step="3">3. Review</li>
+    <li data-step="4">4. Approve</li>
+  </ol>
+
+  <form id="capture">
+    <section>
+      <h1>Capture the job</h1>
+      <p class="lead">What your tech fills out on site. A sample job is already filled in, so you can change anything or continue.</p>
+
+      <div class="block grid">
+        <label class="field">Customer<input name="customer" value="Sample Homeowner" required maxlength="120"></label>
+        <label class="field">Job address<input name="address" value="123 Sample St, Oro Valley, AZ 85737" required maxlength="200"></label>
+      </div>
+
+      <div class="block">
+        <h2>Charger</h2>
+        <div class="grid">
+          <fieldset>
+            <legend>Charger size</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="charger_amps" value="32"><span>32 A</span></label>
+              <label class="choice"><input type="radio" name="charger_amps" value="40"><span>40 A</span></label>
+              <label class="choice"><input type="radio" name="charger_amps" value="48" checked><span>48 A</span></label>
+              <label class="choice"><input type="radio" name="charger_amps" value="80"><span>80 A</span></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Where it's going</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="location" value="attached_garage"><span>Attached garage</span></label>
+              <label class="choice"><input type="radio" name="location" value="detached_garage" checked><span>Detached garage</span></label>
+              <label class="choice"><input type="radio" name="location" value="exterior_wall"><span>Outside wall</span></label>
+            </div>
+          </fieldset>
+        </div>
+        <div class="grid three" style="margin-top:14px">
+          <label class="field">Wire run from panel (ft)<input name="run_ft" type="number" min="1" max="500" value="58" required></label>
+          <label class="field">Underground part (ft)<input name="trench_ft" type="number" min="0" max="500" value="55" required></label>
+          <label class="field">Main panel size (A)<input name="service_amps" type="number" min="60" max="800" value="200" required></label>
+        </div>
+      </div>
+
+      <div class="block">
+        <h2>The home</h2>
+        <div class="grid three">
+          <label class="field">Square feet<input data-home name="square_feet" type="number" min="1" max="30000" value="3100" required></label>
+          <label class="field">Open breaker spaces<input name="open_breaker_spaces" type="number" min="0" max="60" value="2" required></label>
+        </div>
+        <fieldset style="margin-top:14px">
+          <legend>What's in the home</legend>
+          <div class="choices" id="appliances">
+            <label class="choice"><input type="checkbox" data-load="range_va" data-va="12000" checked><span>Electric range</span></label>
+            <label class="choice"><input type="checkbox" data-load="dryer_va" data-va="5000" checked><span>Electric dryer</span></label>
+            <label class="choice"><input type="checkbox" data-load="water_heater_va" data-va="4500" checked><span>Electric water heater</span></label>
+            <label class="choice"><input type="checkbox" data-load="cooling_va" data-va="7200" checked><span>Air conditioning</span></label>
+            <label class="choice"><input type="checkbox" data-load="heating_va" data-va="10000"><span>Electric heat</span></label>
+            <label class="choice"><input type="checkbox" data-load="hot_tub_or_pool_va" data-va="1800" checked><span>Pool or hot tub</span></label>
+          </div>
+        </fieldset>
+        <details>
+          <summary>Use exact nameplate values</summary>
+          <div class="grid three">
+            <label class="field">Range (VA)<input data-home name="range_va" type="number" min="0" value="12000"></label>
+            <label class="field">Cooktop (VA)<input data-home name="cooktop_va" type="number" min="0" value="0"></label>
+            <label class="field">Oven (VA)<input data-home name="oven_va" type="number" min="0" value="0"></label>
+            <label class="field">Dryer (VA)<input data-home name="dryer_va" type="number" min="0" value="5000"></label>
+            <label class="field">Water heater (VA)<input data-home name="water_heater_va" type="number" min="0" value="4500"></label>
+            <label class="field">Dishwasher (VA)<input data-home name="dishwasher_va" type="number" min="0" value="1200"></label>
+            <label class="field">Disposal (VA)<input data-home name="disposal_va" type="number" min="0" value="900"></label>
+            <label class="field">Microwave (VA)<input data-home name="microwave_va" type="number" min="0" value="1500"></label>
+            <label class="field">Pool or hot tub (VA)<input data-home name="hot_tub_or_pool_va" type="number" min="0" value="1800"></label>
+            <label class="field">Other fixed loads (VA)<input data-home name="other_va" type="number" min="0" value="0"></label>
+            <label class="field">Heating (VA)<input data-home name="heating_va" type="number" min="0" value="0"></label>
+            <label class="field">Air conditioning (VA)<input data-home name="cooling_va" type="number" min="0" value="7200"></label>
+            <label class="field">Small appliance circuits<input data-home name="small_appliance_circuits" type="number" min="2" max="12" value="2"></label>
+            <label class="field">Laundry circuits<input data-home name="laundry_circuits" type="number" min="0" max="3" value="1"></label>
+          </div>
+          <div class="grid" style="margin-top:14px">
+            <label class="field">Contractor<input name="contractor" value="Sample Electric, LLC" required maxlength="120"></label>
+            <label class="field">License number<input name="license_number" value="ROC 000000" required maxlength="60"></label>
+          </div>
+        </details>
+      </div>
+
+      <div id="error" role="alert" hidden></div>
+      <div class="actions"><button type="submit">Build the packet</button></div>
+    </section>
   </form>
+
+  <section id="building" hidden>
+    <h1>Building the packet</h1>
+    <p class="lead">No retyping. Everything comes from the one job form.</p>
+    <ul class="plain" id="build-list">
+      <li>Checking the city's requirements</li>
+      <li>Running the load calculation</li>
+      <li>Sizing the breaker, wire and conduit</li>
+      <li>Drawing the site plan and one-line diagram</li>
+      <li>Filling in the permit data</li>
+    </ul>
+  </section>
+
+  <div id="review" hidden>
+    <section>
+      <h1>Review the packet</h1>
+      <p class="lead">The system did the paperwork. Your team checks it and signs off.</p>
+      <div class="block status" id="status"><strong id="status-title"></strong><span id="status-note"></span></div>
+      <dl class="stats" id="stats"></dl>
+    </section>
+    <section>
+      <h2>Engineering checks</h2>
+      <ul class="plain checks" id="checks"></ul>
+    </section>
+    <section>
+      <h2>The draft packet</h2>
+      <p class="lead" style="margin:-6px 0 14px;font-size:14px">Seven pages, built from that one form. Click a page to open it.</p>
+      <div id="pages"></div>
+      <div class="actions"><a class="button quiet" id="open-packet" target="_blank" rel="noopener">Open the full packet</a></div>
+    </section>
+    <section>
+      <h2>Flagged for your review</h2>
+      <div id="flags"></div>
+      <p id="review-count"></p>
+      <div class="actions">
+        <button id="approve" type="button" disabled>Approve packet</button>
+        <button id="edit" class="quiet" type="button">Change the job</button>
+      </div>
+    </section>
+  </div>
+
+  <section id="approved" hidden>
+    <h1>Approved and ready to submit</h1>
+    <p class="lead">Nothing went out without your review. Send it to the city, or have your office do it.</p>
+    <div class="actions">
+      <a class="button" id="download" download="ev-permit-packet-demo.pdf">Download packet (PDF)</a>
+      <button id="restart" class="quiet" type="button">Start another job</button>
+    </div>
+    <p class="done-note">This demo uses the Oro Valley checklist. A real setup uses your city's forms, and every packet is a draft for a licensed electrician to review.</p>
+  </section>
 </main>
+
 <script>
-    const el = (selector) => {
-      const node = document.querySelector(selector);
-      if (!node) throw new Error(`Missing ${selector}`);
-      return node;
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => [...document.querySelectorAll(selector)];
+  const esc = (value) => String(value ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+
+  const BUILD_STEP_MS = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450;
+  const form = $('#capture');
+  const panels = { 1: form, 2: $('#building'), 3: $('#review'), 4: $('#approved') };
+  let packetUrl = null;
+
+  function show(step) {
+    Object.entries(panels).forEach(([key, panel]) => { panel.hidden = Number(key) !== step; });
+    $$('ol.steps li').forEach((item) => {
+      const number = Number(item.dataset.step);
+      item.classList.toggle('done', number < step);
+      item.classList.toggle('now', number === step);
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function jobData() {
+    const data = new FormData(form);
+    const job = {
+      customer: data.get('customer'),
+      address: data.get('address'),
+      contractor: data.get('contractor'),
+      license_number: data.get('license_number'),
+      location: data.get('location'),
+      home: {},
     };
-    const esc = (value) => String(value ?? '')
-      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+    ['charger_amps', 'run_ft', 'trench_ft', 'service_amps', 'open_breaker_spaces']
+      .forEach((name) => { job[name] = Number(data.get(name)); });
+    $$('[data-home]').forEach((input) => { job.home[input.name] = Number(input.value); });
+    return job;
+  }
 
-    const form = el('#job-form');
-    const download = el('#download');
-    const errorBox = el('#error');
-
-    function jobData() {
-      const data = {};
-      const home = {};
-      form.querySelectorAll('input, select').forEach((field) => {
-        if (field.dataset.home !== undefined) home[field.name] = Number(field.value);
-        else data[field.name] = field.type === 'number' ? Number(field.value) : field.value;
-      });
-      return { ...data, home };
-    }
-
-    async function post(path) {
-      const response = await fetch(path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(jobData()),
-      });
-      if (response.ok) return response;
-      const body = await response.json().catch(() => ({}));
-      const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
-      throw new Error(detail || `API returned ${response.status}`);
-    }
-
-    function showError(error) {
-      errorBox.textContent = error instanceof Error ? error.message : 'Request failed.';
-      errorBox.removeAttribute('hidden');
-    }
-
-    function render(result) {
-      el('#summary').textContent = result.ready ? 'All checks pass' : 'This job needs a fix before submittal';
-      const sizing = [
-        ['Service load', `${result.computed_amps} A`],
-        ['Spare capacity', `${result.spare_amps} A`],
-        ['Breaker', `${result.breaker} A`],
-        ['Wire', result.wire],
-        ['Ground', result.ground],
-        ['Voltage drop', `${result.voltage_drop_percent}%`],
-      ];
-      if (result.underground_conduit) sizing.push(['Underground', `${result.underground_conduit} PVC`]);
-      sizing.push(['Above ground', `${result.interior_conduit} EMT`]);
-      if (result.disconnect_amps) sizing.push(['Disconnect', `${result.disconnect_amps} A`]);
-      el('#sizing').innerHTML = sizing
-        .map(([name, value]) => `<div><dt>${esc(name)}</dt><dd>${esc(value)}</dd></div>`)
-        .join('');
-      el('#checks').innerHTML = result.checks
-        .map((check) => `<li><span class="${check.passed ? 'pass' : 'fix'}">${check.passed ? 'Pass' : 'Fix'}</span> ${esc(check.name)}: ${esc(check.result)}</li>`)
-        .join('');
-      el('#flags').innerHTML = result.flags.map((flag) => `<li>${esc(flag)}</li>`).join('');
-      el('#results').removeAttribute('hidden');
-    }
-
-    form.addEventListener('input', () => { download.disabled = true; });
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      errorBox.setAttribute('hidden', '');
-      try {
-        const response = await post('/api/ev/check');
-        render(await response.json());
-        download.disabled = false;
-      } catch (error) {
-        showError(error);
-      }
+  async function post(path) {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(jobData()),
     });
+    if (response.ok) return response;
+    const body = await response.json().catch(() => ({}));
+    const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
+    throw new Error(detail || `Request failed (${response.status})`);
+  }
 
-    download.addEventListener('click', async () => {
-      download.disabled = true;
-      errorBox.setAttribute('hidden', '');
-      try {
-        const response = await post('/api/ev/pdf');
-        const url = URL.createObjectURL(await response.blob());
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'ev-permit-packet-demo.pdf';
-        link.click();
-        URL.revokeObjectURL(url);
-      } catch (error) {
-        showError(error);
-      } finally {
-        download.disabled = false;
-      }
+  async function showBuildProgress() {
+    const items = $$('#build-list li');
+    items.forEach((item) => item.classList.remove('done'));
+    for (const item of items) {
+      await new Promise((resolve) => setTimeout(resolve, BUILD_STEP_MS));
+      item.classList.add('done');
+    }
+  }
+
+  function renderReview(result) {
+    $('#status').classList.toggle('bad', !result.ready);
+    $('#status-title').textContent = result.ready ? 'Draft packet ready for review' : 'This job needs a fix first';
+    $('#status-note').textContent = result.ready
+      ? 'All engineering checks pass.'
+      : 'See the checks below, then change the job.';
+    const stats = [
+      ['Service load', `${result.computed_amps} A`],
+      ['Spare capacity', `${result.spare_amps} A`],
+      ['Breaker', `${result.breaker} A`],
+      ['Wire', result.wire],
+    ];
+    $('#stats').innerHTML = stats
+      .map(([name, value]) => `<div><dt>${esc(name)}</dt><dd>${esc(value)}</dd></div>`).join('');
+    $('#checks').innerHTML = result.checks
+      .map((check) => `<li><span class="${check.passed ? 'pass' : 'fix'}">${check.passed ? 'Pass' : 'Fix'}</span> ${esc(check.name)}: ${esc(check.result)}</li>`)
+      .join('');
+    $('#flags').innerHTML = result.flags
+      .map((flag) => `<label class="flag"><input type="checkbox"><span>${esc(flag)}</span></label>`).join('');
+    $('#approve').dataset.ready = String(result.ready);
+    updateApproval();
+  }
+
+  function updateApproval() {
+    const boxes = $$('#flags input');
+    const reviewed = boxes.filter((box) => box.checked).length;
+    const ready = $('#approve').dataset.ready === 'true';
+    $('#review-count').textContent = ready
+      ? `${reviewed} of ${boxes.length} items reviewed`
+      : 'Fix the job before it can be approved.';
+    $('#approve').disabled = !ready || reviewed < boxes.length;
+  }
+
+  function renderPages(pages) {
+    const names = ['Checklist and checks', 'Permit data', 'Site plan', 'One-line diagram',
+      'Load calculation', 'Equipment data', 'Pre-submittal review'];
+    $('#pages').innerHTML = pages.map((page, index) => {
+      const src = `data:image/jpeg;base64,${page}`;
+      return `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="Packet page ${index + 1}: ${esc(names[index])}"></a>`;
+    }).join('');
+  }
+
+  function setPacket(blob) {
+    if (packetUrl) URL.revokeObjectURL(packetUrl);
+    packetUrl = URL.createObjectURL(blob);
+    $('#open-packet').href = packetUrl;
+    $('#download').href = packetUrl;
+  }
+
+  $$('#appliances input').forEach((box) => {
+    box.addEventListener('change', () => {
+      form.elements[box.dataset.load].value = box.checked ? box.dataset.va : 0;
     });
-  </script>
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    $('#error').hidden = true;
+    show(2);
+    try {
+      const [check, preview, pdf] = await Promise.all([
+        post('/api/ev/check'), post('/api/ev/preview'), post('/api/ev/pdf'), showBuildProgress(),
+      ]);
+      renderReview(await check.json());
+      renderPages((await preview.json()).pages);
+      setPacket(await pdf.blob());
+      show(3);
+    } catch (error) {
+      show(1);
+      $('#error').textContent = error.message;
+      $('#error').hidden = false;
+    }
+  });
+
+  $('#flags').addEventListener('change', updateApproval);
+  $('#approve').addEventListener('click', () => show(4));
+  $('#edit').addEventListener('click', () => show(1));
+  $('#restart').addEventListener('click', () => show(1));
+
+  show(1);
+</script>
 </body>
 </html>

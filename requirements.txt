@@ -1,3 +1,4 @@
 fastapi>=0.115,<1
 pydantic>=2.7,<3
 reportlab>=4.2,<5
+pypdfium2>=4.30,<6

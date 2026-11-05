@@ -1,8 +1,8 @@
 """EV permit packets: the code math, the flags, the PDF and the routes."""
 from __future__ import annotations
 
+import base64
 import os
-
 import re
 
 import pytest
@@ -169,6 +169,14 @@ def test_pdf_route_returns_a_download(client):
     assert response.content.startswith(b"%PDF")
 
 
+def test_preview_route_returns_seven_page_images(client):
+    response = client.post("/api/ev/preview", json=_payload())
+    assert response.status_code == 200
+    pages = response.json()["pages"]
+    assert len(pages) == 7
+    assert base64.b64decode(pages[0]).startswith(b"\xff\xd8")
+
+
 def test_routes_need_a_login(public_client):
     assert public_client.post("/api/ev/check", json=_payload()).status_code == 401
 
@@ -182,7 +190,8 @@ def test_a_wrong_password_is_refused():
 def test_demo_page_loads(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert "EV Permit Packet" in response.text
+    assert "Capture the job" in response.text
+    assert "Approve packet" in response.text
 
 
 def test_trench_longer_than_the_run_is_refused(client):

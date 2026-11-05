@@ -1,6 +1,7 @@
 """The private demo: a job form, the checks and the PDF download."""
 from __future__ import annotations
 
+import base64
 import os
 import secrets
 from pathlib import Path
@@ -12,6 +13,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from permit_packets.ev_charger import EvJob, EvPacket, build_ev_packet
 from permit_packets.ev_packet_pdf import render_ev_packet_pdf
 from permit_packets.load_calculation import HomeLoads
+from permit_packets.preview import packet_page_images
 from permit_packets.schemas import EvJobRequest
 
 STATIC = Path(__file__).parent / "permit_packets" / "static"
@@ -74,6 +76,12 @@ def check_ev_job(payload: EvJobRequest) -> dict:
         ],
         "flags": packet.flags,
     }
+
+
+@app.post("/api/ev/preview")
+def preview_ev_packet(payload: EvJobRequest) -> dict:
+    pages = packet_page_images(render_ev_packet_pdf(_packet(payload)))
+    return {"pages": [base64.b64encode(page).decode() for page in pages]}
 
 
 @app.post("/api/ev/pdf")
