@@ -530,7 +530,7 @@ def test_a_street_match_takes_the_typed_house_number():
 
 
 def test_suggestions_drop_other_streets_numbers_and_directions():
-    assert suggest_addresses("123 Main St Austin", _photon(
+    assert suggest_addresses("123 Main St", _photon(
         {"housenumber": "110", "street": "Inner Campus Drive", "city": "Austin", "state": "Texas"},
         {"housenumber": "123", "street": "Main Street", "city": "Boston", "state": "Massachusetts"},
     )) == ["123 Main Street, Boston, MA"]

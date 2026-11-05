@@ -233,7 +233,8 @@ def _fits(properties: dict, house_number: str, wanted: list[str], direction: str
     if house_number and properties.get("housenumber") not in (None, house_number):
         return False
     place = street + str(properties.get("city") or "").lower().split()
-    if not all(any(word.startswith(part) for word in place) for part in wanted):
+    # The first two words name the street. Later ones may be a city with another postal name.
+    if not all(any(word.startswith(part) for word in place) for part in wanted[:2]):
         return False
     found = next((DIRECTION_WORDS[word] for word in street[:1] if word in DIRECTION_WORDS), None)
     return not (direction and found and direction != found)
