@@ -8,11 +8,12 @@ import re
 import pytest
 from fastapi.testclient import TestClient
 
+from app import app
+
 from permit_packets.circuits import WIRES, conduit_size, size_breaker, size_circuit, voltage_drop
 from permit_packets.ev_charger import EvJob, build_ev_packet
 from permit_packets.ev_packet_pdf import render_ev_packet_pdf
 from permit_packets.load_calculation import HomeLoads, LoadLine, calculate_load
-from permit_packets.web import app
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 

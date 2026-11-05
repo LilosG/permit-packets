@@ -14,7 +14,7 @@ from permit_packets.ev_packet_pdf import render_ev_packet_pdf
 from permit_packets.load_calculation import HomeLoads
 from permit_packets.schemas import EvJobRequest
 
-STATIC = Path(__file__).parent / "static"
+STATIC = Path(__file__).parent / "permit_packets" / "static"
 USERNAME = "mike"
 basic = HTTPBasic()
 
