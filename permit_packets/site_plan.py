@@ -16,7 +16,6 @@ INK = colors.HexColor("#15212c")
 COPPER = colors.HexColor("#c8682a")
 GREEN = colors.HexColor("#1f7a58")
 LOT = colors.HexColor("#ffd84d")
-BUILDING = colors.HexColor("#ffffff")
 PAPER = colors.HexColor("#eef1f3")
 PLAN_PT = PLAN_WIDTH_IN * inch
 MAX_LOT_LABELS = 12
@@ -129,11 +128,12 @@ class AerialSitePlan(Flowable):
             c.setFillColor(PAPER)
             c.rect(self.left, 0, PLAN_PT, PLAN_PT, stroke=0, fill=1)
 
-        outline = BUILDING if plan.aerial_jpeg else INK
-        for index, building in enumerate(plan.buildings):
-            c.setStrokeColor(outline)
-            c.setLineWidth(1.6 if index == plan.primary_building else 0.7)
-            self._polyline(building, close=True)
+        # The photo already shows the buildings, and outline data can sit a few feet off.
+        if not plan.aerial_jpeg:
+            for index, building in enumerate(plan.buildings):
+                c.setStrokeColor(INK)
+                c.setLineWidth(1.6 if index == plan.primary_building else 0.7)
+                self._polyline(building, close=True)
 
         if plan.lot:
             c.setStrokeColor(INK)

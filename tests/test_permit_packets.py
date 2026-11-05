@@ -216,6 +216,19 @@ def test_a_plan_with_an_aerial_goes_through_the_route(client):
     assert len(response.json()["pages"]) == 7
 
 
+def test_sample_mode_hides_the_address_and_parcel(client):
+    plan = {"scale_ft_per_in": 30, "panel": [400, 500], "charger": [600, 500], "lot": SQUARE_LOT,
+            "parcel_number": "13831614010"}
+    body = _payload(address="309 Real St, Las Vegas, NV", city="Las Vegas", state="NV", plan=plan, sample_mode=True)
+    response = client.post("/api/ev/packet", json=body).json()
+    assert response["address"] == "123 Sample St, Las Vegas, NV"
+    text = " ".join(page.get_textpage().get_text_bounded()
+                    for page in pypdfium2.PdfDocument(base64.b64decode(response["pdf"])))
+    assert "309 Real" not in text
+    assert "13831614010" not in text
+    assert "123 Sample St" in text
+
+
 def test_routes_need_a_session(public_client):
     assert public_client.post("/api/ev/packet", json=_payload()).status_code == 401
     assert public_client.post("/api/property", json={"address": "123 Sample St"}).status_code == 401
@@ -524,6 +537,13 @@ def test_suggestions_drop_other_streets_numbers_and_directions():
     assert suggest_addresses("500 E Washington", _photon(
         {"housenumber": "500", "street": "West Washington Avenue", "city": "El Cajon", "state": "California"},
     )) == []
+
+
+def test_suggestions_need_every_typed_street_word():
+    assert suggest_addresses("309 Onyx Crest", _photon(
+        {"type": "street", "name": "Onyx Way", "city": "Las Vegas", "state": "Nevada"},
+        {"type": "street", "name": "Onyx Crest Street", "city": "Las Vegas", "state": "Nevada"},
+    )) == ["309 Onyx Crest Street, Las Vegas, NV"]
 
 
 def test_suggestions_skip_anything_outside_the_us_or_without_a_city():

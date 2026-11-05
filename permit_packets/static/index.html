@@ -197,6 +197,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
       <label class="field">Customer<input name="customer" value="Sample Homeowner" required maxlength="120"></label>
       <label class="field">Charger make and model<input name="charger_model" placeholder="Example: Tesla Wall Connector" maxlength="120"></label>
     </div>
+    <label class="flag" style="margin-top:10px"><input type="checkbox" name="sample_mode"><span>Sample mode: hide the real address and parcel number, for sharing outside your team</span></label>
     <div class="block">
       <h2>Charger</h2>
       <div class="grid">
@@ -389,9 +390,9 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     return `<g transform="translate(${point[0]} ${point[1]})"><circle r="19" fill="${fill}" stroke="#fff" stroke-width="4"/><text text-anchor="middle" dy="7" font-size="20" font-weight="700" fill="#fff" font-family="IBM Plex Sans, sans-serif">${text}</text></g>`;
   }
   function drawPlan() {
-    const outline = aerial ? '#fff' : '#15212c';
-    let svg = property.buildings.map((building, index) =>
-      poly(building, `fill="${index === property.primary_building ? 'rgba(255,255,255,.14)' : 'none'}" stroke="${outline}" stroke-width="${index === property.primary_building ? 4 : 2}"`)).join('');
+    /* The photo shows the buildings, and outline data can sit a few feet off. */
+    let svg = aerial ? '' : property.buildings.map((building, index) =>
+      poly(building, `fill="${index === property.primary_building ? 'rgba(255,255,255,.14)' : 'none'}" stroke="#15212c" stroke-width="${index === property.primary_building ? 4 : 2}"`)).join('');
     if (property.lot.length) {
       svg += poly(property.lot, 'fill="none" stroke="#15212c" stroke-width="7"');
       svg += poly(property.lot, 'fill="none" stroke="#ffd84d" stroke-width="3.5" stroke-dasharray="16 9"');
@@ -652,7 +653,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     const data = new FormData(form);
     const job = {
       customer: data.get('customer'), contractor: data.get('contractor'), license_number: data.get('license_number'),
-      charger_model: data.get('charger_model').trim(), has_solar: data.has('has_solar'), connection: data.get('connection'), location: data.get('location'), home: {},
+      charger_model: data.get('charger_model').trim(), sample_mode: data.has('sample_mode'), has_solar: data.has('has_solar'), connection: data.get('connection'), location: data.get('location'), home: {},
     };
     ['charger_amps', 'run_ft', 'trench_ft', 'service_amps', 'open_breaker_spaces'].forEach((name) => { job[name] = Number(data.get(name)); });
     $$('[data-home]').forEach((input) => { job.home[input.name] = Number(input.value); });
@@ -664,7 +665,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
         scale_ft_per_in: property.view.scale_ft_per_in, panel: marks.panel, charger: marks.charger, route: marks.bends,
         buildings: property.buildings, primary_building: property.primary_building, lot: property.lot,
         parcel_number: property.parcel_number, aerial_base64: aerial,
-        credits: [...property.credits, ...(aerialCredit ? [aerialCredit] : [])],
+        credits: [...property.credits.filter((credit) => !aerial || !credit.startsWith('Building')), ...(aerialCredit ? [aerialCredit] : [])],
       },
     };
   }
@@ -742,8 +743,8 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
       `<div><dt>${esc(field.label)}</dt><dd id="field-${index}">${esc(field.value)}</dd><button type="button" class="copy" data-copy="field-${index}">Copy</button></div>`).join('');
     $('#email-section').hidden = !place.email;
     if (place.email) {
-      const subject = `EV charger permit submittal: ${job.address}`;
-      const body = `Hello,\n\nAttached is an electrical permit submittal for a residential EV charger.\n\nAddress: ${job.address}\nContractor: ${job.contractor}, license ${job.license_number}\n\nPlease let me know if anything else is needed.\n\nThank you,\n${job.contractor}`;
+      const subject = `EV charger permit submittal: ${result.address}`;
+      const body = `Hello,\n\nAttached is an electrical permit submittal for a residential EV charger.\n\nAddress: ${result.address}\nContractor: ${job.contractor}, license ${job.license_number}\n\nPlease let me know if anything else is needed.\n\nThank you,\n${job.contractor}`;
       $('#email').textContent = `To: ${place.email}\nSubject: ${subject}\n\n${body}`;
       $('#email-open').href = `mailto:${place.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     }
