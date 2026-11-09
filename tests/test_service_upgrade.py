@@ -416,3 +416,10 @@ def test_the_job_types_list_is_ev_then_service(client):
         "Checklist and checks", "Permit data", "Site plan", "Riser diagram", "Load calculation",
         "Utility request", "Equipment data", "Pre-submittal review"]
     assert REGISTRY["service_upgrade"].zip_name == "service-upgrade-permit-documents-demo.zip"
+
+
+def test_the_signed_in_page_loads_the_service_script_with_a_version(client):
+    page = client.get("/").text
+    assert re.search(r'src="/assets/js/job-types/service-upgrade\.js\?v=[0-9a-f]{10}"', page)
+    assert page.index("service-upgrade.js") < page.index("/assets/js/app.js")
+    assert client.get("/assets/js/job-types/service-upgrade.js").status_code == 200

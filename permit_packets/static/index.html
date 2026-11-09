@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>EV Permit Packets</title>
+<title>Permit Packets</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/assets/css/app.css?v={{ASSET_VERSION}}">
 </head>
 <body>
-<header><div class="bar"><strong id="brand">EV permit packets</strong><span id="bar-city">Demo</span></div></header>
+<header><div class="bar"><strong id="brand">Permit packets</strong><span id="bar-city">Demo</span></div></header>
 <main>
   <ol class="steps" id="steps" aria-label="Progress">
     <li data-step="1">Property</li>
@@ -97,6 +97,103 @@
       </div>
     </div>
     </div>
+    <div data-job-type="service_upgrade">
+    <div class="block">
+      <h2>The service</h2>
+      <fieldset><legend>Scope</legend><div class="choices">
+        <label class="choice"><input type="radio" name="scope" value="upgrade" checked><span>Service upgrade</span></label>
+        <label class="choice"><input type="radio" name="scope" value="replacement"><span>Panel replacement, same size</span></label>
+      </div></fieldset>
+      <div class="grid" style="margin-top:14px">
+        <fieldset><legend>Existing service</legend><div class="choices">
+          <label class="choice"><input type="radio" name="existing_service_amps" value="60"><span>60 A</span></label>
+          <label class="choice"><input type="radio" name="existing_service_amps" value="100" checked><span>100 A</span></label>
+          <label class="choice"><input type="radio" name="existing_service_amps" value="125"><span>125 A</span></label>
+          <label class="choice"><input type="radio" name="existing_service_amps" value="150"><span>150 A</span></label>
+          <label class="choice"><input type="radio" name="existing_service_amps" value="200"><span>200 A</span></label>
+        </div></fieldset>
+        <fieldset><legend>New service</legend><div class="choices">
+          <label class="choice"><input type="radio" name="new_service_amps" value="100"><span>100 A</span></label>
+          <label class="choice"><input type="radio" name="new_service_amps" value="125"><span>125 A</span></label>
+          <label class="choice"><input type="radio" name="new_service_amps" value="150"><span>150 A</span></label>
+          <label class="choice"><input type="radio" name="new_service_amps" value="200" checked><span>200 A</span></label>
+          <label class="choice"><input type="radio" name="new_service_amps" value="225"><span>225 A</span></label>
+        </div></fieldset>
+      </div>
+      <div class="grid" style="margin-top:14px">
+        <fieldset><legend>Equipment</legend><div class="choices">
+          <label class="choice"><input type="radio" name="equipment" value="meter_main" checked><span>Meter-main combo</span></label>
+          <label class="choice"><input type="radio" name="equipment" value="main_panel"><span>Main panel, meter separate</span></label>
+        </div></fieldset>
+        <fieldset><legend>Service drop</legend><div class="choices">
+          <label class="choice"><input type="radio" name="service_drop" value="overhead" checked><span>Overhead</span></label>
+          <label class="choice"><input type="radio" name="service_drop" value="underground"><span>Underground</span></label>
+        </div></fieldset>
+      </div>
+      <fieldset style="margin-top:14px"><legend>Location</legend><div class="choices">
+        <label class="choice"><input type="radio" name="relocated" value="no" checked><span>Same location</span></label>
+        <label class="choice"><input type="radio" name="relocated" value="yes"><span>Relocated</span></label>
+      </div></fieldset>
+    </div>
+    <div class="block">
+      <h2>Conductors and grounding</h2>
+      <div class="grid">
+        <fieldset><legend>Material</legend><div class="choices">
+          <label class="choice"><input type="radio" name="material" value="copper" checked><span>Copper</span></label>
+          <label class="choice"><input type="radio" name="material" value="aluminum"><span>Aluminum</span></label>
+        </div></fieldset>
+        <fieldset><legend>Conduit</legend><div class="choices">
+          <label class="choice"><input type="radio" name="conduit" value="PVC" checked><span>PVC</span></label>
+          <label class="choice"><input type="radio" name="conduit" value="EMT"><span>EMT</span></label>
+          <label class="choice"><input type="radio" name="conduit" value="none"><span>Cable, no conduit</span></label>
+        </div></fieldset>
+      </div>
+      <div class="grid" style="margin-top:14px">
+        <label class="field">Service wire length (ft)<input name="se_length_ft" type="number" min="1" max="200" value="8" required><span class="hint" id="wire-hint"></span></label>
+        <fieldset><legend>Grounding electrodes</legend><div class="choices" id="electrodes">
+          <label class="choice"><input type="checkbox" name="electrodes" value="rods" checked><span>Ground rods</span></label>
+          <label class="choice"><input type="checkbox" name="electrodes" value="concrete_encased"><span>Concrete-encased</span></label>
+          <label class="choice"><input type="checkbox" name="electrodes" value="water_pipe" checked><span>Metal water pipe</span></label>
+        </div></fieldset>
+      </div>
+    </div>
+    <div class="block">
+      <h2>Equipment and utility</h2>
+      <div class="grid">
+        <label class="field">New panel make and model<input name="panel_model" placeholder="Example: Square D QO 40-space" maxlength="120"></label>
+        <label class="field">Bus rating (A)<input name="bus_amps" type="number" min="100" max="400" value="200" required></label>
+      </div>
+      <fieldset style="margin-top:14px"><legend>Existing panel</legend><div class="choices">
+        <label class="choice"><input type="radio" name="existing_brand" value="unknown" checked><span>Unknown or other</span></label>
+        <label class="choice"><input type="radio" name="existing_brand" value="federal_pacific"><span>Federal Pacific</span></label>
+        <label class="choice"><input type="radio" name="existing_brand" value="zinsco"><span>Zinsco</span></label>
+        <label class="choice"><input type="radio" name="existing_brand" value="pushmatic"><span>Pushmatic</span></label>
+        <label class="choice"><input type="radio" name="existing_brand" value="challenger"><span>Challenger</span></label>
+      </div></fieldset>
+      <div class="grid" style="margin-top:14px">
+        <label class="field">Utility<input name="utility" list="utilities" placeholder="Start typing or pick one" maxlength="60" autocomplete="off"></label>
+        <label class="field">Meter number (optional)<input name="meter_number" maxlength="30"></label>
+      </div>
+      <datalist id="utilities"><option value="SDG&amp;E"><option value="SCE"><option value="PG&amp;E"><option value="NV Energy"><option value="TEP"><option value="APS"><option value="SRP"></datalist>
+      <div class="grid" style="margin-top:14px">
+        <fieldset><legend>Solar</legend><div class="choices">
+          <label class="choice"><input type="checkbox" name="solar" id="solar"><span>This home has solar</span></label>
+        </div></fieldset>
+        <label class="field" id="pv-field" hidden>PV breaker (A)<input name="pv_breaker_amps" id="pv-breaker" type="number" min="1" max="100" placeholder="Example: 40"></label>
+      </div>
+    </div>
+    <div class="block">
+      <h2>Planned new loads</h2>
+      <p class="hint" style="margin:-6px 0 10px">Loads the home will add, counted at 100% of nameplate. Up to four.</p>
+      <div class="chips" id="planned-chips">
+        <button type="button" class="quiet" data-planned="EV charger" data-va="11520">EV charger 11,520 VA</button>
+        <button type="button" class="quiet" data-planned="Heat pump" data-va="7200">Heat pump 7,200 VA</button>
+        <button type="button" class="quiet" data-planned="Hot tub" data-va="7500">Hot tub 7,500 VA</button>
+        <button type="button" class="quiet" data-planned="Induction range" data-va="12000">Induction range 12,000 VA</button>
+      </div>
+      <div id="planned-rows"></div>
+    </div>
+    </div>
     <div class="block" data-uses="home_loads">
       <h2>The home</h2>
       <div class="grid three">
@@ -109,7 +206,7 @@
         <label class="choice"><input type="checkbox" data-load="water_heater_va" data-va="4500" checked><span>Electric water heater</span></label>
         <label class="choice"><input type="checkbox" data-load="cooling_va" data-va="7200" checked><span>Air conditioning</span></label>
         <label class="choice"><input type="checkbox" data-load="heating_va" data-va="10000"><span>Electric heat</span></label>
-        <label class="choice"><input type="checkbox" data-load="hot_tub_or_pool_va" data-va="1800" checked><span>Pool or hot tub</span></label>
+        <label class="choice"><input type="checkbox" data-load="hot_tub_or_pool_va" data-va="1800"><span>Pool or hot tub</span></label>
         <div class="contents" data-job-type="ev_charger"><label class="choice"><input type="checkbox" name="has_solar"><span>Solar</span></label></div>
       </div></fieldset>
     </div>
@@ -125,7 +222,7 @@
           <label class="field">Dishwasher (VA)<input data-home name="dishwasher_va" type="number" min="0" value="1200"></label>
           <label class="field">Disposal (VA)<input data-home name="disposal_va" type="number" min="0" value="900"></label>
           <label class="field">Microwave (VA)<input data-home name="microwave_va" type="number" min="0" value="1500"></label>
-          <label class="field">Pool or hot tub (VA)<input data-home name="hot_tub_or_pool_va" type="number" min="0" value="1800"></label>
+          <label class="field">Pool or hot tub (VA)<input data-home name="hot_tub_or_pool_va" type="number" min="0" value="0"></label>
           <label class="field">Other fixed loads (VA)<input data-home name="other_va" type="number" min="0" value="0"></label>
           <label class="field">Heating (VA)<input data-home name="heating_va" type="number" min="0" value="0"></label>
           <label class="field">Air conditioning (VA)<input data-home name="cooling_va" type="number" min="0" value="7200"></label>
@@ -207,6 +304,7 @@
 
 <script>window.PermitJobTypes = { modules: {}, register(key, module) { this.modules[key] = module; } };</script>
 <script src="/assets/js/job-types/ev-charger.js?v={{ASSET_VERSION}}"></script>
+<script src="/assets/js/job-types/service-upgrade.js?v={{ASSET_VERSION}}"></script>
 <script src="/assets/js/app.js?v={{ASSET_VERSION}}"></script>
 </body>
 </html>

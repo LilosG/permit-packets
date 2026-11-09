@@ -10,11 +10,13 @@ permit_packets/
   clients.py                   Which job types a deployment sells (PERMIT_CLIENT, default "demo")
   core/                        The shared engine
     circuits.py                Code rules any electrical permit uses (wire, breaker, conduit)
+    conductors.py              Service conductors, grounding electrode conductors, service conduit, solar 120% rule
     load_calculation.py        Optional dwelling load calculation
     property_lookup.py         Address to city, building outlines, lot lines and an aerial
     property_plan.py           A property to scale, with named markers and an optional route
     site_plan.py               The to-scale site plan page, drawn from a list of markers
-    pdf_base.py                Page look, build_document, cover_page, review_page
+    pdf_base.py                Page look, build_document, cover_page, review_page, application_page, load_page
+    job_inputs.py              Sample-mode address, request plan to PropertyPlan
     preview.py                 Page images, one-file-per-document ZIP
     schemas.py                 Request models every job type shares
   jurisdictions/               What each city asks for, one checklist per job type
@@ -22,7 +24,8 @@ permit_packets/
     oro_valley_az.py, el_cajon_ca.py
   job_types/
     __init__.py                Marker, Document, JobType, PacketResult, REGISTRY
-    ev_charger/                The first job type: calc, pdf, schema, api
+    ev_charger/                EV charger: calc, pdf, schema, api
+    service_upgrade/           Panel / service upgrade: calc, pdf, schema, api
   static/
     index.html                 The page shell
     assets/css/app.css
@@ -33,6 +36,8 @@ tests/
 ```
 
 A city not in `jurisdictions/` gets the general checklist and says so. So does a known city that has no checklist for the job type.
+
+Job types so far: `ev_charger` and `service_upgrade`. City service-upgrade checklists are added per client during setup, so Oro Valley and El Cajon use the general one for now.
 
 Every packet is marked as a demo. Results are drafts and need review before anyone relies on them.
 
@@ -65,7 +70,7 @@ Sign in with `DEMO_PASSWORD`. `PERMIT_CLIENT` picks which client's job types are
 
 ## Adding a job type
 
-A job type is one `JobType` value plus the code behind it. Use `job_types/ev_charger/` as the model.
+A job type is one `JobType` value plus the code behind it. Use `job_types/ev_charger/` or `job_types/service_upgrade/` as the model.
 
 1. **Create `job_types/<type>/`.**
    - `calc.py`: the job as a frozen dataclass, the checks and the flags. Put code rules every electrical permit needs in `core/` instead.
@@ -94,7 +99,7 @@ A job type is one `JobType` value plus the code behind it. Use `job_types/ev_cha
 7. **Enable it** for the clients that bought it in `clients.py`. Nobody sees a type until their client lists it.
 8. **Tests it needs.**
    - Unit tests for the calc, with worked numbers.
-   - A golden case in `tests/golden/cases` and its snapshot, and an entry in `SAMPLE_CASES` in `tests/test_job_types.py`.
+   - A sample request and an entry in `SAMPLE_CASES` in `tests/test_job_types.py`. EV's come from `tests/golden/cases` with snapshots; newer types keep a current-shape request in `tests/samples/` (not in the golden folder, which the EV golden test replays).
    - Page count: the PDF has as many pages as `documents`. `test_every_type_has_one_document_per_page` checks this.
    - A request with a bad value returns 422.
 
