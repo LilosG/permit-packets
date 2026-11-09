@@ -23,8 +23,8 @@ os.environ["DEMO_PASSWORD"] = "test-password"
 
 GOLDEN = Path(__file__).parent / "golden"
 CASE_NAMES = sorted(path.stem for path in (GOLDEN / "cases").glob("*.json"))
-PACKET_URL = "/api/ev/packet"
-DOCUMENTS_URL = "/api/ev/documents"
+PACKET_URL = "/api/jobs/ev-charger/packet"
+DOCUMENTS_URL = "/api/jobs/ev-charger/documents"
 
 
 def to_current_request(payload: dict) -> dict:

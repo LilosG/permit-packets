@@ -7,15 +7,16 @@ import hmac
 import os
 import secrets
 import time
+from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse
+from pydantic import ValidationError
 
-from permit_packets.ev_charger import EvJob, EvPacket, build_ev_packet
-from permit_packets.ev_packet_pdf import application_fields, render_ev_packet_pdf, scope_of_work
-from permit_packets.jurisdictions import jurisdiction_by_key, jurisdiction_json
-from permit_packets.core.load_calculation import HomeLoads
+from permit_packets.clients import current_client
 from permit_packets.core.preview import packet_documents_zip, packet_page_images
 from permit_packets.core.property_lookup import (
     AddressNotFound,
@@ -26,7 +27,7 @@ from permit_packets.core.property_lookup import (
     property_at,
     suggest_addresses,
 )
-from permit_packets.core.property_plan import PlanView, PropertyPlan, zoomed_scale
+from permit_packets.core.property_plan import PlanView, zoomed_scale
 from permit_packets.core.schemas import (
     AerialRequest,
     LoginRequest,
@@ -34,12 +35,12 @@ from permit_packets.core.schemas import (
     PropertyViewRequest,
     SuggestRequest,
 )
-from permit_packets.schemas import EvJobRequest
+from permit_packets.job_types import REGISTRY, JobType, PacketResult, get_job_type
+from permit_packets.jurisdictions import jurisdiction_json
 
 STATIC = Path(__file__).parent / "permit_packets" / "static"
 SESSION_COOKIE = "permit_demo_session"
 SESSION_SECONDS = 12 * 60 * 60
-SAMPLE_PARCEL = "000-00-000-000"
 
 app = FastAPI(title="Permit Packets", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -95,7 +96,13 @@ def address_suggestions(payload: SuggestRequest) -> dict:
     return {"suggestions": suggest_addresses(payload.text)}
 
 
-def _property_json(found: FoundProperty) -> dict:
+def _known_job_type(key: str) -> str:
+    if key not in REGISTRY:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown job type")
+    return key
+
+
+def _property_json(found: FoundProperty, job_type: str) -> dict:
     return {
         "address": found.address,
         "city": found.city,
@@ -106,7 +113,7 @@ def _property_json(found: FoundProperty) -> dict:
         "address_confirmed": found.address_confirmed,
         "parcel_house_number": found.parcel_house_number,
         "anchor": {"latitude": found.anchor[0], "longitude": found.anchor[1]},
-        "jurisdiction": jurisdiction_json(found.jurisdiction, "ev_charger"),
+        "jurisdiction": jurisdiction_json(found.jurisdiction, job_type),
         "view": {
             "latitude": found.view.latitude,
             "longitude": found.view.longitude,
@@ -123,8 +130,9 @@ def _property_json(found: FoundProperty) -> dict:
 
 @app.post("/api/property", dependencies=[Depends(require_session)])
 def look_up_property(payload: LookupRequest) -> dict:
+    job_type = _known_job_type(payload.job_type)
     try:
-        return _property_json(find_property(payload.address))
+        return _property_json(find_property(payload.address), job_type)
     except AddressNotFound as error:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from error
 
@@ -135,14 +143,16 @@ def change_property_view(payload: PropertyViewRequest) -> dict:
         address=payload.address, city=payload.city, state=payload.state,
         county_fips=payload.county_fips, house_number=payload.house_number,
     )
+    job_type = _known_job_type(payload.job_type)
     view = PlanView(payload.latitude, payload.longitude, payload.scale_ft_per_in)
     if payload.tap:
-        return _property_json(property_at(**fields, point=view.to_latlon(*payload.tap), located_by="tap"))
+        return _property_json(
+            property_at(**fields, point=view.to_latlon(*payload.tap), located_by="tap"), job_type)
     scale = zoomed_scale(payload.scale_ft_per_in, payload.zoom or 0)
     return _property_json(property_at(
         **fields, point=(payload.anchor_latitude, payload.anchor_longitude), located_by=payload.located_by,
         scale=scale, center=(payload.latitude, payload.longitude),
-    ))
+    ), job_type)
 
 
 @app.post("/api/property/aerial", dependencies=[Depends(require_session)])
@@ -155,80 +165,62 @@ def property_aerial(payload: AerialRequest) -> dict:
     return {"image": base64.b64encode(image).decode(), "credit": credit}
 
 
-def _sample_address(payload: EvJobRequest) -> str:
-    place = ", ".join(part for part in (payload.city, payload.state) if part)
-    return f"123 Sample St, {place}" if place else "123 Sample St"
+def _enabled_job_type(slug: str) -> JobType:
+    job_type = get_job_type(slug)
+    if job_type is None or job_type.key not in current_client().job_types:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That job type isn't available")
+    return job_type
 
 
-def _plan(payload: EvJobRequest) -> PropertyPlan | None:
-    plan = payload.plan
-    if plan is None:
-        return None
-    try:
-        aerial = plan.aerial_bytes()
-    except ValueError as error:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
-    return PropertyPlan(
-        scale_ft_per_in=plan.scale_ft_per_in, markers=plan.markers, route=plan.route,
-        route_between=("panel", "charger"),
-        buildings=plan.buildings, primary_building=plan.primary_building, lot=plan.lot,
-        parcel_number=SAMPLE_PARCEL if payload.sample_mode else plan.parcel_number,
-        aerial_jpeg=aerial, credits=plan.credits,
-    )
-
-
-def _packet(payload: EvJobRequest) -> EvPacket:
-    fields = payload.model_dump(exclude={"home", "plan", "city", "state", "jurisdiction_key", "sample_mode"})
-    if payload.sample_mode:
-        fields["address"] = _sample_address(payload)
-    return build_ev_packet(EvJob(
-        home=HomeLoads(**payload.home.model_dump()),
-        jurisdiction=jurisdiction_by_key(payload.jurisdiction_key, payload.city, payload.state),
-        plan=_plan(payload),
-        **fields,
-    ))
-
-
-@app.post("/api/ev/packet", dependencies=[Depends(require_session)])
-def build_packet(payload: EvJobRequest) -> dict:
-    packet = _packet(payload)
-    pdf = render_ev_packet_pdf(packet)
-    circuit = packet.circuit
+def _job_type_json(job_type: JobType) -> dict:
     return {
-        "ready": packet.ready,
-        "computed_amps": round(packet.load.computed_amps, 1),
-        "total_va": round(packet.load.total_va),
-        "spare_amps": round(packet.load.spare_amps, 1),
-        "breaker": circuit.breaker,
-        "wire": f"#{circuit.wire.size} AWG Cu",
-        "ground": f"#{circuit.ground} AWG Cu",
-        "voltage_drop_percent": round(circuit.voltage_drop_percent, 1),
-        "underground_conduit": packet.underground_conduit,
-        "interior_conduit": packet.interior_conduit,
-        "disconnect_amps": packet.disconnect_amps,
-        "checks": [
-            {"name": check.name, "result": check.result, "passed": check.passed}
-            for check in packet.checks
-        ],
-        "flags": packet.flags,
-        "jurisdiction": jurisdiction_json(packet.job.jurisdiction, "ev_charger"),
-        "address": packet.job.address,
-        "fields": [
-            *({"label": label, "value": value} for label, value in application_fields(packet)),
-            {"label": "Scope of work", "value": scope_of_work(packet)},
-        ],
-        "pages": [base64.b64encode(page).decode() for page in packet_page_images(pdf)],
-        "pdf": base64.b64encode(pdf).decode(),
+        "key": job_type.key,
+        "slug": job_type.slug,
+        "label": job_type.label,
+        "short_label": job_type.short_label,
+        "blurb": job_type.blurb,
+        "icon": job_type.icon,
+        "markers": [asdict(marker) for marker in job_type.markers],
+        "route_between": list(job_type.route_between) if job_type.route_between else None,
+        "uses_home_loads": job_type.uses_home_loads,
+        "documents": [asdict(document) for document in job_type.documents],
+        "feature_page": job_type.feature_page,
     }
 
 
-@app.post("/api/ev/documents", dependencies=[Depends(require_session)])
-def packet_documents(payload: EvJobRequest) -> Response:
+@app.get("/api/job-types", dependencies=[Depends(require_session)])
+def job_types() -> dict:
+    return {"job_types": [_job_type_json(REGISTRY[key]) for key in current_client().job_types]}
+
+
+def _build(slug: str, payload: dict[str, Any]) -> tuple[JobType, PacketResult]:
+    job_type = _enabled_job_type(slug)
+    try:
+        request = job_type.request_model.model_validate(payload)
+    except ValidationError as error:
+        raise RequestValidationError(error.errors(include_url=False)) from error
+    return job_type, job_type.build_response(request)
+
+
+@app.post("/api/jobs/{slug}/packet", dependencies=[Depends(require_session)])
+def build_packet(slug: str, payload: dict[str, Any] = Body(...)) -> dict:
+    _, result = _build(slug, payload)
+    return {
+        **result.body,
+        "pages": [base64.b64encode(page).decode() for page in packet_page_images(result.pdf)],
+        "pdf": base64.b64encode(result.pdf).decode(),
+    }
+
+
+@app.post("/api/jobs/{slug}/documents", dependencies=[Depends(require_session)])
+def packet_documents(slug: str, payload: dict[str, Any] = Body(...)) -> Response:
+    job_type, result = _build(slug, payload)
+    stems = tuple(document.file_stem for document in job_type.documents)
     return Response(
-        content=packet_documents_zip(render_ev_packet_pdf(_packet(payload))),
+        content=packet_documents_zip(result.pdf, stems),
         media_type="application/zip",
         headers={
-            "Content-Disposition": 'attachment; filename="ev-permit-documents-demo.zip"',
+            "Content-Disposition": f'attachment; filename="{job_type.zip_name}"',
             "Cache-Control": "private, no-store",
         },
     )

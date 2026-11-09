@@ -8,10 +8,6 @@ import pypdfium2
 
 SCALE = 1.5
 JPEG_QUALITY = 80
-DOCUMENT_NAMES = (
-    "01-checklist-and-checks", "02-permit-application-data", "03-site-plan", "04-one-line-diagram",
-    "05-load-calculation", "06-equipment-data", "07-pre-submittal-review",
-)
 
 
 def packet_page_images(pdf: bytes) -> list[bytes]:
@@ -29,14 +25,22 @@ def packet_page_images(pdf: bytes) -> list[bytes]:
         document.close()
 
 
-def packet_documents_zip(pdf: bytes) -> bytes:
-    """Portals often want each document as its own upload."""
+def pdf_page_count(pdf: bytes) -> int:
+    document = pypdfium2.PdfDocument(pdf)
+    try:
+        return len(document)
+    finally:
+        document.close()
+
+
+def packet_documents_zip(pdf: bytes, file_stems: tuple[str, ...]) -> bytes:
+    """Portals often want each document as its own upload, one file per page."""
     source = pypdfium2.PdfDocument(pdf)
     buffer = BytesIO()
     try:
         with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
             for index in range(len(source)):
-                name = DOCUMENT_NAMES[index] if index < len(DOCUMENT_NAMES) else f"{index + 1:02d}-page"
+                name = file_stems[index] if index < len(file_stems) else f"{index + 1:02d}-page"
                 single = pypdfium2.PdfDocument.new()
                 single.import_pages(source, [index])
                 page = BytesIO()

@@ -47,8 +47,22 @@ class PropertyPlanRequest(BaseModel):
             raise ValueError("the aerial image is not valid") from error
 
 
+class JobRequestBase(BaseModel):
+    """What every job type asks for: who it's for, where, and the optional site plan."""
+    customer: str = Field(min_length=1, max_length=120)
+    address: str = Field(min_length=1, max_length=200)
+    contractor: str = Field(min_length=1, max_length=120)
+    license_number: str = Field(min_length=1, max_length=60)
+    sample_mode: bool = False
+    city: str | None = Field(default=None, max_length=80)
+    state: str | None = Field(default=None, max_length=2)
+    jurisdiction_key: str | None = Field(default=None, max_length=40)
+    plan: PropertyPlanRequest | None = None
+
+
 class LookupRequest(BaseModel):
     address: str = Field(min_length=5, max_length=200)
+    job_type: str = Field(default="ev_charger", max_length=40)
 
 
 class PropertyViewRequest(BaseModel):
@@ -66,6 +80,7 @@ class PropertyViewRequest(BaseModel):
     scale_ft_per_in: int = Field(gt=0, le=200)
     tap: PlanPoint | None = None
     zoom: Literal[-1, 1] | None = None
+    job_type: str = Field(default="ev_charger", max_length=40)
 
 
 class SuggestRequest(BaseModel):

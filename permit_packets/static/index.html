@@ -662,7 +662,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
       ...job, address: property.address, city: property.city, state: property.state,
       jurisdiction_key: property.jurisdiction.key,
       plan: {
-        scale_ft_per_in: property.view.scale_ft_per_in, panel: marks.panel, charger: marks.charger, route: marks.bends,
+        scale_ft_per_in: property.view.scale_ft_per_in, markers: { panel: marks.panel, charger: marks.charger }, route: marks.bends,
         buildings: property.buildings, primary_building: property.primary_building, lot: property.lot,
         parcel_number: property.parcel_number, aerial_base64: aerial,
         credits: [...property.credits.filter((credit) => !aerial || !credit.startsWith('Building')), ...(aerialCredit ? [aerialCredit] : [])],
@@ -757,7 +757,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     $('#build-list').innerHTML = '';
     show('building');
     try {
-      const response = await api('/api/ev/packet', job);
+      const response = await api('/api/jobs/ev-charger/packet', job);
       const result = await response.json();
       lastJob = job;
       lastResult = result;
@@ -780,7 +780,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     $('#documents-error').hidden = true;
     button.disabled = true;
     try {
-      const response = await api('/api/ev/documents', lastJob);
+      const response = await api('/api/jobs/ev-charger/documents', lastJob);
       const link = document.createElement('a');
       link.href = URL.createObjectURL(await response.blob());
       link.download = 'ev-permit-documents-demo.zip';

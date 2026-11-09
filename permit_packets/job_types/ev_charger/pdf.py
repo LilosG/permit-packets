@@ -15,7 +15,7 @@ from permit_packets.core.pdf_base import (
     _heads, _p, _table, build_document, cover_page, review_page,
 )
 from permit_packets.core.site_plan import AerialSitePlan, PlanMarker
-from permit_packets.ev_charger import BURIAL_DEPTH_IN, LOCATION_LABELS, EvPacket
+from permit_packets.job_types.ev_charger.calc import BURIAL_DEPTH_IN, LOCATION_LABELS, EvPacket
 
 PLAN_COPPER = colors.HexColor("#c8682a")  # the EV dot on the site plan, same as on screen
 SECTION_PAGES = {

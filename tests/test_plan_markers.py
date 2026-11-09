@@ -39,7 +39,7 @@ def test_no_route_between_means_no_route():
 
 def test_an_ev_plan_without_both_markers_is_refused(client):
     plan = {"scale_ft_per_in": 30, "markers": {"panel": [400, 500]}}
-    response = client.post("/api/ev/packet", json=_payload(plan))
+    response = client.post("/api/jobs/ev-charger/packet", json=_payload(plan))
     assert response.status_code == 422
 
 
