@@ -6,13 +6,12 @@ to scale when there's a plan, and a labeled schematic when there isn't.
 from __future__ import annotations
 
 from reportlab.lib import colors
-from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import Flowable, Paragraph, Spacer
+from reportlab.platypus import Flowable, Spacer
 
 from permit_packets.core.pdf_base import (
-    BODY, CELL, CELL_BOLD, CONTENT, COPPER, CREDIT, GREEN, H1, H2, INK, MUTED, PALE, SMALL, SOFT,
-    _heads, _p, _table, build_document, cover_page, review_page,
+    CONTENT, COPPER, CREDIT, GREEN, H1, H2, INK, MUTED, PALE, SMALL, SOFT,
+    _heads, _p, _table, application_page, build_document, cover_page, load_page, review_page,
 )
 from permit_packets.core.site_plan import AerialSitePlan, PlanMarker
 from permit_packets.job_types.ev_charger.calc import BURIAL_DEPTH_IN, LOCATION_LABELS, EvPacket
@@ -327,24 +326,11 @@ def application_fields(packet: EvPacket) -> list[tuple[str, str]]:
 
 def _application(packet: EvPacket) -> list:
     job = packet.job
-    scope = scope_of_work(packet)
-    rows = application_fields(packet)
     inspections = [("Final", "Panel, breaker, charger, labeling, and manufacturer instructions on site")]
     if job.trench_ft:
         inspections.insert(0, ("Underground", "Open trench, conduit and burial depth, before backfill"))
-    return [
-        _p("Permit Application Data", H1),
-        _p("Prepared for transfer to the city's permit application. This page is not the city's form.", SMALL),
-        Spacer(1, 10),
-        _table([[_p(a, CELL_BOLD), _p(b)] for a, b in rows], [2.4 * inch, CONTENT - 2.4 * inch], head=False),
-        Spacer(1, 14),
-        _p("Scope of work", H2),
-        _p(scope, BODY),
-        Spacer(1, 14),
-        _p("Inspection plan", H2),
-        _table([_heads("Stage", "What's inspected")] + [[_p(a), _p(b)] for a, b in inspections],
-               [1.4 * inch, CONTENT - 1.4 * inch]),
-    ]
+    return application_page(
+        rows=application_fields(packet), scope=scope_of_work(packet), inspections=inspections)
 
 
 def _one_line(packet: EvPacket) -> list:
@@ -374,46 +360,17 @@ def _one_line(packet: EvPacket) -> list:
 
 def _load(packet: EvPacket) -> list:
     load = packet.load
-    code = packet.job.jurisdiction.code_name
-    right = lambda text, style: Paragraph(
-        f"{text:,.0f}", ParagraphStyle(f"{style.name}-right", parent=style, alignment=2))
-    rows = [_heads("Load", "Basis", "VA")]
-
-    def add(label, basis, va, bold=False):
-        style = CELL_BOLD if bold else CELL
-        rows.append([_p(label, style), _p(basis, style), right(va, style)])
-
-    for line in load.lines:
-        add(line.label, line.basis, line.va)
-    add("Subtotal", "", load.subtotal_va, True)
-    add("First 10,000 VA", "100%", load.first_va)
-    add("Remainder", f"{load.subtotal_va - load.first_va:,.0f} VA x 40%", load.remainder_va)
-    add(load.hvac_label, "Larger of heating or cooling, 100%", load.hvac_va)
-    for line in load.added_loads:
-        add(line.label, line.basis, line.va)
-    add("Total calculated load", "", load.total_va, True)
     result = (
         f"{load.spare_amps:.1f} A, so no upgrade is required"
         if load.spare_amps >= 0
         else f"Over by {-load.spare_amps:.1f} A, so this needs a fix before submittal"
     )
-    return [
-        _p("Load Calculation", H1),
-        _p(f"Optional dwelling method, {code} 220.82, with the EV charger added at 100% of nameplate. "
-           "Confirm the method the city accepts.", SMALL),
-        Spacer(1, 10),
-        _table(rows, [2.5 * inch, CONTENT - 3.5 * inch, 1 * inch]),
-        Spacer(1, 10),
-        _table(
-            [[_p("Computed load", CELL_BOLD),
-              _p(f"{load.total_va:,.0f} VA / 240 V = {load.computed_amps:.1f} A", CELL_BOLD)],
-             [_p("Existing service"), _p(f"{load.service_amps} A")],
-             [_p("Spare capacity"), _p(result)]],
-            [2.5 * inch, CONTENT - 2.5 * inch],
-            head=False,
-            extra=[("BACKGROUND", (0, 0), (-1, 0), SOFT)],
-        ),
-    ]
+    return load_page(
+        load,
+        method=f"Optional dwelling method, {packet.job.jurisdiction.code_name} 220.82, with the EV charger "
+               "added at 100% of nameplate. Confirm the method the city accepts.",
+        service_rows=[("Existing service", f"{load.service_amps} A"), ("Spare capacity", result)],
+    )
 
 
 def _equipment(packet: EvPacket) -> list:
