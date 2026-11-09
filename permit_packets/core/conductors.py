@@ -1,0 +1,110 @@
+"""Service entrance conductors, grounding electrode conductors and service conduit.
+
+Copper and aluminum THWN-2 at the 75 C column, 120/240 V single-phase dwelling
+service. Results are drafts for a licensed electrician's review.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal
+
+Material = Literal["copper", "aluminum"]
+Electrode = Literal["rods", "concrete_encased", "water_pipe"]
+
+# NEC 310.12: a dwelling service conductor may be sized at 83% of the service rating.
+SERVICE_CONDUCTOR_FACTOR = 0.83
+# NEC 705.12(B)(3)(2): the main plus the PV breaker may total 120% of the bus.
+BUS_BACKFEED_FACTOR = 1.2
+SERVICE_CONDUCTORS_IN_CONDUIT = 3  # two hots and a full-size neutral
+
+
+@dataclass(frozen=True)
+class Conductor:
+    size: str
+    ampacity_75c: int
+    circular_mils: int
+    area_sq_in: float
+
+
+# Ampacity differs by material. Area and circular mils are the same for both.
+# (size, copper A, aluminum A, circular mils, THWN-2 area in sq in)
+_SIZES = (
+    ("8", 50, 40, 16510, 0.0366),
+    ("6", 65, 50, 26240, 0.0507),
+    ("4", 85, 65, 41740, 0.0824),
+    ("3", 100, 75, 52620, 0.0973),
+    ("2", 115, 90, 66360, 0.1158),
+    ("1", 130, 100, 83690, 0.1562),
+    ("1/0", 150, 120, 105600, 0.1855),
+    ("2/0", 175, 135, 133100, 0.2223),
+    ("3/0", 200, 155, 167800, 0.2679),
+    ("4/0", 230, 180, 211600, 0.3237),
+    ("250", 255, 205, 250000, 0.3970),
+    ("300", 285, 230, 300000, 0.4608),
+    ("350", 310, 250, 350000, 0.5242),
+)
+
+# NEC 310.16 75 C column, Chapter 9 Table 8 circular mils, Chapter 9 Table 5 THWN-2 area.
+COPPER_75C = tuple(Conductor(size, cu, cmil, area) for size, cu, _, cmil, area in _SIZES)
+ALUMINUM_75C = tuple(Conductor(size, al, cmil, area) for size, _, al, cmil, area in _SIZES)
+_TABLES = {"copper": COPPER_75C, "aluminum": ALUMINUM_75C}
+
+# NEC Chapter 9 Table 4, 40% fill for three or more conductors.
+SERVICE_CONDUIT_FILL_SQ_IN = {
+    "PVC": (('3/4"', 0.203), ('1"', 0.333), ('1-1/4"', 0.581), ('1-1/2"', 0.794),
+            ('2"', 1.316), ('2-1/2"', 1.878), ('3"', 2.907)),
+    "EMT": (('3/4"', 0.213), ('1"', 0.346), ('1-1/4"', 0.598), ('1-1/2"', 0.814),
+            ('2"', 1.342), ('2-1/2"', 2.343), ('3"', 3.538)),
+}
+
+# NEC 250.66 Table: the grounding electrode conductor (copper) by service conductor size.
+# Each row is (largest service conductor size it covers, GEC size).
+_GEC_COPPER_SERVICE = (("2", "8"), ("1/0", "6"), ("3/0", "4"), ("350", "2"))
+_GEC_ALUMINUM_SERVICE = (("1/0", "8"), ("3/0", "6"), ("250", "4"), ("350", "2"))
+# NEC 250.66(A) and (B): the most a rod or a concrete-encased electrode needs.
+_ELECTRODE_LIMIT = {"rods": "6", "concrete_encased": "4"}
+_GEC_ORDER = ("2", "4", "6", "8")  # largest first
+
+
+def _order(table: tuple[Conductor, ...], size: str) -> int:
+    return next(index for index, conductor in enumerate(table) if conductor.size == size)
+
+
+def service_conductor(service_amps: int, material: Material) -> Conductor:
+    """The smallest conductor rated for 83% of the service (NEC 310.12)."""
+    required = SERVICE_CONDUCTOR_FACTOR * service_amps
+    table = _TABLES[material]
+    for conductor in table:
+        if conductor.ampacity_75c >= required:
+            return conductor
+    raise ValueError(f"no listed conductor carries {required:g} A in {material}")
+
+
+def gec_size(conductor: Conductor, material: Material, electrode: Electrode) -> str:
+    """The copper grounding electrode conductor, by service conductor and electrode (NEC 250.66)."""
+    table = _TABLES[material]
+    rows = _GEC_COPPER_SERVICE if material == "copper" else _GEC_ALUMINUM_SERVICE
+    position = _order(table, conductor.size)
+    size = next((gec for largest, gec in rows if position <= _order(table, largest)), None)
+    if size is None:
+        raise ValueError(f"no grounding electrode conductor listed for {conductor.size} {material}")
+    limit = _ELECTRODE_LIMIT.get(electrode)
+    # A bigger number is a smaller wire, so the smaller wire is the later one in the order.
+    if limit is not None and _GEC_ORDER.index(limit) > _GEC_ORDER.index(size):
+        return limit
+    return size
+
+
+def service_conduit(conductor: Conductor, conduit_type: str) -> str:
+    """The smallest conduit that holds two hots and a full-size neutral at 40% fill."""
+    fill = SERVICE_CONDUCTORS_IN_CONDUIT * conductor.area_sq_in
+    sizes = SERVICE_CONDUIT_FILL_SQ_IN[conduit_type]
+    for size, capacity in sizes:
+        if fill <= capacity:
+            return size
+    raise ValueError(f"{fill:.3f} sq in is too much wire for {conduit_type} up to {sizes[-1][0]}")
+
+
+def solar_fits(bus_amps: int, main_amps: int, pv_breaker_amps: int) -> bool:
+    """NEC 705.12(B)(3)(2): main plus PV breaker within 120% of the bus, PV breaker at the far end."""
+    return main_amps + pv_breaker_amps <= BUS_BACKFEED_FACTOR * bus_amps
