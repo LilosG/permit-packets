@@ -26,7 +26,7 @@ from reportlab.platypus import (
 )
 
 from permit_packets.ev_charger import BURIAL_DEPTH_IN, LOCATION_LABELS, EvPacket
-from permit_packets.site_plan import AerialSitePlan
+from permit_packets.core.site_plan import AerialSitePlan
 
 INK = colors.HexColor("#15212c")
 MUTED = colors.HexColor("#566572")

@@ -10,7 +10,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable
 
-from permit_packets.property_plan import PLAN_UNITS, PLAN_WIDTH_IN, Point, PropertyPlan
+from permit_packets.core.property_plan import PLAN_UNITS, PLAN_WIDTH_IN, Point, PropertyPlan
 
 INK = colors.HexColor("#15212c")
 COPPER = colors.HexColor("#c8682a")

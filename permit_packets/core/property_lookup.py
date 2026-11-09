@@ -22,7 +22,7 @@ import httpx
 from PIL import Image, ImageFilter
 
 from permit_packets.jurisdictions import Jurisdiction, jurisdiction_for
-from permit_packets.property_plan import (
+from permit_packets.core.property_plan import (
     FEET_PER_METER,
     PLAN_UNITS,
     PLAN_WIDTH_IN,

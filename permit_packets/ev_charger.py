@@ -4,15 +4,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from permit_packets.circuits import Circuit, conduit_size, size_circuit
+from permit_packets.core.circuits import Circuit, conduit_size, size_circuit
 from permit_packets.jurisdictions import ORO_VALLEY, Jurisdiction
-from permit_packets.load_calculation import (
+from permit_packets.core.load_calculation import (
     HomeLoads,
     LoadCalculation,
     LoadLine,
     calculate_load,
 )
-from permit_packets.property_plan import PropertyPlan
+from permit_packets.core.property_plan import PropertyPlan
 
 VOLTS = 240
 HIGH_SERVICE_USE_PERCENT = 80

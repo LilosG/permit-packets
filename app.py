@@ -16,9 +16,9 @@ from fastapi.responses import FileResponse
 from permit_packets.ev_charger import EvJob, EvPacket, build_ev_packet
 from permit_packets.ev_packet_pdf import application_fields, render_ev_packet_pdf, scope_of_work
 from permit_packets.jurisdictions import Jurisdiction, jurisdiction_by_key
-from permit_packets.load_calculation import HomeLoads
-from permit_packets.preview import packet_documents_zip, packet_page_images
-from permit_packets.property_lookup import (
+from permit_packets.core.load_calculation import HomeLoads
+from permit_packets.core.preview import packet_documents_zip, packet_page_images
+from permit_packets.core.property_lookup import (
     AddressNotFound,
     AerialUnavailable,
     FoundProperty,
@@ -27,15 +27,15 @@ from permit_packets.property_lookup import (
     property_at,
     suggest_addresses,
 )
-from permit_packets.property_plan import PlanView, PropertyPlan, zoomed_scale
-from permit_packets.schemas import (
+from permit_packets.core.property_plan import PlanView, PropertyPlan, zoomed_scale
+from permit_packets.core.schemas import (
     AerialRequest,
-    EvJobRequest,
     LoginRequest,
     LookupRequest,
     PropertyViewRequest,
     SuggestRequest,
 )
+from permit_packets.schemas import EvJobRequest
 
 STATIC = Path(__file__).parent / "permit_packets" / "static"
 SESSION_COOKIE = "permit_demo_session"

@@ -15,12 +15,12 @@ from PIL import Image
 
 from app import app
 
-from permit_packets.circuits import WIRES, conduit_size, size_breaker, size_circuit, voltage_drop
+from permit_packets.core.circuits import WIRES, conduit_size, size_breaker, size_circuit, voltage_drop
 from permit_packets.ev_charger import EvJob, build_ev_packet
 from permit_packets.ev_packet_pdf import render_ev_packet_pdf
 from permit_packets.jurisdictions import EL_CAJON, ORO_VALLEY, jurisdiction_for
-from permit_packets.load_calculation import HomeLoads, LoadLine, calculate_load
-from permit_packets.property_lookup import (
+from permit_packets.core.load_calculation import HomeLoads, LoadLine, calculate_load
+from permit_packets.core.property_lookup import (
     AddressNotFound,
     COUNTIES,
     AerialUnavailable,
@@ -30,7 +30,7 @@ from permit_packets.property_lookup import (
     suggest_addresses,
     tidy_address,
 )
-from permit_packets.property_plan import PlanView, PropertyPlan, clip_to, plan_scale, zoomed_scale
+from permit_packets.core.property_plan import PlanView, PropertyPlan, clip_to, plan_scale, zoomed_scale
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
