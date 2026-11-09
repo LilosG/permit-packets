@@ -1,0 +1,27 @@
+{
+  "customer": "Sample Homeowner",
+  "address": "123 Sample St",
+  "contractor": "Sample Electric, LLC",
+  "license_number": "ROC 000000",
+  "jurisdiction_key": "oro-valley-az",
+  "location": "detached_building",
+  "subpanel_amps": 100,
+  "feeder_breaker_amps": 100,
+  "material": "copper",
+  "conduit": "PVC",
+  "run_ft": 90,
+  "trench_ft": 70,
+  "service_amps": 200,
+  "open_breaker_spaces": 4,
+  "home": {
+    "square_feet": 2400,
+    "range_va": 12000,
+    "dryer_va": 5000,
+    "water_heater_va": 4500,
+    "cooling_va": 7200
+  },
+  "loads": [
+    {"label": "Shop circuits", "va": 3000},
+    {"label": "Mini-split", "va": 3600}
+  ]
+}

@@ -38,8 +38,8 @@ details .grid { margin-top: 12px; }
 .contents { display: contents; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips button { padding: 7px 12px; font-size: 14px; }
-.planned-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 10px; align-items: end; margin-top: 10px; }
-.planned-row button { padding: 10px 14px; }
+.planned-row, .sub-load-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 10px; align-items: end; margin-top: 10px; }
+.planned-row button, .sub-load-row button { padding: 10px 14px; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 24px; }
 button, a.button { display: inline-block; padding: 12px 20px; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: #fff; font: 600 15px "IBM Plex Sans", system-ui, sans-serif; text-decoration: none; cursor: pointer; }
 button.quiet, a.quiet { background: #fff; color: var(--ink); }
@@ -133,7 +133,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   .sheet { padding: 18px 16px; }
   h1 { font-size: 30px; }
   .grid, .grid.three, .types { grid-template-columns: minmax(0, 1fr); }
-  .planned-row { grid-template-columns: minmax(0, 1fr) 110px auto; }
+  .planned-row, .sub-load-row { grid-template-columns: minmax(0, 1fr) 110px auto; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats div:nth-child(3) { border-left: 0; }
   .stats div:nth-child(n+3) { border-top: 1px solid var(--rule); }

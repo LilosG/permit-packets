@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from permit_packets.core.checks import Check
 from permit_packets.core.conductors import (
     SERVICE_CONDUCTOR_FACTOR,
     Conductor,
@@ -81,13 +82,6 @@ class ServiceJob:
     planned_loads: tuple[PlannedLoadLine, ...] = ()
     jurisdiction: Jurisdiction = ORO_VALLEY
     plan: PropertyPlan | None = None
-
-
-@dataclass(frozen=True)
-class Check:
-    name: str
-    result: str
-    passed: bool
 
 
 @dataclass(frozen=True)
