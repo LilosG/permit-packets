@@ -11,4 +11,12 @@ GENERAL_CHECKLISTS: dict[str, Checklist] = {
         Requirement("Load calculation", "load"),
         Requirement("Charger specifications and listing", "equipment"),
     )),
+    "service_upgrade": Checklist(items=(
+        Requirement("Permit application", "application"),
+        Requirement("Site plan showing the meter and main panel", "site_plan"),
+        Requirement("Riser diagram with service conductors, grounding and bonding", "one_line"),
+        Requirement("Load calculation", "load"),
+        Requirement("Panel and meter equipment specifications and listing", "equipment"),
+        Requirement("Utility service request", "utility"),
+    )),
 }

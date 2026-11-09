@@ -56,8 +56,11 @@ class JobType:
 
 # Job types import the classes above, so they come after them.
 from permit_packets.job_types.ev_charger import JOB_TYPE as EV_CHARGER  # noqa: E402
+from permit_packets.job_types.service_upgrade import JOB_TYPE as SERVICE_UPGRADE  # noqa: E402
 
-REGISTRY: dict[str, JobType] = {job_type.key: job_type for job_type in (EV_CHARGER,)}
+REGISTRY: dict[str, JobType] = {
+    job_type.key: job_type for job_type in (EV_CHARGER, SERVICE_UPGRADE)
+}
 
 
 def get_job_type(slug: str) -> JobType | None:

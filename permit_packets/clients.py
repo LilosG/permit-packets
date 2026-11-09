@@ -17,7 +17,7 @@ class Client:
 
 
 CLIENTS: dict[str, Client] = {
-    "demo": Client("demo", "", ("ev_charger",)),
+    "demo": Client("demo", "", ("ev_charger", "service_upgrade")),
 }
 
 

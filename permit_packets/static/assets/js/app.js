@@ -13,6 +13,7 @@
   const ICON_ATTRS = 'viewBox="0 0 28 28" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
   const ICONS = {
     ev: `<svg ${ICON_ATTRS}><rect x="4" y="3" width="12" height="22" rx="2"/><path d="M11 8l-3 5h4l-3 5"/><path d="M16 13h4a3 3 0 0 1 3 3v5"/><rect x="20" y="21" width="6" height="4" rx="1"/></svg>`,
+    panel: `<svg ${ICON_ATTRS}><rect x="5" y="3" width="18" height="22" rx="2"/><path d="M9 8h4M15 8h4M9 13h4M15 13h4M9 18h4M15 18h4"/></svg>`,
   };
   const FALLBACK_ICON = `<svg ${ICON_ATTRS}><rect x="5" y="5" width="18" height="18" rx="2"/></svg>`;
 
