@@ -1,0 +1,25 @@
+{
+  "customer": "Sample Homeowner",
+  "address": "123 Sample St",
+  "contractor": "Sample Electric, LLC",
+  "license_number": "ROC 000000",
+  "jurisdiction_key": "oro-valley-az",
+  "scope": "upgrade",
+  "existing_service_amps": 100,
+  "new_service_amps": 200,
+  "equipment": "meter_main",
+  "service_drop": "overhead",
+  "material": "copper",
+  "conduit": "PVC",
+  "se_length_ft": 8,
+  "electrodes": ["rods", "water_pipe"],
+  "bus_amps": 200,
+  "home": {
+    "square_feet": 2400,
+    "range_va": 12000,
+    "dryer_va": 5000,
+    "water_heater_va": 4500,
+    "cooling_va": 7200
+  },
+  "planned_loads": [{"label": "EV charger", "va": 11520}]
+}

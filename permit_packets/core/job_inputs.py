@@ -15,7 +15,7 @@ def sample_address(request: JobRequestBase) -> str:
     return f"123 Sample St, {place}" if place else "123 Sample St"
 
 
-def property_plan(request: JobRequestBase, route_between: tuple[str, str]) -> PropertyPlan | None:
+def property_plan(request: JobRequestBase, route_between: tuple[str, str] | None) -> PropertyPlan | None:
     """The request's plan as a PropertyPlan. Sample mode swaps the parcel number for a placeholder."""
     plan = request.plan
     if plan is None:

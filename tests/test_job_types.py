@@ -17,8 +17,10 @@ from tests.test_ev_golden import GOLDEN, to_current_request
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
-# One deterministic request per registered type, from the golden cases.
-SAMPLE_CASES = {"ev_charger": "oro_valley_attached_no_plan"}
+# One deterministic request per registered type. EV loads from the golden cases; the others
+# load from tests/samples, already in the current request shape.
+SAMPLE_CASES = {"ev_charger": "oro_valley_attached_no_plan", "service_upgrade": "service_upgrade"}
+SAMPLES = Path(__file__).parent / "samples"
 
 
 @pytest.fixture
@@ -29,12 +31,14 @@ def client() -> TestClient:
 
 
 def _sample(key: str) -> dict:
+    if key != "ev_charger":
+        return json.loads((SAMPLES / f"{SAMPLE_CASES[key]}.json").read_text())
     return to_current_request(json.loads((GOLDEN / "cases" / f"{SAMPLE_CASES[key]}.json").read_text()))
 
 
 def test_job_types_lists_only_what_the_client_bought(client):
     body = client.get("/api/job-types").json()["job_types"]
-    assert [job_type["key"] for job_type in body] == ["ev_charger"]
+    assert [job_type["key"] for job_type in body] == ["ev_charger", "service_upgrade"]
     ev = body[0]
     assert (ev["slug"], ev["short_label"], ev["icon"], ev["feature_page"]) == ("ev-charger", "EV", "ev", 2)
     assert ev["route_between"] == ["panel", "charger"]
@@ -76,7 +80,7 @@ def test_an_unknown_job_type_on_a_property_call_is_refused(client):
 def test_the_default_client_is_the_demo(monkeypatch):
     monkeypatch.delenv("PERMIT_CLIENT", raising=False)
     assert current_client().key == "demo"
-    assert current_client().job_types == ("ev_charger",)
+    assert current_client().job_types == ("ev_charger", "service_upgrade")
 
 
 def test_an_unknown_client_raises(monkeypatch):

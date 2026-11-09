@@ -70,6 +70,11 @@ def _order(table: tuple[Conductor, ...], size: str) -> int:
     return next(index for index, conductor in enumerate(table) if conductor.size == size)
 
 
+def wire_label(size: str) -> str:
+    """How a size reads on a plan: #4, #2/0, but 250 kcmil."""
+    return f"{size} kcmil" if int(size.split("/")[0]) >= 250 else f"#{size}"
+
+
 def service_conductor(service_amps: int, material: Material) -> Conductor:
     """The smallest conductor rated for 83% of the service (NEC 310.12)."""
     required = SERVICE_CONDUCTOR_FACTOR * service_amps
