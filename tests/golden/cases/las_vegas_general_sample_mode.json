@@ -1,0 +1,50 @@
+{
+  "customer": "Sample Homeowner",
+  "address": "123 Sample St",
+  "contractor": "Sample Electric, LLC",
+  "license_number": "ROC 000000",
+  "city": "Las Vegas",
+  "state": "NV",
+  "sample_mode": true,
+  "location": "exterior_wall",
+  "charger_amps": 32,
+  "run_ft": 40,
+  "trench_ft": 0,
+  "service_amps": 200,
+  "open_breaker_spaces": 4,
+  "home": {
+    "square_feet": 2000,
+    "range_va": 12000,
+    "cooling_va": 7200
+  },
+  "plan": {
+    "scale_ft_per_in": 30,
+    "panel": [
+      400,
+      500
+    ],
+    "charger": [
+      600,
+      500
+    ],
+    "lot": [
+      [
+        250,
+        250
+      ],
+      [
+        750,
+        250
+      ],
+      [
+        750,
+        750
+      ],
+      [
+        250,
+        750
+      ]
+    ],
+    "parcel_number": "138-31-614-010"
+  }
+}

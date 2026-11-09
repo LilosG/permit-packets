@@ -1,0 +1,21 @@
+{
+  "customer": "Sample Homeowner",
+  "address": "123 Sample St",
+  "contractor": "Sample Electric, LLC",
+  "license_number": "ROC 000000",
+  "jurisdiction_key": "oro-valley-az",
+  "location": "exterior_wall",
+  "charger_amps": 64,
+  "connection": "hardwired",
+  "has_solar": true,
+  "charger_model": "Tesla Wall Connector",
+  "run_ft": 45,
+  "trench_ft": 0,
+  "service_amps": 200,
+  "open_breaker_spaces": 4,
+  "home": {
+    "square_feet": 2400,
+    "range_va": 12000,
+    "cooling_va": 7200
+  }
+}

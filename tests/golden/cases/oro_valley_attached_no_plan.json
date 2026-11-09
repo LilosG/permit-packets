@@ -1,0 +1,18 @@
+{
+  "customer": "Sample Homeowner",
+  "address": "123 Sample St",
+  "contractor": "Sample Electric, LLC",
+  "license_number": "ROC 000000",
+  "jurisdiction_key": "oro-valley-az",
+  "location": "attached_garage",
+  "charger_amps": 40,
+  "run_ft": 30,
+  "trench_ft": 0,
+  "service_amps": 200,
+  "open_breaker_spaces": 4,
+  "home": {
+    "square_feet": 2000,
+    "range_va": 12000,
+    "cooling_va": 7200
+  }
+}
