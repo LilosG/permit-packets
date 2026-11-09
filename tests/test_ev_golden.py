@@ -29,7 +29,12 @@ DOCUMENTS_URL = "/api/ev/documents"
 
 def to_current_request(payload: dict) -> dict:
     """Maps a case in the original request shape to what the routes take now."""
-    return payload
+    plan = payload.get("plan")
+    if plan is None:
+        return payload
+    markers = {name: plan[name] for name in ("panel", "charger")}
+    rest = {key: value for key, value in plan.items() if key not in markers}
+    return {**payload, "plan": {**rest, "markers": markers}}
 
 
 @pytest.fixture(scope="module")

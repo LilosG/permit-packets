@@ -29,8 +29,7 @@ class HomeLoadsRequest(BaseModel):
 
 class PropertyPlanRequest(BaseModel):
     scale_ft_per_in: int = Field(gt=0, le=200)
-    panel: PlanPoint
-    charger: PlanPoint
+    markers: dict[str, PlanPoint] = Field(max_length=8)
     route: list[PlanPoint] = Field(default_factory=list, max_length=20)
     buildings: list[list[PlanPoint]] = Field(default_factory=list, max_length=200)
     primary_building: int | None = None

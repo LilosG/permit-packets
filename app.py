@@ -169,7 +169,8 @@ def _plan(payload: EvJobRequest) -> PropertyPlan | None:
     except ValueError as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
     return PropertyPlan(
-        scale_ft_per_in=plan.scale_ft_per_in, panel=plan.panel, charger=plan.charger, route=plan.route,
+        scale_ft_per_in=plan.scale_ft_per_in, markers=plan.markers, route=plan.route,
+        route_between=("panel", "charger"),
         buildings=plan.buildings, primary_building=plan.primary_building, lot=plan.lot,
         parcel_number=SAMPLE_PARCEL if payload.sample_mode else plan.parcel_number,
         aerial_jpeg=aerial, credits=plan.credits,

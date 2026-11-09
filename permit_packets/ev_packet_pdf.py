@@ -14,9 +14,10 @@ from permit_packets.core.pdf_base import (
     BODY, CELL, CELL_BOLD, CONTENT, COPPER, CREDIT, GREEN, H1, H2, INK, MUTED, PALE, SMALL, SOFT,
     _heads, _p, _table, build_document, cover_page, review_page,
 )
-from permit_packets.core.site_plan import AerialSitePlan
+from permit_packets.core.site_plan import AerialSitePlan, PlanMarker
 from permit_packets.ev_charger import BURIAL_DEPTH_IN, LOCATION_LABELS, EvPacket
 
+PLAN_COPPER = colors.HexColor("#c8682a")  # the EV dot on the site plan, same as on screen
 SECTION_PAGES = {
     "application": 2, "site_plan": 3, "one_line": 4, "load": 5, "equipment": 6, "review": 7,
 }
@@ -454,6 +455,15 @@ def _review(packet: EvPacket) -> list:
     return review_page(items)
 
 
+def _plan_markers(packet: EvPacket) -> list[PlanMarker]:
+    plan = packet.job.plan
+    charger = plan.markers["charger"]
+    markers = [PlanMarker(plan.markers["panel"], INK, "P"), PlanMarker(charger, PLAN_COPPER, "EV")]
+    if packet.disconnect_amps:
+        markers.append(PlanMarker((charger[0] + 36, charger[1]), GREEN, "D"))
+    return markers
+
+
 def _site_plan(packet: EvPacket) -> list:
     job = packet.job
     plan = job.plan
@@ -475,7 +485,7 @@ def _site_plan(packet: EvPacket) -> list:
     if plan.lot:
         legend.append("Dashed yellow: lot line")
     measures = [f"Wire run with rises: {job.run_ft} ft"]
-    setback = plan.charger_to_lot_line_ft
+    setback = plan.distance_to_lot_line_ft(plan.markers["charger"])
     if setback is not None:
         measures.append(f"Charger to nearest lot line: {setback} ft")
     measures.append(f"Scale 1 in = {plan.scale_ft_per_in} ft when printed at 100%")
@@ -485,7 +495,7 @@ def _site_plan(packet: EvPacket) -> list:
         _p(job.address + (f". Parcel {plan.parcel_number}." if plan.parcel_number else "."), SMALL),
         Spacer(1, 6),
         AerialSitePlan(
-            plan, disconnect=bool(packet.disconnect_amps), underground=bool(job.trench_ft), width=CONTENT,
+            plan, markers=_plan_markers(packet), underground=bool(job.trench_ft), width=CONTENT,
         ),
         Spacer(1, 6),
         _table([[_p("\n".join(legend)), _p("\n".join(measures))]], [CONTENT / 2, CONTENT / 2], head=False),

@@ -63,7 +63,8 @@ def _aerial() -> bytes:
 
 
 def _plan(**changes) -> PropertyPlan:
-    values = dict(scale_ft_per_in=30, panel=(400, 500), charger=(600, 500), route=[(500, 400)],
+    markers = {"panel": changes.pop("panel", (400, 500)), "charger": changes.pop("charger", (600, 500))}
+    values = dict(scale_ft_per_in=30, markers=markers, route_between=("panel", "charger"), route=[(500, 400)],
                   buildings=[[(350, 350), (650, 350), (650, 650), (350, 650)]], primary_building=0,
                   lot=[tuple(point) for point in SQUARE_LOT], parcel_number="123-456", aerial_jpeg=_aerial(),
                   credits=["Credit"])
@@ -209,7 +210,7 @@ def test_documents_route_returns_one_pdf_per_page(client):
 
 
 def test_a_plan_with_an_aerial_goes_through_the_route(client):
-    plan = {"scale_ft_per_in": 30, "panel": [400, 500], "charger": [600, 500], "lot": SQUARE_LOT,
+    plan = {"scale_ft_per_in": 30, "markers": {"panel": [400, 500], "charger": [600, 500]}, "lot": SQUARE_LOT,
             "aerial_base64": base64.b64encode(_aerial()).decode(), "credits": ["Credit"]}
     response = client.post("/api/ev/packet", json=_payload(plan=plan))
     assert response.status_code == 200
@@ -217,7 +218,7 @@ def test_a_plan_with_an_aerial_goes_through_the_route(client):
 
 
 def test_sample_mode_hides_the_address_and_parcel(client):
-    plan = {"scale_ft_per_in": 30, "panel": [400, 500], "charger": [600, 500], "lot": SQUARE_LOT,
+    plan = {"scale_ft_per_in": 30, "markers": {"panel": [400, 500], "charger": [600, 500]}, "lot": SQUARE_LOT,
             "parcel_number": "13831614010"}
     body = _payload(address="309 Real St, Las Vegas, NV", city="Las Vegas", state="NV", plan=plan, sample_mode=True)
     response = client.post("/api/ev/packet", json=body).json()
@@ -314,7 +315,7 @@ def test_plan_measures_route_and_setback_at_scale():
     plan = _plan(route=[])
     assert plan.feet_per_unit == 0.21
     assert plan.measured_route_ft == 42
-    assert plan.charger_to_lot_line_ft == 32
+    assert plan.distance_to_lot_line_ft(plan.markers["charger"]) == 32
     assert sorted(edge.length_ft for edge in plan.lot_edges) == [105, 105, 105, 105]
 
 

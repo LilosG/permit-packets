@@ -164,9 +164,9 @@ class Edge:
 @dataclass(frozen=True)
 class PropertyPlan:
     scale_ft_per_in: int
-    panel: Point
-    charger: Point
-    route: list[Point]
+    markers: dict[str, Point]
+    route: list[Point] = field(default_factory=list)
+    route_between: tuple[str, str] | None = None
     buildings: list[list[Point]] = field(default_factory=list)
     primary_building: int | None = None
     lot: list[Point] = field(default_factory=list)
@@ -180,7 +180,11 @@ class PropertyPlan:
 
     @property
     def route_points(self) -> list[Point]:
-        return [self.panel, *self.route, self.charger]
+        """The marked route: its start marker, the bends, then its end marker."""
+        if self.route_between is None:
+            return []
+        start, end = self.route_between
+        return [self.markers[start], *self.route, self.markers[end]]
 
     @property
     def measured_route_ft(self) -> int:
@@ -196,10 +200,9 @@ class PropertyPlan:
             for a, b in zip(ring, ring[1:])
         ]
 
-    @property
-    def charger_to_lot_line_ft(self) -> int | None:
+    def distance_to_lot_line_ft(self, point: Point) -> int | None:
         if len(self.lot) < 3:
             return None
         ring = self.lot + [self.lot[0]]
-        nearest = min(distance_to_segment(self.charger, a, b) for a, b in zip(ring, ring[1:]))
+        nearest = min(distance_to_segment(point, a, b) for a, b in zip(ring, ring[1:]))
         return round(nearest * self.feet_per_unit)

@@ -28,6 +28,12 @@ class EvJobRequest(BaseModel):
     plan: PropertyPlanRequest | None = None
 
     @model_validator(mode="after")
+    def plan_marks_the_panel_and_charger(self) -> "EvJobRequest":
+        if self.plan is not None and not {"panel", "charger"} <= self.plan.markers.keys():
+            raise ValueError("the plan needs a panel marker and a charger marker")
+        return self
+
+    @model_validator(mode="after")
     def trench_fits_the_run(self) -> "EvJobRequest":
         if self.trench_ft > self.run_ft:
             raise ValueError("the trench can't be longer than the whole circuit run")
