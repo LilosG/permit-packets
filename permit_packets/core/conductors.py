@@ -113,3 +113,104 @@ def service_conduit(conductor: Conductor, conduit_type: str) -> str:
 def solar_fits(bus_amps: int, main_amps: int, pv_breaker_amps: int) -> bool:
     """NEC 705.12(B)(3)(2): main plus PV breaker within 120% of the bus, PV breaker at the far end."""
     return main_amps + pv_breaker_amps <= BUS_BACKFEED_FACTOR * bus_amps
+
+
+# Feeders to a subpanel, 120/240 V single-phase.
+
+# NEC 250.122: the equipment grounding conductor by the largest breaker it covers.
+# Each row is (largest breaker, copper size, aluminum size).
+EGC_TABLE = (
+    (15, "14", "12"), (20, "12", "10"), (60, "10", "8"), (100, "8", "6"),
+    (200, "6", "4"), (300, "4", "2"), (400, "3", "1"),
+)
+# Chapter 9 Table 5 THWN-2 areas for the small grounds _SIZES doesn't list. Conduit fill only.
+SMALL_GROUND_AREA_SQ_IN = {"14": 0.0097, "12": 0.0133, "10": 0.0211}
+_SMALL_GROUND_CIRCULAR_MILS = {"14": 4110, "12": 6530, "10": 10380}
+# Resistance constants for the voltage drop formula.
+ALUMINUM_K = 21.2
+COPPER_K = 12.9
+_K = {"copper": COPPER_K, "aluminum": ALUMINUM_K}
+FEEDER_VOLTS = 240
+MAX_FEEDER_VOLTAGE_DROP_PERCENT = 3.0
+LARGEST_FEEDER_SIZE = "350"
+FEEDER_CONDUCTORS_IN_CONDUIT = 3  # two hots and a full-size neutral, plus the ground
+EGC_TOLERANCE = 0.99  # published circular mils are rounded, so a ratio within 1% counts
+
+
+@dataclass(frozen=True)
+class Feeder:
+    conductor: Conductor
+    egc: str
+    upsized: bool
+    vd_volts: float
+    vd_percent: float
+
+
+def _ground_properties(size: str) -> tuple[int, float]:
+    """Circular mils and THWN-2 area of a ground wire, small sizes included."""
+    if size in SMALL_GROUND_AREA_SQ_IN:
+        return _SMALL_GROUND_CIRCULAR_MILS[size], SMALL_GROUND_AREA_SQ_IN[size]
+    conductor = COPPER_75C[_order(COPPER_75C, size)]
+    return conductor.circular_mils, conductor.area_sq_in
+
+
+def feeder_conductor(breaker: int, material: Material, whole_dwelling: bool = False) -> Conductor:
+    """The smallest conductor rated for the breaker (NEC 240.4), or 83% of it when the
+    feeder carries a whole dwelling (NEC 310.12)."""
+    required = breaker * (SERVICE_CONDUCTOR_FACTOR if whole_dwelling else 1)
+    for conductor in _TABLES[material]:
+        if conductor.ampacity_75c >= required:
+            return conductor
+    raise ValueError(f"no listed conductor carries {required:g} A in {material}")
+
+
+def feeder_voltage_drop(
+    amps: float, one_way_ft: float, conductor: Conductor, material: Material,
+) -> tuple[float, float]:
+    """Volts dropped and that as a percent of 240 V, for a two-wire run."""
+    drop = 2 * _K[material] * amps * one_way_ft / conductor.circular_mils
+    return drop, drop / FEEDER_VOLTS * 100
+
+
+def _feeder_egc(breaker: int, material: Material, start: Conductor, chosen: Conductor) -> str:
+    """The EGC for the breaker, grown in proportion to the hots when they were upsized (NEC 250.122(B))."""
+    column = 1 if material == "copper" else 2
+    base = next(row[column] for row in EGC_TABLE if breaker <= row[0])
+    if chosen is start:
+        return base
+    required = _ground_properties(base)[0] * chosen.circular_mils / start.circular_mils * EGC_TOLERANCE
+    sizes = [*SMALL_GROUND_AREA_SQ_IN, *(conductor.size for conductor in _TABLES[material])]
+    for size in sizes:
+        if _ground_properties(size)[0] >= required:
+            # Never larger than the hots.
+            return size if _ground_properties(size)[0] <= chosen.circular_mils else chosen.size
+    return chosen.size
+
+
+def size_feeder(
+    breaker: int, material: Material, load_amps: float, one_way_ft: float, whole_dwelling: bool = False,
+) -> Feeder:
+    """Start at the breaker's conductor, then step up until voltage drop is within 3%, up to 350 kcmil."""
+    table = _TABLES[material]
+    start = feeder_conductor(breaker, material, whole_dwelling)
+    last = _order(table, LARGEST_FEEDER_SIZE)
+    chosen = start
+    for conductor in table[_order(table, start.size):last + 1]:
+        chosen = conductor
+        if feeder_voltage_drop(load_amps, one_way_ft, conductor, material)[1] <= MAX_FEEDER_VOLTAGE_DROP_PERCENT:
+            break
+    volts, percent = feeder_voltage_drop(load_amps, one_way_ft, chosen, material)
+    return Feeder(
+        conductor=chosen, egc=_feeder_egc(breaker, material, start, chosen),
+        upsized=chosen is not start, vd_volts=volts, vd_percent=percent,
+    )
+
+
+def feeder_conduit(feeder: Feeder, conduit_type: str) -> str:
+    """The smallest conduit that holds two hots, a neutral and the EGC at 40% fill."""
+    fill = FEEDER_CONDUCTORS_IN_CONDUIT * feeder.conductor.area_sq_in + _ground_properties(feeder.egc)[1]
+    sizes = SERVICE_CONDUIT_FILL_SQ_IN[conduit_type]
+    for size, capacity in sizes:
+        if fill <= capacity:
+            return size
+    raise ValueError(f"{fill:.3f} sq in is too much wire for {conduit_type} up to {sizes[-1][0]}")
