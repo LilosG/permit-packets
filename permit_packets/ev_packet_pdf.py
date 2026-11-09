@@ -268,7 +268,8 @@ def _cover(packet: EvPacket) -> list:
     jurisdiction = job.jurisdiction
     checklist_cell = (
         f"{jurisdiction.label}\nFrom the city's published checklist"
-        if jurisdiction.known else f"{jurisdiction.label}\nGeneral checklist, city rules added in setup"
+        if jurisdiction.known_for("ev_charger")
+        else f"{jurisdiction.label}\nGeneral checklist, city rules added in setup"
     )
     parcel = f"\nParcel {job.plan.parcel_number}" if job.plan and job.plan.parcel_number else ""
     return cover_page(
@@ -279,7 +280,7 @@ def _cover(packet: EvPacket) -> list:
         contractor_cell=f"{job.contractor}\nLicense {job.license_number}",
         checklist_cell=checklist_cell,
         checklist_rows=[(requirement.item, *_checklist_row(packet, requirement.section))
-                        for requirement in jurisdiction.checklist],
+                        for requirement in jurisdiction.checklist_for("ev_charger").items],
         checks=[(check.name, check.result, check.passed) for check in packet.checks],
         flags=packet.flags,
     )

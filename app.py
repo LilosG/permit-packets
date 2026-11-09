@@ -7,7 +7,6 @@ import hmac
 import os
 import secrets
 import time
-from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
@@ -15,7 +14,7 @@ from fastapi.responses import FileResponse
 
 from permit_packets.ev_charger import EvJob, EvPacket, build_ev_packet
 from permit_packets.ev_packet_pdf import application_fields, render_ev_packet_pdf, scope_of_work
-from permit_packets.jurisdictions import Jurisdiction, jurisdiction_by_key
+from permit_packets.jurisdictions import jurisdiction_by_key, jurisdiction_json
 from permit_packets.core.load_calculation import HomeLoads
 from permit_packets.core.preview import packet_documents_zip, packet_page_images
 from permit_packets.core.property_lookup import (
@@ -91,14 +90,6 @@ def sign_in(payload: LoginRequest, request: Request, response: Response) -> dict
     return {"ok": True}
 
 
-def _jurisdiction_json(jurisdiction: Jurisdiction) -> dict:
-    return {
-        **{key: value for key, value in asdict(jurisdiction).items() if key not in {"checklist", "notes"}},
-        "label": jurisdiction.label,
-        "checklist": [requirement.item for requirement in jurisdiction.checklist],
-    }
-
-
 @app.post("/api/property/suggest", dependencies=[Depends(require_session)])
 def address_suggestions(payload: SuggestRequest) -> dict:
     return {"suggestions": suggest_addresses(payload.text)}
@@ -115,7 +106,7 @@ def _property_json(found: FoundProperty) -> dict:
         "address_confirmed": found.address_confirmed,
         "parcel_house_number": found.parcel_house_number,
         "anchor": {"latitude": found.anchor[0], "longitude": found.anchor[1]},
-        "jurisdiction": _jurisdiction_json(found.jurisdiction),
+        "jurisdiction": jurisdiction_json(found.jurisdiction, "ev_charger"),
         "view": {
             "latitude": found.view.latitude,
             "longitude": found.view.longitude,
@@ -219,7 +210,7 @@ def build_packet(payload: EvJobRequest) -> dict:
             for check in packet.checks
         ],
         "flags": packet.flags,
-        "jurisdiction": _jurisdiction_json(packet.job.jurisdiction),
+        "jurisdiction": jurisdiction_json(packet.job.jurisdiction, "ev_charger"),
         "address": packet.job.address,
         "fields": [
             *({"label": label, "value": value} for label, value in application_fields(packet)),
