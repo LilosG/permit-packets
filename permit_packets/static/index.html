@@ -7,148 +7,24 @@
 <title>EV Permit Packets</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
-<style>
-:root { --ink: #15212c; --muted: #566572; --rule: #cfd7dd; --paper: #e6ebee; --sheet: #fbfcfc; --copper: #a8551f; --copper-soft: #f4e4d8; --green: #1f7a58; --green-soft: #e4f3ec; --red: #b42318; --red-soft: #fdf0ef; --display: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif; }
-* { box-sizing: border-box; }
-[hidden] { display: none !important; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 "IBM Plex Sans", system-ui, sans-serif; }
-header { background: var(--ink); color: #fff; }
-.bar { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; max-width: 1120px; margin: 0 auto; padding: 14px 16px; }
-.bar strong { font: 700 22px/1.1 var(--display); }
-.bar span { color: #c5ced5; font-size: 14px; }
-main { max-width: 1120px; margin: 0 auto; padding: 20px 16px 56px; }
-ol.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 20px; padding: 0; list-style: none; border: 1.5px solid var(--ink); background: var(--sheet); }
-ol.steps li { padding: 9px 12px; border-left: 1.5px solid var(--ink); color: var(--muted); font-size: 14px; font-weight: 600; }
-ol.steps li:first-child { border-left: 0; }
-ol.steps li.done { background: var(--green-soft); color: var(--green); }
-ol.steps li.now { background: var(--ink); color: #fff; }
-.sheet { border: 1.5px solid var(--ink); background: var(--sheet); padding: 24px; }
-.sheet + .sheet { margin-top: 16px; }
-h1 { margin: 0; font: 700 34px/1.08 var(--display); }
-h2 { margin: 0 0 10px; font: 700 22px/1.15 var(--display); }
-.lead { max-width: 64ch; margin: 6px 0 0; color: var(--muted); }
-.block { margin-top: 24px; }
-.grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-label.field { display: block; font-size: 14px; font-weight: 500; }
-label.field input { display: block; width: 100%; margin-top: 4px; padding: 10px 11px; border: 1px solid var(--rule); border-radius: 2px; background: #fff; color: var(--ink); font: inherit; }
-.hint { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; font-weight: 400; }
-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
-legend { margin-bottom: 6px; padding: 0; font-size: 14px; font-weight: 500; }
-.choices { display: flex; flex-wrap: wrap; gap: 8px; }
-.choice { position: relative; }
-.choice input { position: absolute; opacity: 0; }
-.choice span { display: block; padding: 9px 14px; border: 1px solid var(--rule); border-radius: 2px; background: #fff; cursor: pointer; font-size: 15px; }
-.choice input:checked + span { border-color: var(--ink); background: var(--ink); color: #fff; }
-.choice input:focus-visible + span, button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
-details { margin-top: 16px; }
-summary { cursor: pointer; font-size: 15px; font-weight: 500; }
-details .grid { margin-top: 12px; }
-.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 24px; }
-button, a.button { display: inline-block; padding: 12px 20px; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: #fff; font: 600 15px "IBM Plex Sans", system-ui, sans-serif; text-decoration: none; cursor: pointer; }
-button.quiet, a.quiet { background: #fff; color: var(--ink); }
-button.link { padding: 0; border: 0; background: none; color: var(--copper); text-decoration: underline; }
-button:disabled { cursor: not-allowed; opacity: .4; }
-.error { margin-top: 14px; padding: 10px 12px; border: 1px solid #f3c2bd; background: var(--red-soft); color: var(--red); font-size: 15px; }
-ul.plain { margin: 0; padding: 0; list-style: none; }
-
-.search { display: flex; gap: 10px; margin-top: 18px; }
-.combo { position: relative; flex: 1; min-width: 0; }
-.combo input { width: 100%; padding: 12px; border: 1px solid var(--ink); border-radius: 2px; font: inherit; }
-#suggestions { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; margin: 0; padding: 0; list-style: none; border: 1px solid var(--ink); border-top: 0; background: #fff; }
-#suggestions li { padding: 10px 12px; border-top: 1px solid var(--rule); cursor: pointer; }
-#suggestions li:first-child { border-top: 0; }
-#suggestions li[aria-selected="true"], #suggestions li:hover { background: var(--copper-soft); }
-#suggestions li.credit { padding: 5px 12px; color: var(--muted); font-size: 12px; cursor: default; background: #fff; }
-.drawing { display: grid; grid-template-columns: minmax(0, 1fr) 320px; margin-top: 20px; border: 1.5px solid var(--ink); }
-.stage { position: relative; aspect-ratio: 1; background: #dfe5e9; overflow: hidden; }
-.stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.stage svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: manipulation; cursor: crosshair; }
-.loading { position: absolute; left: 12px; top: 12px; padding: 5px 10px; background: var(--ink); color: #fff; font-size: 13px; }
-.zoom { position: absolute; right: 10px; top: 10px; display: grid; gap: 1px; background: var(--ink); border: 1px solid var(--ink); }
-.zoom button { width: 40px; height: 40px; padding: 0; border: 0; border-radius: 0; background: #fff; color: var(--ink); font-size: 22px; line-height: 1; }
-.located { margin-top: 6px; font-size: 14px; font-weight: 500; }
-.located.good { color: var(--green); }
-.located.check { color: var(--red); }
-.pick-note { position: absolute; left: 12px; right: 62px; bottom: 12px; padding: 8px 10px; background: var(--ink); color: #fff; font-size: 14px; }
-.titleblock { display: flex; flex-direction: column; border-left: 1.5px solid var(--ink); }
-.titleblock > div { padding: 14px 16px; border-bottom: 1.5px solid var(--ink); }
-.titleblock > div:last-child { flex: 1; border-bottom: 0; }
-.tb-label { color: var(--muted); font-size: 13px; }
-.tb-value { font-weight: 600; overflow-wrap: anywhere; }
-.tb-big { font: 700 30px/1.1 var(--display); }
-.checklist-link { font-size: 14px; color: var(--copper); }
-.tools { display: grid; gap: 8px; }
-.tool { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--rule); background: #fff; color: var(--ink); text-align: left; font-weight: 500; }
-.tool .dot { flex: none; width: 24px; height: 24px; border-radius: 50%; color: #fff; font: 700 12px/24px "IBM Plex Sans", sans-serif; text-align: center; }
-.tool[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 4px 0 0 var(--copper); }
-.tool .state { margin-left: auto; color: var(--green); font-size: 13px; font-weight: 600; }
-.small-actions { display: flex; gap: 16px; margin-top: 12px; font-size: 14px; }
-
-#build-list { margin-top: 18px; }
-#build-list li { display: flex; gap: 10px; padding: 8px 0; color: var(--muted); opacity: .35; }
-#build-list li::before { content: ""; flex: none; width: 16px; height: 16px; margin-top: 4px; border-radius: 50%; background: var(--rule); }
-#build-list li.done { opacity: 1; color: var(--ink); }
-#build-list li.done::before { background: var(--green); }
-.status { padding: 14px 16px; background: var(--green-soft); }
-.status.bad { background: var(--red-soft); }
-.status strong { display: block; font: 700 24px/1.15 var(--display); }
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 16px 0 0; border: 1px solid var(--rule); }
-.stats div { padding: 10px 12px; border-left: 1px solid var(--rule); }
-.stats div:first-child { border-left: 0; }
-.stats dt { color: var(--muted); font-size: 13px; }
-.stats dd { margin: 0; font: 700 24px/1.15 var(--display); }
-.checks li { padding: 8px 0; border-top: 1px solid var(--rule); font-size: 15px; }
-.checks li:first-child { border-top: 0; }
-.pass { color: var(--green); font-weight: 600; }
-.fix { color: var(--red); font-weight: 600; }
-.flag { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; font-size: 15px; cursor: pointer; }
-.flag input { flex: none; width: 18px; height: 18px; margin-top: 3px; accent-color: var(--green); }
-#pages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-#pages a { display: block; border: 1px solid var(--rule); }
-#pages a.feature { grid-column: span 2; grid-row: span 2; border-color: var(--ink); }
-#pages img { display: block; width: 100%; height: auto; }
-#review-count { color: var(--muted); font-size: 14px; }
-
-.how { padding: 14px 16px; background: var(--copper-soft); }
-.fields { margin: 0; border-top: 1px solid var(--rule); }
-.fields div { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--rule); }
-.fields dt { color: var(--muted); font-size: 14px; }
-.fields dd { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
-.copy { padding: 3px 10px; background: #fff; color: var(--ink); font-size: 13px; }
-pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background: #fff; font: 15px/1.5 "IBM Plex Sans", system-ui, sans-serif; white-space: pre-wrap; }
-.note { margin-top: 16px; color: var(--muted); font-size: 14px; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-@media (max-width: 860px) {
-  .drawing { grid-template-columns: minmax(0, 1fr); }
-  .titleblock { border-left: 0; border-top: 1.5px solid var(--ink); }
-  #pages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 640px) {
-  .sheet { padding: 18px 16px; }
-  h1 { font-size: 30px; }
-  .grid, .grid.three { grid-template-columns: minmax(0, 1fr); }
-  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .stats div:nth-child(3) { border-left: 0; }
-  .stats div:nth-child(n+3) { border-top: 1px solid var(--rule); }
-  ol.steps li { padding: 8px; font-size: 13px; }
-  .search { flex-direction: column; }
-  .bar span { display: none; }
-  .fields div { grid-template-columns: minmax(0, 1fr) auto; }
-  .fields dt { grid-column: 1 / -1; }
-  .actions button, .actions a.button { width: 100%; text-align: center; }
-}
-</style>
+<link rel="stylesheet" href="/assets/css/app.css?v={{ASSET_VERSION}}">
 </head>
 <body>
-<header><div class="bar"><strong>EV permit packets</strong><span id="bar-city">Demo</span></div></header>
+<header><div class="bar"><strong id="brand">EV permit packets</strong><span id="bar-city">Demo</span></div></header>
 <main>
-  <ol class="steps" aria-label="Progress">
+  <ol class="steps" id="steps" aria-label="Progress">
     <li data-step="1">Property</li>
     <li data-step="2">Job</li>
     <li data-step="3">Review</li>
     <li data-step="4">Submit</li>
   </ol>
+
+  <section class="sheet" data-panel="0" hidden>
+    <h1>Choose the job type</h1>
+    <p class="lead">Each type has its own details and packet. Pick the one you're permitting.</p>
+    <div class="types" id="type-list" role="radiogroup" aria-label="Job type"></div>
+    <div class="actions"><button type="button" id="type-continue" disabled>Continue</button></div>
+  </section>
 
   <section class="sheet" data-panel="1">
     <h1>Start with the address</h1>
@@ -161,7 +37,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
       <button type="submit" id="find-button">Find property</button>
     </form>
     <div class="error" id="find-error" role="alert" hidden></div>
-    <p class="small-actions"><button type="button" class="link" id="use-sample">No address handy? Use a sample layout</button></p>
+    <p class="small-actions"><button type="button" class="link" id="use-sample">No address handy? Use a sample layout</button><button type="button" class="link" id="change-type" hidden>Change job type</button></p>
 
     <div id="site" hidden>
       <div class="drawing">
@@ -176,14 +52,10 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
           <div><span class="tb-label">Property</span><div class="tb-value" id="tb-address"></div><div class="tb-label" id="tb-parcel"></div><div class="located" id="tb-located"></div><button type="button" class="link" id="wrong-house">Wrong house? Tap the right one</button></div>
           <div><span class="tb-label">Jurisdiction</span><div class="tb-value" id="tb-city"></div><a class="checklist-link" id="tb-checklist" target="_blank" rel="noopener"></a></div>
           <div>
-            <div class="tools">
-              <button type="button" class="tool" data-tool="panel"><span class="dot" style="background:#15212c">P</span>Tap the main panel<span class="state" id="state-panel"></span></button>
-              <button type="button" class="tool" data-tool="charger"><span class="dot" style="background:#c8682a">EV</span>Tap the charger<span class="state" id="state-charger"></span></button>
-              <button type="button" class="tool" data-tool="bend"><span class="dot" style="background:#566572">+</span>Add a bend in the route<span class="state" id="state-bend"></span></button>
-            </div>
+            <div class="tools" id="tools"></div>
             <div class="small-actions"><button type="button" class="link" id="undo">Undo</button><button type="button" class="link" id="clear">Start over</button></div>
           </div>
-          <div><span class="tb-label">Measured route</span><div class="tb-big" id="tb-route">Not marked yet</div><div class="tb-label" id="tb-scale"></div></div>
+          <div id="tb-route-block"><span class="tb-label">Measured route</span><div class="tb-big" id="tb-route">Not marked yet</div><div class="tb-label" id="tb-scale"></div></div>
         </div>
       </div>
       <div class="actions"><button type="button" id="to-job" disabled>Continue to job details</button></div>
@@ -195,9 +67,10 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
     <p class="lead" id="job-lead"></p>
     <div class="block grid">
       <label class="field">Customer<input name="customer" value="Sample Homeowner" required maxlength="120"></label>
-      <label class="field">Charger make and model<input name="charger_model" placeholder="Example: Tesla Wall Connector" maxlength="120"></label>
+      <div class="contents" data-job-type="ev_charger"><label class="field">Charger make and model<input name="charger_model" placeholder="Example: Tesla Wall Connector" maxlength="120"></label></div>
     </div>
     <label class="flag" style="margin-top:10px"><input type="checkbox" name="sample_mode"><span>Sample mode: hide the real address and parcel number, for sharing outside your team</span></label>
+    <div data-job-type="ev_charger">
     <div class="block">
       <h2>Charger</h2>
       <div class="grid">
@@ -223,11 +96,12 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
         <label class="field">Main panel size (A)<input name="service_amps" type="number" min="60" max="800" value="200" required></label>
       </div>
     </div>
-    <div class="block">
+    </div>
+    <div class="block" data-uses="home_loads">
       <h2>The home</h2>
       <div class="grid three">
         <label class="field">Square feet<input data-home name="square_feet" type="number" min="1" max="30000" value="3100" required></label>
-        <label class="field">Open breaker spaces<input name="open_breaker_spaces" type="number" min="0" max="60" value="2" required></label>
+        <div class="contents" data-job-type="ev_charger"><label class="field">Open breaker spaces<input name="open_breaker_spaces" type="number" min="0" max="60" value="2" required></label></div>
       </div>
       <fieldset style="margin-top:14px"><legend>What's in the home</legend><div class="choices" id="appliances">
         <label class="choice"><input type="checkbox" data-load="range_va" data-va="12000" checked><span>Electric range</span></label>
@@ -236,11 +110,13 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
         <label class="choice"><input type="checkbox" data-load="cooling_va" data-va="7200" checked><span>Air conditioning</span></label>
         <label class="choice"><input type="checkbox" data-load="heating_va" data-va="10000"><span>Electric heat</span></label>
         <label class="choice"><input type="checkbox" data-load="hot_tub_or_pool_va" data-va="1800" checked><span>Pool or hot tub</span></label>
-        <label class="choice"><input type="checkbox" name="has_solar"><span>Solar</span></label>
+        <div class="contents" data-job-type="ev_charger"><label class="choice"><input type="checkbox" name="has_solar"><span>Solar</span></label></div>
       </div></fieldset>
+    </div>
+    <div>
       <details>
-        <summary>Exact nameplate values and contractor</summary>
-        <div class="grid three">
+        <summary id="details-summary">Exact nameplate values and contractor</summary>
+        <div class="grid three" data-uses="home_loads">
           <label class="field">Range (VA)<input data-home name="range_va" type="number" min="0" value="12000"></label>
           <label class="field">Cooktop (VA)<input data-home name="cooktop_va" type="number" min="0" value="0"></label>
           <label class="field">Oven (VA)<input data-home name="oven_va" type="number" min="0" value="0"></label>
@@ -256,7 +132,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
           <label class="field">Small appliance circuits<input data-home name="small_appliance_circuits" type="number" min="2" max="12" value="2"></label>
           <label class="field">Laundry circuits<input data-home name="laundry_circuits" type="number" min="0" max="3" value="1"></label>
         </div>
-        <div class="grid" style="margin-top:14px">
+        <div class="grid" id="contractor-grid" style="margin-top:14px">
           <label class="field">Contractor<input name="contractor" value="Sample Electric, LLC" required maxlength="120"></label>
           <label class="field">License number<input name="license_number" value="000000" required maxlength="60"></label>
         </div>
@@ -329,481 +205,8 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   </div>
 </main>
 
-<script>
-  const $ = (selector) => document.querySelector(selector);
-  const $$ = (selector) => [...document.querySelectorAll(selector)];
-  const esc = (value) => String(value ?? '')
-    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-
-  const TICK_MS = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 320;
-  const RISE_ALLOWANCE_FT = 10;
-  const SAMPLE = { address: '123 Sample St, Oro Valley, AZ 85737', jurisdiction_key: 'oro-valley-az', label: 'Oro Valley, AZ' };
-  const form = $('#job');
-  let property = null;
-  let aerial = null;
-  let aerialCredit = null;
-  let marks = { panel: null, charger: null, bends: [] };
-  let tool = 'panel';
-  let picking = false;
-  let runEdited = false;
-  let packetUrl = null;
-  let lastJob = null;
-  let lastResult = null;
-
-  function show(step) {
-    $$('[data-panel]').forEach((panel) => { panel.hidden = panel.dataset.panel !== String(step); });
-    const current = step === 'building' ? 3 : step;
-    $$('ol.steps li').forEach((item) => {
-      const number = Number(item.dataset.step);
-      item.classList.toggle('done', number < current);
-      item.classList.toggle('now', number === current);
-    });
-    window.scrollTo(0, 0);
-  }
-
-  async function api(path, body) {
-    const response = await fetch(path, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    });
-    if (response.status === 401) { location.reload(); throw new Error('Sign in again to continue.'); }
-    if (response.ok) return response;
-    const data = await response.json().catch(() => ({}));
-    const detail = Array.isArray(data.detail) ? data.detail[0]?.msg?.replace(/^Value error, /, '') : data.detail;
-    throw new Error(detail || `The request failed (${response.status}). Try again.`);
-  }
-
-  /* The plan: outlines, lot line and the marked route, in 0-1000 plan units. */
-  function poly(points, attrs) {
-    return `<polygon points="${points.map((p) => p.join(',')).join(' ')}" ${attrs}/>`;
-  }
-  function routePoints() {
-    return marks.panel && marks.charger ? [marks.panel, ...marks.bends, marks.charger] : [];
-  }
-  function measuredFt() {
-    const points = routePoints();
-    let units = 0;
-    for (let i = 1; i < points.length; i += 1) units += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
-    return Math.round(units * property.view.feet_per_unit);
-  }
-  function marker(point, fill, text) {
-    return `<g transform="translate(${point[0]} ${point[1]})"><circle r="19" fill="${fill}" stroke="#fff" stroke-width="4"/><text text-anchor="middle" dy="7" font-size="20" font-weight="700" fill="#fff" font-family="IBM Plex Sans, sans-serif">${text}</text></g>`;
-  }
-  function drawPlan() {
-    /* The photo shows the buildings, and outline data can sit a few feet off. */
-    let svg = aerial ? '' : property.buildings.map((building, index) =>
-      poly(building, `fill="${index === property.primary_building ? 'rgba(255,255,255,.14)' : 'none'}" stroke="#15212c" stroke-width="${index === property.primary_building ? 4 : 2}"`)).join('');
-    if (property.lot.length) {
-      svg += poly(property.lot, 'fill="none" stroke="#15212c" stroke-width="7"');
-      svg += poly(property.lot, 'fill="none" stroke="#ffd84d" stroke-width="3.5" stroke-dasharray="16 9"');
-    }
-    const route = routePoints();
-    if (route.length) {
-      const line = route.map((p) => p.join(',')).join(' ');
-      svg += `<polyline points="${line}" fill="none" stroke="#fff" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>`;
-      svg += `<polyline points="${line}" fill="none" stroke="#c8682a" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>`;
-    }
-    marks.bends.forEach((point) => { svg += `<circle cx="${point[0]}" cy="${point[1]}" r="9" fill="#fff" stroke="#c8682a" stroke-width="5"/>`; });
-    if (marks.panel) svg += marker(marks.panel, '#15212c', 'P');
-    if (marks.charger) svg += marker(marks.charger, '#c8682a', 'EV');
-    $('#overlay').innerHTML = svg;
-
-    $$('.tool').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.tool === tool)));
-    $('#state-panel').textContent = marks.panel ? 'Placed' : '';
-    $('#state-charger').textContent = marks.charger ? 'Placed' : '';
-    $('#state-bend').textContent = marks.bends.length ? String(marks.bends.length) : '';
-    $('#tb-route').textContent = route.length ? `${measuredFt()} ft` : 'Not marked yet';
-    $('#to-job').disabled = !route.length;
-  }
-
-  $('#overlay').addEventListener('click', (event) => {
-    const box = event.currentTarget.getBoundingClientRect();
-    const point = [
-      Math.round((event.clientX - box.left) / box.width * 1000),
-      Math.round((event.clientY - box.top) / box.height * 1000),
-    ];
-    if (picking) { setPicking(false); changeView({ tap: point }); return; }
-    if (tool === 'panel') { marks.panel = point; tool = marks.charger ? 'bend' : 'charger'; }
-    else if (tool === 'charger') { marks.charger = point; tool = 'bend'; }
-    else marks.bends.push(point);
-    drawPlan();
-  });
-  $$('.tool').forEach((button) => button.addEventListener('click', () => { tool = button.dataset.tool; drawPlan(); }));
-  $('#undo').addEventListener('click', () => {
-    if (marks.bends.length) marks.bends.pop();
-    else if (marks.charger) { marks.charger = null; tool = 'charger'; }
-    else if (marks.panel) { marks.panel = null; tool = 'panel'; }
-    drawPlan();
-  });
-  $('#clear').addEventListener('click', () => { marks = { panel: null, charger: null, bends: [] }; tool = 'panel'; drawPlan(); });
-
-  async function loadAerial(found) {
-    const status = $('#aerial-status');
-    status.hidden = false;
-    status.textContent = 'Loading the aerial photo, about 15 seconds. You can start marking now.';
-    try {
-      const response = await api('/api/property/aerial', {
-        latitude: found.view.latitude, longitude: found.view.longitude, scale_ft_per_in: found.view.scale_ft_per_in,
-      });
-      const data = await response.json();
-      if (property !== found) return;
-      aerial = data.image;
-      aerialCredit = data.credit;
-      $('#aerial').src = `data:image/jpeg;base64,${aerial}`;
-      $('#aerial').hidden = false;
-      status.hidden = true;
-      drawPlan();
-    } catch (error) {
-      if (property === found) status.textContent = 'No aerial right now. The plan still works from the outlines.';
-    }
-  }
-
-  /* Address suggestions as the tech types. Typing the whole address still works. */
-  const addressInput = $('#address');
-  const suggestionList = $('#suggestions');
-  const SUGGEST_DELAY_MS = 220;
-  let suggestTimer = null;
-  let suggestRequest = 0;
-  let activeSuggestion = -1;
-
-  function closeSuggestions() {
-    suggestionList.hidden = true;
-    suggestionList.innerHTML = '';
-    activeSuggestion = -1;
-    addressInput.setAttribute('aria-expanded', 'false');
-    addressInput.removeAttribute('aria-activedescendant');
-  }
-  function suggestionItems() { return $$('#suggestions li[role=option]'); }
-  function markActive() {
-    suggestionItems().forEach((item, index) => item.setAttribute('aria-selected', String(index === activeSuggestion)));
-    if (activeSuggestion >= 0) addressInput.setAttribute('aria-activedescendant', `suggestion-${activeSuggestion}`);
-    else addressInput.removeAttribute('aria-activedescendant');
-  }
-  function chooseSuggestion(text) {
-    suggestRequest += 1;
-    clearTimeout(suggestTimer);
-    addressInput.value = text;
-    closeSuggestions();
-    $('#find').requestSubmit();
-  }
-  async function loadSuggestions(text, request) {
-    const response = await api('/api/property/suggest', { text }).catch(() => null);
-    const data = response ? await response.json().catch(() => null) : null;
-    if (request !== suggestRequest || document.activeElement !== addressInput) return;
-    const suggestions = data?.suggestions || [];
-    if (!suggestions.length) { closeSuggestions(); return; }
-    suggestionList.innerHTML = suggestions
-      .map((item, index) => `<li role="option" id="suggestion-${index}" aria-selected="false">${esc(item)}</li>`).join('')
-      + '<li class="credit" role="presentation">Suggestions from OpenStreetMap contributors</li>';
-    activeSuggestion = -1;
-    suggestionList.hidden = false;
-    addressInput.setAttribute('aria-expanded', 'true');
-  }
-  addressInput.addEventListener('input', () => {
-    clearTimeout(suggestTimer);
-    suggestRequest += 1;
-    const text = addressInput.value.trim();
-    if (text.length < 4) { closeSuggestions(); return; }
-    const request = suggestRequest;
-    suggestTimer = setTimeout(() => loadSuggestions(text, request), SUGGEST_DELAY_MS);
-  });
-  addressInput.addEventListener('keydown', (event) => {
-    const items = suggestionItems();
-    if (event.key === 'Escape') { closeSuggestions(); return; }
-    if (!items.length) return;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      const step = event.key === 'ArrowDown' ? 1 : -1;
-      activeSuggestion = (activeSuggestion + step + items.length) % items.length;
-      markActive();
-    } else if (event.key === 'Enter' && activeSuggestion >= 0) {
-      event.preventDefault();
-      chooseSuggestion(items[activeSuggestion].textContent);
-    }
-  });
-  /* mousedown fires before the input loses focus, so the list is still there. */
-  suggestionList.addEventListener('mousedown', (event) => {
-    const item = event.target.closest('li[role=option]');
-    event.preventDefault();
-    if (item) chooseSuggestion(item.textContent);
-  });
-  addressInput.addEventListener('blur', closeSuggestions);
-
-  function locatedNote(found) {
-    if (found.address_confirmed === true) return ['good', 'Matched to the county record'];
-    if (found.address_confirmed === false) return ['check', `County lists this parcel as number ${found.parcel_house_number}. Check the house.`];
-    if (found.located_by === 'map') return ['good', 'Matched to the house on the map'];
-    if (found.located_by === 'tap') return ['good', 'House chosen by you'];
-    return ['check', 'Estimated from the street. Check this is the right house.'];
-  }
-
-  function showProperty(found) {
-    property = found;
-    aerial = null;
-    aerialCredit = null;
-    marks = { panel: null, charger: null, bends: [] };
-    tool = 'panel';
-    runEdited = false;
-    $('#aerial').hidden = true;
-    $('#tb-address').textContent = found.address;
-    $('#tb-parcel').textContent = found.parcel_number ? `Parcel ${found.parcel_number}` : 'Parcel lines not set up for this county';
-    const [tone, note] = locatedNote(found);
-    $('#tb-located').className = `located ${tone}`;
-    $('#tb-located').textContent = note;
-    $('#tb-city').textContent = found.jurisdiction.label;
-    const link = $('#tb-checklist');
-    link.textContent = found.jurisdiction.known ? `${found.jurisdiction.checklist.length}-item checklist loaded` : 'General checklist. City rules are added in setup.';
-    if (found.jurisdiction.source_url) link.href = found.jurisdiction.source_url; else link.removeAttribute('href');
-    $('#tb-scale').textContent = `Plan scale: 1 in = ${found.view.scale_ft_per_in} ft`;
-    $('#bar-city').textContent = found.jurisdiction.label;
-    $('#site').hidden = false;
-    drawPlan();
-    loadAerial(found);
-  }
-
-  async function changeView(change) {
-    const found = property;
-    const status = $('#aerial-status');
-    status.hidden = false;
-    status.textContent = 'Updating the plan';
-    try {
-      const response = await api('/api/property/view', {
-        address: found.address, city: found.city, state: found.state, county_fips: found.county_fips,
-        house_number: found.house_number, located_by: found.located_by,
-        latitude: found.view.latitude, longitude: found.view.longitude,
-        anchor_latitude: found.anchor.latitude, anchor_longitude: found.anchor.longitude,
-        scale_ft_per_in: found.view.scale_ft_per_in, ...change,
-      });
-      showProperty(await response.json());
-    } catch (error) {
-      status.textContent = error.message;
-    }
-  }
-
-  function setPicking(on) {
-    picking = on;
-    $('#pick-note').hidden = !on;
-  }
-  $('#wrong-house').addEventListener('click', () => setPicking(!picking));
-  $('#zoom-out').addEventListener('click', () => changeView({ zoom: 1 }));
-  $('#zoom-in').addEventListener('click', () => changeView({ zoom: -1 }));
-
-  $('#find').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    setPicking(false);
-    suggestRequest += 1;
-    clearTimeout(suggestTimer);
-    closeSuggestions();
-    const button = $('#find-button');
-    $('#find-error').hidden = true;
-    button.disabled = true;
-    button.textContent = 'Finding';
-    try {
-      const response = await api('/api/property', { address: $('#address').value });
-      const found = await response.json();
-      showProperty(found);
-      $('#site').scrollIntoView({ behavior: TICK_MS ? 'smooth' : 'auto', block: 'start' });
-    } catch (error) {
-      property = null;
-      $('#site').hidden = true;
-      $('#bar-city').textContent = 'Demo';
-      $('#find-error').textContent = error.message;
-      $('#find-error').hidden = false;
-    } finally {
-      button.disabled = false;
-      button.textContent = 'Find property';
-    }
-  });
-
-  function syncRun() {
-    if (!property || !routePoints().length) return;
-    const measured = measuredFt();
-    if (!runEdited) {
-      form.elements.run_ft.value = measured + RISE_ALLOWANCE_FT;
-      form.elements.trench_ft.value = form.elements.location.value === 'detached_garage' ? measured : 0;
-    }
-    $('#run-hint').textContent = `${measured} ft measured, plus ${RISE_ALLOWANCE_FT} ft for rises`;
-  }
-
-  $('#to-job').addEventListener('click', () => {
-    syncRun();
-    $('#job-lead').textContent = property.jurisdiction.known
-      ? `${property.address}, using the ${property.jurisdiction.label} checklist.`
-      : `${property.address}, using the general checklist. ${property.jurisdiction.name}'s rules are added in setup.`;
-    show(2);
-  });
-  $('#use-sample').addEventListener('click', () => {
-    property = null;
-    form.elements.run_ft.value = 58;
-    form.elements.trench_ft.value = 0;
-    $('#run-hint').textContent = '';
-    $('#job-lead').textContent = `Sample job with a schematic layout, using the ${SAMPLE.label} checklist.`;
-    $('#bar-city').textContent = SAMPLE.label;
-    show(2);
-  });
-  $('#back-property').addEventListener('click', () => show(1));
-  form.elements.run_ft.addEventListener('input', () => { runEdited = true; });
-  form.elements.trench_ft.addEventListener('input', () => { runEdited = true; });
-  $$('input[name=location]').forEach((input) => input.addEventListener('change', syncRun));
-  $$('#appliances input[data-load]').forEach((box) => box.addEventListener('change', () => {
-    form.elements[box.dataset.load].value = box.checked ? box.dataset.va : 0;
-  }));
-
-  function jobData() {
-    const data = new FormData(form);
-    const job = {
-      customer: data.get('customer'), contractor: data.get('contractor'), license_number: data.get('license_number'),
-      charger_model: data.get('charger_model').trim(), sample_mode: data.has('sample_mode'), has_solar: data.has('has_solar'), connection: data.get('connection'), location: data.get('location'), home: {},
-    };
-    ['charger_amps', 'run_ft', 'trench_ft', 'service_amps', 'open_breaker_spaces'].forEach((name) => { job[name] = Number(data.get(name)); });
-    $$('[data-home]').forEach((input) => { job.home[input.name] = Number(input.value); });
-    if (!property) return { ...job, address: SAMPLE.address, jurisdiction_key: SAMPLE.jurisdiction_key };
-    return {
-      ...job, address: property.address, city: property.city, state: property.state,
-      jurisdiction_key: property.jurisdiction.key,
-      plan: {
-        scale_ft_per_in: property.view.scale_ft_per_in, markers: { panel: marks.panel, charger: marks.charger }, route: marks.bends,
-        buildings: property.buildings, primary_building: property.primary_building, lot: property.lot,
-        parcel_number: property.parcel_number, aerial_base64: aerial,
-        credits: [...property.credits.filter((credit) => !aerial || !credit.startsWith('Building')), ...(aerialCredit ? [aerialCredit] : [])],
-      },
-    };
-  }
-
-  const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
-
-  async function tickResults(job, result) {
-    const site = job.plan
-      ? `Site plan drawn to scale at 1 in = ${job.plan.scale_ft_per_in} ft`
-      : 'Schematic site plan drawn';
-    const lines = [
-      `${result.jurisdiction.label} checklist applied, ${result.jurisdiction.checklist.length} items`,
-      `Load calculation: ${result.computed_amps} A on a ${job.service_amps} A service`,
-      `Circuit sized: ${result.breaker} A breaker, ${result.wire}`,
-      site,
-      `Permit data filled in, ${result.pages.length} pages built`,
-    ];
-    $('#build-list').innerHTML = lines.map((line) => `<li>${esc(line)}</li>`).join('');
-    for (const item of $$('#build-list li')) {
-      await wait(TICK_MS);
-      item.classList.add('done');
-    }
-    await wait(TICK_MS);
-  }
-
-  function renderReview(result) {
-    $('#status').classList.toggle('bad', !result.ready);
-    $('#status-title').textContent = result.ready ? 'Draft packet ready for review' : 'This job needs a fix first';
-    $('#status-note').textContent = result.ready ? 'All engineering checks pass.' : 'See the checks below, then change the job.';
-    const stats = [
-      ['Service load', `${result.computed_amps} A`],
-      result.spare_amps < 0 ? ['Over capacity by', `${-result.spare_amps} A`] : ['Spare capacity', `${result.spare_amps} A`],
-      ['Breaker', `${result.breaker} A`],
-      ['Wire', result.wire.replace(' Cu', '')],
-    ];
-    $('#stats').innerHTML = stats.map(([name, value]) => `<div><dt>${esc(name)}</dt><dd>${esc(value)}</dd></div>`).join('');
-    $('#checks').innerHTML = result.checks
-      .map((check) => `<li><span class="${check.passed ? 'pass' : 'fix'}">${check.passed ? 'Pass' : 'Fix'}</span> ${esc(check.name)}: ${esc(check.result)}</li>`).join('');
-    $('#flags').innerHTML = result.flags
-      .map((flag) => `<label class="flag"><input type="checkbox"><span>${esc(flag)}</span></label>`).join('');
-    $('#approve').dataset.ready = String(result.ready);
-    updateApproval();
-    const names = ['Checklist and checks', 'Permit data', 'Site plan', 'One-line diagram', 'Load calculation', 'Equipment data', 'Pre-submittal review'];
-    const order = [2, 0, 1, 3, 4, 5, 6].filter((index) => index < result.pages.length);
-    $('#pages').innerHTML = order.map((index) => {
-      const src = `data:image/jpeg;base64,${result.pages[index]}`;
-      return `<a href="${src}" target="_blank" rel="noopener" class="${index === 2 ? 'feature' : ''}"><img src="${src}" alt="Packet page ${index + 1}: ${esc(names[index] || '')}"></a>`;
-    }).join('');
-    const bytes = Uint8Array.from(atob(result.pdf), (char) => char.charCodeAt(0));
-    if (packetUrl) URL.revokeObjectURL(packetUrl);
-    packetUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-    $('#open-packet').href = packetUrl;
-    $('#download').href = packetUrl;
-  }
-
-  function updateApproval() {
-    const boxes = $$('#flags input');
-    const reviewed = boxes.filter((box) => box.checked).length;
-    const ready = $('#approve').dataset.ready === 'true';
-    $('#review-count').textContent = ready ? `${reviewed} of ${boxes.length} items reviewed` : 'Fix the job before it can be approved.';
-    $('#approve').disabled = !ready || reviewed < boxes.length;
-  }
-
-  function renderSubmit(job, result) {
-    const place = result.jurisdiction;
-    $('#how-city').textContent = `Submitting in ${place.label}`;
-    const sets = place.sets_required > 1 ? ` The city asks for ${place.sets_required} sets.` : '';
-    $('#how-text').textContent = `${place.submit_how}${sets}`;
-    const contact = [place.department, place.phone].filter(Boolean).join(', ');
-    $('#how-contact').textContent = contact;
-    const portal = $('#portal');
-    portal.hidden = !place.website;
-    if (place.website) { portal.href = place.website; portal.textContent = `Open ${place.website_label}`; }
-    $('#fields').innerHTML = result.fields.map((field, index) =>
-      `<div><dt>${esc(field.label)}</dt><dd id="field-${index}">${esc(field.value)}</dd><button type="button" class="copy" data-copy="field-${index}">Copy</button></div>`).join('');
-    $('#email-section').hidden = !place.email;
-    if (place.email) {
-      const subject = `EV charger permit submittal: ${result.address}`;
-      const body = `Hello,\n\nAttached is an electrical permit submittal for a residential EV charger.\n\nAddress: ${result.address}\nContractor: ${job.contractor}, license ${job.license_number}\n\nPlease let me know if anything else is needed.\n\nThank you,\n${job.contractor}`;
-      $('#email').textContent = `To: ${place.email}\nSubject: ${subject}\n\n${body}`;
-      $('#email-open').href = `mailto:${place.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    }
-  }
-
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    $('#job-error').hidden = true;
-    const job = jobData();
-    $('#build-list').innerHTML = '';
-    show('building');
-    try {
-      const response = await api('/api/jobs/ev-charger/packet', job);
-      const result = await response.json();
-      lastJob = job;
-      lastResult = result;
-      await tickResults(job, result);
-      renderReview(result);
-      show(3);
-    } catch (error) {
-      show(2);
-      $('#job-error').textContent = error.message;
-      $('#job-error').hidden = false;
-    }
-  });
-
-  $('#flags').addEventListener('change', updateApproval);
-  $('#approve').addEventListener('click', () => { renderSubmit(lastJob, lastResult); show(4); });
-  $('#edit').addEventListener('click', () => show(2));
-  $('#restart').addEventListener('click', () => show(1));
-  $('#documents').addEventListener('click', async () => {
-    const button = $('#documents');
-    $('#documents-error').hidden = true;
-    button.disabled = true;
-    try {
-      const response = await api('/api/jobs/ev-charger/documents', lastJob);
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(await response.blob());
-      link.download = 'ev-permit-documents-demo.zip';
-      link.click();
-      URL.revokeObjectURL(link.href);
-    } catch (error) {
-      $('#documents-error').textContent = error.message;
-      $('#documents-error').hidden = false;
-    } finally {
-      button.disabled = false;
-    }
-  });
-  document.addEventListener('click', async (event) => {
-    const button = event.target.closest('[data-copy], #email-copy');
-    if (!button) return;
-    const source = button.id === 'email-copy' ? $('#email') : document.getElementById(button.dataset.copy);
-    await navigator.clipboard.writeText(source.textContent).catch(() => {});
-    const label = button.textContent;
-    button.textContent = 'Copied';
-    setTimeout(() => { button.textContent = label; }, 1200);
-  });
-
-  show(1);
-</script>
+<script>window.PermitJobTypes = { modules: {}, register(key, module) { this.modules[key] = module; } };</script>
+<script src="/assets/js/job-types/ev-charger.js?v={{ASSET_VERSION}}"></script>
+<script src="/assets/js/app.js?v={{ASSET_VERSION}}"></script>
 </body>
 </html>

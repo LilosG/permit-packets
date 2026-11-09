@@ -1,6 +1,7 @@
 """The job-type registry, the client profile and the generic routes."""
 import base64
 import json
+import re
 import os
 from pathlib import Path
 
@@ -128,3 +129,31 @@ def test_over_capacity_summary_names_the_overage(client):
     body = client.post("/api/jobs/ev-charger/packet", json=to_current_request(case)).json()
     assert body["summary"][1]["label"] == "Over capacity by"
     assert body["summary"][1]["value"].endswith(" A")
+
+
+def test_the_page_loads_its_assets_with_a_version(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert "{{ASSET_VERSION}}" not in response.text
+    versions = re.findall(r'(?:src|href)="/assets/[^"?]+\?v=([0-9a-f]{10})"', response.text)
+    assert len(versions) == 3
+    assert len(set(versions)) == 1
+    assert versions[0] == app_module.ASSET_VERSION
+
+
+def test_assets_are_served_but_the_pages_are_not(client):
+    assert client.get("/assets/js/app.js").status_code == 200
+    assert client.get("/assets/css/app.css").status_code == 200
+    assert client.get("/assets/js/job-types/ev-charger.js").status_code == 200
+    assert client.get("/assets/index.html").status_code == 404
+    assert client.get("/assets/../index.html").status_code == 404
+    assert client.get("/assets/signin.html").status_code == 404
+
+
+def test_the_asset_version_follows_the_files(tmp_path, monkeypatch):
+    (tmp_path / "a.js").write_text("one")
+    monkeypatch.setattr(app_module, "ASSETS", tmp_path)
+    first = app_module._asset_version()
+    (tmp_path / "a.js").write_text("two")
+    assert app_module._asset_version() != first

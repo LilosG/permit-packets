@@ -13,7 +13,8 @@ from typing import Any
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from permit_packets.clients import current_client
@@ -39,10 +40,27 @@ from permit_packets.job_types import REGISTRY, JobType, PacketResult, get_job_ty
 from permit_packets.jurisdictions import jurisdiction_json
 
 STATIC = Path(__file__).parent / "permit_packets" / "static"
+ASSETS = STATIC / "assets"
 SESSION_COOKIE = "permit_demo_session"
 SESSION_SECONDS = 12 * 60 * 60
 
 app = FastAPI(title="Permit Packets", docs_url=None, redoc_url=None, openapi_url=None)
+
+
+def _asset_version() -> str:
+    """A short hash of the asset files, so a changed file gets a new URL."""
+    digest = hashlib.sha256()
+    for path in sorted(ASSETS.rglob("*")):
+        if path.is_file():
+            digest.update(path.relative_to(ASSETS).as_posix().encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:10]
+
+
+ASSET_VERSION = _asset_version()
+INDEX_HTML = (STATIC / "index.html").read_text(encoding="utf-8").replace("{{ASSET_VERSION}}", ASSET_VERSION)
+# Only the assets folder is public. The pages themselves stay behind the sign-in.
+app.mount("/assets", StaticFiles(directory=ASSETS), name="assets")
 
 
 def _demo_password() -> str:
@@ -73,8 +91,10 @@ def _page(name: str) -> FileResponse:
 
 
 @app.get("/")
-def demo_page(request: Request) -> FileResponse:
-    return _page("index.html" if _signed_in(request) else "signin.html")
+def demo_page(request: Request) -> Response:
+    if not _signed_in(request):
+        return _page("signin.html")
+    return HTMLResponse(INDEX_HTML, headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/signin")
