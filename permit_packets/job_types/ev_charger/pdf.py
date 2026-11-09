@@ -5,136 +5,22 @@ to scale when there's a plan, and a labeled schematic when there isn't.
 """
 from __future__ import annotations
 
-from io import BytesIO
-from xml.sax.saxutils import escape
-
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import (
-    BaseDocTemplate,
-    Flowable,
-    Frame,
-    PageBreak,
-    PageTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
+from reportlab.platypus import Flowable, Paragraph, Spacer
+
+from permit_packets.core.pdf_base import (
+    BODY, CELL, CELL_BOLD, CONTENT, COPPER, CREDIT, GREEN, H1, H2, INK, MUTED, PALE, SMALL, SOFT,
+    _heads, _p, _table, build_document, cover_page, review_page,
 )
+from permit_packets.core.site_plan import AerialSitePlan, PlanMarker
+from permit_packets.job_types.ev_charger.calc import BURIAL_DEPTH_IN, LOCATION_LABELS, EvPacket
 
-from permit_packets.ev_charger import BURIAL_DEPTH_IN, LOCATION_LABELS, EvPacket
-from permit_packets.site_plan import AerialSitePlan
-
-INK = colors.HexColor("#15212c")
-MUTED = colors.HexColor("#566572")
-RULE = colors.HexColor("#cfd7dd")
-COPPER = colors.HexColor("#a8551f")
-SOFT = colors.HexColor("#f4e4d8")
-GREEN = colors.HexColor("#1f7a58")
-PALE = colors.HexColor("#eef1f3")
-WATERMARK = colors.HexColor("#e9edf0")
-WIDTH, HEIGHT = letter
-MARGIN = 0.7 * inch
-CONTENT = WIDTH - 2 * MARGIN
+PLAN_COPPER = colors.HexColor("#c8682a")  # the EV dot on the site plan, same as on screen
 SECTION_PAGES = {
     "application": 2, "site_plan": 3, "one_line": 4, "load": 5, "equipment": 6, "review": 7,
 }
-
-
-def _style(name: str, **kwargs) -> ParagraphStyle:
-    return ParagraphStyle(
-        name,
-        fontName=kwargs.pop("font", "Helvetica"),
-        textColor=kwargs.pop("color", INK),
-        **kwargs,
-    )
-
-
-H1 = _style("h1", font="Helvetica-Bold", fontSize=19, leading=23)
-H2 = _style("h2", font="Helvetica-Bold", fontSize=11.5, leading=15, spaceBefore=4, spaceAfter=4)
-BODY = _style("body", fontSize=9.4, leading=13)
-SMALL = _style("small", fontSize=8.2, leading=11, color=MUTED)
-CREDIT = _style("credit", fontSize=6.6, leading=8.4, color=MUTED)
-CELL = _style("cell", fontSize=8.8, leading=11.5)
-CELL_BOLD = _style("cell-bold", font="Helvetica-Bold", fontSize=8.8, leading=11.5)
-FLAG = _style("flag", fontSize=8.3, leading=11, spaceAfter=3, leftIndent=15, firstLineIndent=-15)
-LABEL = _style("label", font="Helvetica-Bold", fontSize=7.4, leading=10, color=COPPER)
-
-
-def _p(text: object, style: ParagraphStyle = CELL) -> Paragraph:
-    return Paragraph(escape(str(text)).replace("\n", "<br/>"), style)
-
-
-def _table(rows, widths, *, head: bool = True, extra=()) -> Table:
-    table = Table(rows, colWidths=widths, repeatRows=1 if head else 0)
-    style = [
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LINEBELOW", (0, 0), (-1, -1), 0.4, RULE),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-    ]
-    if head:
-        style.append(("BACKGROUND", (0, 0), (-1, 0), PALE))
-    table.setStyle(TableStyle(style + list(extra)))
-    return table
-
-
-TIGHT = [("TOPPADDING", (0, 0), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]
-
-
-def _heads(*labels: str) -> list[Paragraph]:
-    return [_p(label, CELL_BOLD) for label in labels]
-
-
-def _page(canvas, doc) -> None:
-    canvas.saveState()
-    canvas.setFillColor(WATERMARK)
-    canvas.setFont("Helvetica-Bold", 58)
-    canvas.translate(WIDTH / 2, HEIGHT / 2)
-    canvas.rotate(38)
-    canvas.drawCentredString(0, -20, "DEMO")
-    canvas.restoreState()
-    canvas.saveState()
-    canvas.setFont("Helvetica-Bold", 8)
-    canvas.setFillColor(COPPER)
-    canvas.drawString(MARGIN, HEIGHT - 0.42 * inch, "DEMO PACKET: NOT FOR SUBMISSION")
-    canvas.setFillColor(MUTED)
-    canvas.setFont("Helvetica", 8)
-    canvas.drawRightString(WIDTH - MARGIN, HEIGHT - 0.42 * inch, "Lilos Growth")
-    canvas.setStrokeColor(RULE)
-    canvas.line(MARGIN, 0.5 * inch, WIDTH - MARGIN, 0.5 * inch)
-    canvas.drawString(
-        MARGIN, 0.34 * inch,
-        "Draft for review by a licensed electrician. Confirm against the city's current requirements before use.",
-    )
-    canvas.restoreState()
-
-
-class NumberedCanvas(Canvas):
-    """Holds each page until the end, so the footer can say the real page count."""
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._pages: list[dict] = []
-
-    def showPage(self) -> None:
-        self._pages.append(dict(self.__dict__))
-        self._startPage()
-
-    def save(self) -> None:
-        total = len(self._pages)
-        for page in self._pages:
-            self.__dict__.update(page)
-            self.setFont("Helvetica", 8)
-            self.setFillColor(MUTED)
-            self.drawRightString(WIDTH - MARGIN, 0.34 * inch, f"Page {self._pageNumber} of {total}")
-            super().showPage()
-        super().save()
 
 
 class SitePlan(Flowable):
@@ -383,54 +269,22 @@ def _cover(packet: EvPacket) -> list:
     jurisdiction = job.jurisdiction
     checklist_cell = (
         f"{jurisdiction.label}\nFrom the city's published checklist"
-        if jurisdiction.known else f"{jurisdiction.label}\nGeneral checklist, city rules added in setup"
+        if jurisdiction.known_for("ev_charger")
+        else f"{jurisdiction.label}\nGeneral checklist, city rules added in setup"
     )
     parcel = f"\nParcel {job.plan.parcel_number}" if job.plan and job.plan.parcel_number else ""
-    story = [_p("EV Charger Permit Packet", H1), _p(job.address, BODY), Spacer(1, 8)]
-    story += [
-        _table(
-            [[_p("JOB", LABEL), _p("CONTRACTOR", LABEL), _p("CHECKLIST", LABEL)],
-             [_p(f"{job.home.square_feet:,} sq ft home{parcel}\n"
-                 f"Charger at {LOCATION_LABELS[job.location]}\nCustomer: {job.customer}"),
-              _p(f"{job.contractor}\nLicense {job.license_number}"),
-              _p(checklist_cell)]],
-            [CONTENT / 3] * 3,
-        ),
-        Spacer(1, 8),
-    ]
-    rows = []
-    for requirement in jurisdiction.checklist:
-        where, status = _checklist_row(packet, requirement.section)
-        rows.append([_p(requirement.item), _p(where), _p(status, CELL_BOLD)])
-    story += [
-        _p("Checklist", H2),
-        _table(
-            [_heads("Required", "In this packet", "Status")] + rows,
-            [3.9 * inch, CONTENT - 4.55 * inch, 0.65 * inch], extra=TIGHT,
-        ),
-        Spacer(1, 6),
-        _p("Engineering checks", H2),
-        _table(
-            [_heads("Check", "Result", "Status")]
-            + [[_p(check.name), _p(check.result), _p("Pass" if check.passed else "Fix", CELL_BOLD)]
-               for check in packet.checks],
-            [1.6 * inch, CONTENT - 2.25 * inch, 0.65 * inch], extra=TIGHT,
-        ),
-        Spacer(1, 6),
-        _p("Flagged for your review", H2),
-    ]
-    half = (len(packet.flags) + 1) // 2
-    columns = [packet.flags[:half], packet.flags[half:]]
-    story.append(Table(
-        [[[_p(f"[  ]  {flag}", FLAG) for flag in column] for column in columns]],
-        colWidths=[CONTENT / 2, CONTENT / 2],
-        style=TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8), ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ]),
-    ))
-    return story
+    return cover_page(
+        title="EV Charger Permit Packet",
+        address=job.address,
+        job_cell=(f"{job.home.square_feet:,} sq ft home{parcel}\n"
+                  f"Charger at {LOCATION_LABELS[job.location]}\nCustomer: {job.customer}"),
+        contractor_cell=f"{job.contractor}\nLicense {job.license_number}",
+        checklist_cell=checklist_cell,
+        checklist_rows=[(requirement.item, *_checklist_row(packet, requirement.section))
+                        for requirement in jurisdiction.checklist_for("ev_charger").items],
+        checks=[(check.name, check.result, check.passed) for check in packet.checks],
+        flags=packet.flags,
+    )
 
 
 def scope_of_work(packet: EvPacket) -> str:
@@ -598,18 +452,16 @@ def _review(packet: EvPacket) -> list:
         items.insert(1, "Trench route and depth are confirmed")
     if packet.disconnect_amps:
         items.append("Disconnect requirement confirmed")
-    return [
-        _p("Pre-Submittal Review", H1),
-        _p("Complete before sending this packet to the city.", SMALL),
-        Spacer(1, 10),
-        _table([_heads("Item", "Reviewed by", "Done")]
-               + [[_p(item), _p("Electrician"), _p("[  ]")] for item in items],
-               [CONTENT - 2 * inch, 1.4 * inch, 0.6 * inch]),
-        Spacer(1, 14),
-        _p("Approval", H2),
-        _table([[_p("Reviewed by"), _p("")], [_p("Signature"), _p("")], [_p("Date"), _p("")]],
-               [2 * inch, CONTENT - 2 * inch], head=False),
-    ]
+    return review_page(items)
+
+
+def _plan_markers(packet: EvPacket) -> list[PlanMarker]:
+    plan = packet.job.plan
+    charger = plan.markers["charger"]
+    markers = [PlanMarker(plan.markers["panel"], INK, "P"), PlanMarker(charger, PLAN_COPPER, "EV")]
+    if packet.disconnect_amps:
+        markers.append(PlanMarker((charger[0] + 36, charger[1]), GREEN, "D"))
+    return markers
 
 
 def _site_plan(packet: EvPacket) -> list:
@@ -633,7 +485,7 @@ def _site_plan(packet: EvPacket) -> list:
     if plan.lot:
         legend.append("Dashed yellow: lot line")
     measures = [f"Wire run with rises: {job.run_ft} ft"]
-    setback = plan.charger_to_lot_line_ft
+    setback = plan.distance_to_lot_line_ft(plan.markers["charger"])
     if setback is not None:
         measures.append(f"Charger to nearest lot line: {setback} ft")
     measures.append(f"Scale 1 in = {plan.scale_ft_per_in} ft when printed at 100%")
@@ -643,7 +495,7 @@ def _site_plan(packet: EvPacket) -> list:
         _p(job.address + (f". Parcel {plan.parcel_number}." if plan.parcel_number else "."), SMALL),
         Spacer(1, 6),
         AerialSitePlan(
-            plan, disconnect=bool(packet.disconnect_amps), underground=bool(job.trench_ft), width=CONTENT,
+            plan, markers=_plan_markers(packet), underground=bool(job.trench_ft), width=CONTENT,
         ),
         Spacer(1, 6),
         _table([[_p("\n".join(legend)), _p("\n".join(measures))]], [CONTENT / 2, CONTENT / 2], head=False),
@@ -653,23 +505,8 @@ def _site_plan(packet: EvPacket) -> list:
 
 
 def render_ev_packet_pdf(packet: EvPacket) -> bytes:
-    sections = [
-        _cover(packet), _application(packet), _site_plan(packet), _one_line(packet),
-        _load(packet), _equipment(packet), _review(packet),
-    ]
-    story: list = []
-    for index, section in enumerate(sections):
-        if index:
-            story.append(PageBreak())
-        story += section
-    buffer = BytesIO()
-    doc = BaseDocTemplate(
-        buffer, pagesize=letter, leftMargin=MARGIN, rightMargin=MARGIN,
-        topMargin=0.65 * inch, bottomMargin=0.65 * inch,
-        title="EV Charger Permit Packet (demo)", author="Lilos Growth",
+    return build_document(
+        [_cover(packet), _application(packet), _site_plan(packet), _one_line(packet),
+         _load(packet), _equipment(packet), _review(packet)],
+        title="EV Charger Permit Packet (demo)",
     )
-    frame = Frame(MARGIN, 0.6 * inch, CONTENT, HEIGHT - 1.2 * inch,
-                  leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
-    doc.addPageTemplates([PageTemplate(id="page", frames=[frame], onPage=_page)])
-    doc.build(story, canvasmaker=NumberedCanvas)
-    return buffer.getvalue()

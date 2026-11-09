@@ -15,12 +15,12 @@ from PIL import Image
 
 from app import app
 
-from permit_packets.circuits import WIRES, conduit_size, size_breaker, size_circuit, voltage_drop
-from permit_packets.ev_charger import EvJob, build_ev_packet
-from permit_packets.ev_packet_pdf import render_ev_packet_pdf
+from permit_packets.core.circuits import WIRES, conduit_size, size_breaker, size_circuit, voltage_drop
+from permit_packets.job_types.ev_charger.calc import EvJob, build_ev_packet
+from permit_packets.job_types.ev_charger.pdf import render_ev_packet_pdf
 from permit_packets.jurisdictions import EL_CAJON, ORO_VALLEY, jurisdiction_for
-from permit_packets.load_calculation import HomeLoads, LoadLine, calculate_load
-from permit_packets.property_lookup import (
+from permit_packets.core.load_calculation import HomeLoads, LoadLine, calculate_load
+from permit_packets.core.property_lookup import (
     AddressNotFound,
     COUNTIES,
     AerialUnavailable,
@@ -30,7 +30,7 @@ from permit_packets.property_lookup import (
     suggest_addresses,
     tidy_address,
 )
-from permit_packets.property_plan import PlanView, PropertyPlan, clip_to, plan_scale, zoomed_scale
+from permit_packets.core.property_plan import PlanView, PropertyPlan, clip_to, plan_scale, zoomed_scale
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
@@ -63,7 +63,8 @@ def _aerial() -> bytes:
 
 
 def _plan(**changes) -> PropertyPlan:
-    values = dict(scale_ft_per_in=30, panel=(400, 500), charger=(600, 500), route=[(500, 400)],
+    markers = {"panel": changes.pop("panel", (400, 500)), "charger": changes.pop("charger", (600, 500))}
+    values = dict(scale_ft_per_in=30, markers=markers, route_between=("panel", "charger"), route=[(500, 400)],
                   buildings=[[(350, 350), (650, 350), (650, 650), (350, 650)]], primary_building=0,
                   lot=[tuple(point) for point in SQUARE_LOT], parcel_number="123-456", aerial_jpeg=_aerial(),
                   credits=["Credit"])
@@ -189,7 +190,7 @@ def test_pdf_survives_markup_in_typed_text():
 
 
 def test_packet_route_returns_results_pages_and_pdf(client):
-    response = client.post("/api/ev/packet", json=_payload())
+    response = client.post("/api/jobs/ev-charger/packet", json=_payload())
     assert response.status_code == 200
     body = response.json()
     assert body["ready"] is True
@@ -201,7 +202,7 @@ def test_packet_route_returns_results_pages_and_pdf(client):
 
 
 def test_documents_route_returns_one_pdf_per_page(client):
-    response = client.post("/api/ev/documents", json=_payload())
+    response = client.post("/api/jobs/ev-charger/documents", json=_payload())
     assert response.status_code == 200
     names = ZipFile(BytesIO(response.content)).namelist()
     assert len(names) == 7
@@ -209,18 +210,18 @@ def test_documents_route_returns_one_pdf_per_page(client):
 
 
 def test_a_plan_with_an_aerial_goes_through_the_route(client):
-    plan = {"scale_ft_per_in": 30, "panel": [400, 500], "charger": [600, 500], "lot": SQUARE_LOT,
+    plan = {"scale_ft_per_in": 30, "markers": {"panel": [400, 500], "charger": [600, 500]}, "lot": SQUARE_LOT,
             "aerial_base64": base64.b64encode(_aerial()).decode(), "credits": ["Credit"]}
-    response = client.post("/api/ev/packet", json=_payload(plan=plan))
+    response = client.post("/api/jobs/ev-charger/packet", json=_payload(plan=plan))
     assert response.status_code == 200
     assert len(response.json()["pages"]) == 7
 
 
 def test_sample_mode_hides_the_address_and_parcel(client):
-    plan = {"scale_ft_per_in": 30, "panel": [400, 500], "charger": [600, 500], "lot": SQUARE_LOT,
+    plan = {"scale_ft_per_in": 30, "markers": {"panel": [400, 500], "charger": [600, 500]}, "lot": SQUARE_LOT,
             "parcel_number": "13831614010"}
     body = _payload(address="309 Real St, Las Vegas, NV", city="Las Vegas", state="NV", plan=plan, sample_mode=True)
-    response = client.post("/api/ev/packet", json=body).json()
+    response = client.post("/api/jobs/ev-charger/packet", json=body).json()
     assert response["address"] == "123 Sample St, Las Vegas, NV"
     text = " ".join(page.get_textpage().get_text_bounded()
                     for page in pypdfium2.PdfDocument(base64.b64decode(response["pdf"])))
@@ -230,7 +231,7 @@ def test_sample_mode_hides_the_address_and_parcel(client):
 
 
 def test_routes_need_a_session(public_client):
-    assert public_client.post("/api/ev/packet", json=_payload()).status_code == 401
+    assert public_client.post("/api/jobs/ev-charger/packet", json=_payload()).status_code == 401
     assert public_client.post("/api/property", json={"address": "123 Sample St"}).status_code == 401
 
 
@@ -240,7 +241,7 @@ def test_a_wrong_password_is_refused(public_client):
 
 def test_a_forged_cookie_is_refused(public_client):
     public_client.cookies.set("permit_demo_session", "9999999999.abc")
-    assert public_client.post("/api/ev/packet", json=_payload()).status_code == 401
+    assert public_client.post("/api/jobs/ev-charger/packet", json=_payload()).status_code == 401
 
 
 def test_home_shows_sign_in_until_signed_in(public_client, client):
@@ -251,11 +252,11 @@ def test_home_shows_sign_in_until_signed_in(public_client, client):
 
 
 def test_trench_longer_than_the_run_is_refused(client):
-    assert client.post("/api/ev/packet", json=_payload(trench_ft=99)).status_code == 422
+    assert client.post("/api/jobs/ev-charger/packet", json=_payload(trench_ft=99)).status_code == 422
 
 
 def test_charger_outside_level_2_range_is_refused(client):
-    assert client.post("/api/ev/packet", json=_payload(charger_amps=200)).status_code == 422
+    assert client.post("/api/jobs/ev-charger/packet", json=_payload(charger_amps=200)).status_code == 422
 
 
 @pytest.mark.parametrize("amps,wire", [(16, "12"), (20, "10"), (28, "8")])
@@ -314,7 +315,7 @@ def test_plan_measures_route_and_setback_at_scale():
     plan = _plan(route=[])
     assert plan.feet_per_unit == 0.21
     assert plan.measured_route_ft == 42
-    assert plan.charger_to_lot_line_ft == 32
+    assert plan.distance_to_lot_line_ft(plan.markers["charger"]) == 32
     assert sorted(edge.length_ft for edge in plan.lot_edges) == [105, 105, 105, 105]
 
 

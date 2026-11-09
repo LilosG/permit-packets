@@ -2,7 +2,7 @@ import base64
 import binascii
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 MAX_VA = 60000
 MAX_AERIAL_BASE64 = 2_000_000
@@ -29,8 +29,7 @@ class HomeLoadsRequest(BaseModel):
 
 class PropertyPlanRequest(BaseModel):
     scale_ft_per_in: int = Field(gt=0, le=200)
-    panel: PlanPoint
-    charger: PlanPoint
+    markers: dict[str, PlanPoint] = Field(max_length=8)
     route: list[PlanPoint] = Field(default_factory=list, max_length=20)
     buildings: list[list[PlanPoint]] = Field(default_factory=list, max_length=200)
     primary_building: int | None = None
@@ -48,36 +47,22 @@ class PropertyPlanRequest(BaseModel):
             raise ValueError("the aerial image is not valid") from error
 
 
-class EvJobRequest(BaseModel):
+class JobRequestBase(BaseModel):
+    """What every job type asks for: who it's for, where, and the optional site plan."""
     customer: str = Field(min_length=1, max_length=120)
     address: str = Field(min_length=1, max_length=200)
     contractor: str = Field(min_length=1, max_length=120)
     license_number: str = Field(min_length=1, max_length=60)
-    home: HomeLoadsRequest
-    service_amps: int = Field(ge=60, le=800)
-    open_breaker_spaces: int = Field(ge=0, le=60)
-    charger_amps: int = Field(ge=16, le=80)
-    charger_model: str = Field(default="", max_length=120)
-    connection: Literal["hardwired", "receptacle"] = "hardwired"
-    has_solar: bool = False
     sample_mode: bool = False
-    location: Literal["attached_garage", "detached_garage", "exterior_wall"]
-    run_ft: int = Field(gt=0, le=500)
-    trench_ft: int = Field(default=0, ge=0, le=500)
     city: str | None = Field(default=None, max_length=80)
     state: str | None = Field(default=None, max_length=2)
     jurisdiction_key: str | None = Field(default=None, max_length=40)
     plan: PropertyPlanRequest | None = None
 
-    @model_validator(mode="after")
-    def trench_fits_the_run(self) -> "EvJobRequest":
-        if self.trench_ft > self.run_ft:
-            raise ValueError("the trench can't be longer than the whole circuit run")
-        return self
-
 
 class LookupRequest(BaseModel):
     address: str = Field(min_length=5, max_length=200)
+    job_type: str = Field(default="ev_charger", max_length=40)
 
 
 class PropertyViewRequest(BaseModel):
@@ -95,6 +80,7 @@ class PropertyViewRequest(BaseModel):
     scale_ft_per_in: int = Field(gt=0, le=200)
     tap: PlanPoint | None = None
     zoom: Literal[-1, 1] | None = None
+    job_type: str = Field(default="ev_charger", max_length=40)
 
 
 class SuggestRequest(BaseModel):

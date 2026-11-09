@@ -1,0 +1,130 @@
+{
+  "response": {
+    "ready": true,
+    "computed_amps": 124.5,
+    "total_va": 29880,
+    "spare_amps": 75.5,
+    "breaker": 40,
+    "wire": "#8 AWG Cu",
+    "ground": "#10 AWG Cu",
+    "voltage_drop_percent": 0.8,
+    "underground_conduit": null,
+    "interior_conduit": "3/4\"",
+    "disconnect_amps": null,
+    "checks": [
+      {
+        "name": "Service capacity",
+        "result": "124.5 A computed on a 200 A service",
+        "passed": true
+      },
+      {
+        "name": "Panel spaces",
+        "result": "4 open, 2 needed",
+        "passed": true
+      },
+      {
+        "name": "Circuit",
+        "result": "40 A breaker for a 32 A continuous load (32 A x 125%)",
+        "passed": true
+      },
+      {
+        "name": "Conductors",
+        "result": "#8 AWG Cu, rated 50 A at 75°C",
+        "passed": true
+      },
+      {
+        "name": "Voltage drop",
+        "result": "2.0 V, or 0.8%, over 40 ft",
+        "passed": true
+      }
+    ],
+    "flags": [
+      "Check the existing loads against the home. They drive the service result.",
+      "Add the charger make and model, then attach its data sheet.",
+      "Confirm the adopted code edition."
+    ],
+    "jurisdiction": {
+      "key": "general",
+      "name": "Las Vegas",
+      "state": "NV",
+      "known": false,
+      "code_name": "NEC",
+      "code_note": "Confirm the adopted code edition.",
+      "department": "",
+      "phone": "",
+      "email": "",
+      "website": "",
+      "website_label": "",
+      "submit_how": "Confirm how this city takes submittals.",
+      "source_url": "",
+      "sets_required": 1,
+      "needs_parcel_number": false,
+      "label": "Las Vegas, NV",
+      "checklist": [
+        "Permit application",
+        "Site plan showing the charger and main panel",
+        "One-line diagram",
+        "Load calculation",
+        "Charger specifications and listing"
+      ]
+    },
+    "address": "123 Sample St, Las Vegas, NV",
+    "fields": [
+      {
+        "label": "Project address",
+        "value": "123 Sample St, Las Vegas, NV"
+      },
+      {
+        "label": "Parcel number",
+        "value": "000-00-000-000"
+      },
+      {
+        "label": "Jurisdiction",
+        "value": "Las Vegas, NV"
+      },
+      {
+        "label": "Property owner",
+        "value": "Sample Homeowner"
+      },
+      {
+        "label": "Permit type",
+        "value": "Electrical, residential EV charger"
+      },
+      {
+        "label": "Charger",
+        "value": "Add make and model"
+      },
+      {
+        "label": "Contractor",
+        "value": "Sample Electric, LLC"
+      },
+      {
+        "label": "License number",
+        "value": "ROC 000000"
+      },
+      {
+        "label": "Scope of work",
+        "value": "Install one 32 A, 240 V Level 2 EV charger, hardwired, at the exterior wall. Add a 40 A, 2-pole breaker to the existing 200 A main panel. Run a new dedicated 40 ft branch circuit to the charger. No service upgrade."
+      }
+    ]
+  },
+  "page_count": 7,
+  "page_text": [
+    "DEMO\r\nDEMO PACKET: NOT FOR SUBMISSION Lilos Growth\r\nDraft for review by a licensed electrician. Confirm against the city's current requirements before use.\r\nEV Charger Permit Packet\r\n123 Sample St, Las Vegas, NV\r\nJOB CONTRACTOR CHECKLIST\r\n2,000 sq ft home\r\nParcel 000-00-000-000\r\nCharger at exterior wall\r\nCustomer: Sample Homeowner\r\nSample Electric, LLC\r\nLicense ROC 000000\r\nLas Vegas, NV\r\nGeneral checklist, city rules added in\r\nsetup\r\nChecklist\r\nRequired In this packet Status\r\nPermit application Page 2: fields ready for the city's form Ready\r\nSite plan showing the charger and main panel Page 3: to scale, 1 in = 30 ft Ready\r\nOne-line diagram Page 4 Ready\r\nLoad calculation Page 5 Ready\r\nCharger specifications and listing Page 6: add manufacturer sheets Attach\r\nEngineering checks\r\nCheck Result Status\r\nService capacity 124.5 A computed on a 200 A service Pass\r\nPanel spaces 4 open, 2 needed Pass\r\nCircuit 40 A breaker for a 32 A continuous load (32 A x 125%) Pass\r\nConductors #8 AWG Cu, rated 50 A at 75°C Pass\r\nVoltage drop 2.0 V, or 0.8%, over 40 ft Pass\r\nFlagged for your review\r\n[ ] Check the existing loads against the home. They drive the\r\nservice result.\r\n[ ] Add the charger make and model, then attach its data sheet.\r\n[ ] Confirm the adopted code edition.\r\nPage 1 of 7",
+    "DEMO\r\nDEMO PACKET: NOT FOR SUBMISSION Lilos Growth\r\nDraft for review by a licensed electrician. Confirm against the city's current requirements before use.\r\nPermit Application Data\r\nPrepared for transfer to the city's permit application. This page is not the city's form.\r\nProject address 123 Sample St, Las Vegas, NV\r\nParcel number 000-00-000-000\r\nJurisdiction Las Vegas, NV\r\nProperty owner Sample Homeowner\r\nPermit type Electrical, residential EV charger\r\nCharger Add make and model\r\nContractor Sample Electric, LLC\r\nLicense number ROC 000000\r\nScope of work\r\nInstall one 32 A, 240 V Level 2 EV charger, hardwired, at the exterior wall. Add a 40 A, 2-pole breaker to the existing 200 A\r\nmain panel. Run a new dedicated 40 ft branch circuit to the charger. No service upgrade.\r\nInspection plan\r\nStage What's inspected\r\nFinal Panel, breaker, charger, labeling, and manufacturer instructions on site\r\nPage 2 of 7",
+    "DEMO\r\nDEMO PACKET: NOT FOR SUBMISSION Lilos Growth\r\nDraft for review by a licensed electrician. Confirm against the city's current requirements before use.\r\nSite Plan\r\n123 Sample St, Las Vegas, NV. Parcel 000-00-000-000.\r\nP EV\r\nN\r\n0 30 ft 1 in = 30 ft\r\n42 ft route\r\n105 ft\r\n105 ft\r\n105 ft\r\n105 ft\r\nP Main panel, 200 A (existing)\r\nEV 32 A charger (new)\r\nNew circuit route, 42 ft measured on plan\r\nDashed yellow: lot line\r\nWire run with rises: 40 ft\r\nCharger to nearest lot line: 32 ft\r\nScale 1 in = 30 ft when printed at 100%\r\nNot a survey. Field verify all dimensions.\r\n.\r\nPage 3 of 7",
+    "DEMO\r\nDEMO PACKET: NOT FOR SUBMISSION Lilos Growth\r\nDraft for review by a licensed electrician. Confirm against the city's current requirements before use.\r\nOne-Line Diagram\r\nConductors, conduit sizes and types, and overcurrent protection.\r\nUTILITY METER\r\nExisting\r\n120/240 V\r\n1-phase\r\nMAIN PANEL\r\n200 A service\r\nNew 40 A, 2-pole\r\n4 spaces open\r\nEV CHARGER\r\n32 A Level 2\r\n7,680 VA\r\nUL listed\r\nNew circuit\r\n2 #8 Cu THWN-2\r\n1 #10 Cu EGC\r\n40 ft, see schedule\r\nExisting grounding electrode system\r\nConductor and conduit schedule\r\nSegment Conductors Conduit Protection\r\nAbove ground run 2 #8 Cu THWN-2, 1 #10 Cu\r\nEGC\r\n3/4\" EMT, 40 ft 40 A, 2-pole\r\nPage 4 of 7",
+    "DEMO\r\nDEMO PACKET: NOT FOR SUBMISSION Lilos Growth\r\nDraft for review by a licensed electrician. Confirm against the city's current requirements before use.\r\nLoad Calculation\r\nOptional dwelling method, NEC 220.82, with the EV charger added at 100% of nameplate. Confirm the method the city accepts.\r\nLoad Basis VA\r\nGeneral lighting 2,000 sq ft x 3 VA 6,000\r\nSmall appliance circuits 2 x 1,500 VA 3,000\r\nLaundry circuit 1 x 1,500 VA 1,500\r\nRange Nameplate 12,000\r\nSubtotal 22,500\r\nFirst 10,000 VA 100% 10,000\r\nRemainder 12,500 VA x 40% 5,000\r\nAir conditioning Larger of heating or cooling, 100% 7,200\r\nEV charger 32 A x 240 V, 100% 7,680\r\nTotal calculated load 29,880\r\nComputed load 29,880 VA / 240 V = 124.5 A\r\nExisting service 200 A\r\nSpare capacity 75.5 A, so no upgrade is required\r\nPage 5 of 7",
+    "DEMO\r\nDEMO PACKET: NOT FOR SUBMISSION Lilos Growth\r\nDraft for review by a licensed electrician. Confirm against the city's current requirements before use.\r\nEquipment Data\r\nAttach the manufacturer's data sheets and UL listing information behind this page.\r\nItem Specification Listing\r\nEV charger Level 2, 32 A, 240 V, 7,680 VA, hardwired UL listed, NEC Article 625\r\nBreaker 40 A, 2-pole, matched to existing panel Listed for the panel\r\nAbove ground conduit 3/4\" EMT Listed\r\nPage 6 of 7",
+    "DEMO\r\nDEMO PACKET: NOT FOR SUBMISSION Lilos Growth\r\nDraft for review by a licensed electrician. Confirm against the city's current requirements before use.\r\nPre-Submittal Review\r\nComplete before sending this packet to the city.\r\nItem Reviewed by Done\r\nExisting loads match the home Electrician [ ]\r\nPanel has two open spaces Electrician [ ]\r\nBreaker matches the panel listing Electrician [ ]\r\nCharger data sheets attached Electrician [ ]\r\nHOA approval received, if required Electrician [ ]\r\nCode edition confirmed with the city Electrician [ ]\r\nApproval\r\nReviewed by\r\nSignature\r\nDate\r\nPage 7 of 7"
+  ],
+  "zip_names": [
+    "01-checklist-and-checks.pdf",
+    "02-permit-application-data.pdf",
+    "03-site-plan.pdf",
+    "04-one-line-diagram.pdf",
+    "05-load-calculation.pdf",
+    "06-equipment-data.pdf",
+    "07-pre-submittal-review.pdf"
+  ]
+}

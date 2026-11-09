@@ -4,15 +4,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from permit_packets.circuits import Circuit, conduit_size, size_circuit
+from permit_packets.core.circuits import Circuit, conduit_size, size_circuit
 from permit_packets.jurisdictions import ORO_VALLEY, Jurisdiction
-from permit_packets.load_calculation import (
+from permit_packets.core.load_calculation import (
     HomeLoads,
     LoadCalculation,
     LoadLine,
     calculate_load,
 )
-from permit_packets.property_plan import PropertyPlan
+from permit_packets.core.property_plan import PropertyPlan
 
 VOLTS = 240
 HIGH_SERVICE_USE_PERCENT = 80
@@ -125,8 +125,9 @@ def _flags(job: EvJob, load: LoadCalculation, circuit: Circuit, disconnect: int 
     if job.jurisdiction.needs_parcel_number and not (job.plan and job.plan.parcel_number):
         flags.append("This city needs the parcel number on the application.")
     active = {"always"} | ({"disconnect"} if disconnect else set()) | ({"trench"} if job.trench_ft else set())
-    flags += [note.text for note in job.jurisdiction.notes if note.when in active]
-    flags.append(job.jurisdiction.code_note)
+    checklist = job.jurisdiction.checklist_for("ev_charger")
+    flags += [note.text for note in checklist.notes if note.when in active]
+    flags.append(checklist.code_note)
     return flags
 
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -10,11 +11,10 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable
 
-from permit_packets.property_plan import PLAN_UNITS, PLAN_WIDTH_IN, Point, PropertyPlan
+from permit_packets.core.property_plan import PLAN_UNITS, PLAN_WIDTH_IN, Point, PropertyPlan
 
 INK = colors.HexColor("#15212c")
 COPPER = colors.HexColor("#c8682a")
-GREEN = colors.HexColor("#1f7a58")
 LOT = colors.HexColor("#ffd84d")
 PAPER = colors.HexColor("#eef1f3")
 PLAN_PT = PLAN_WIDTH_IN * inch
@@ -24,11 +24,22 @@ MIN_LOT_LABEL_FT = 12
 LABEL_POSITIONS = (0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9)
 
 
+@dataclass(frozen=True)
+class PlanMarker:
+    point: Point
+    color: colors.Color
+    letter: str
+
+
 class AerialSitePlan(Flowable):
-    def __init__(self, plan: PropertyPlan, *, disconnect: bool, underground: bool, width: float) -> None:
+    """The plan's route is drawn between its route markers; `markers` are the dots on it."""
+
+    def __init__(
+        self, plan: PropertyPlan, *, markers: list[PlanMarker], underground: bool, width: float,
+    ) -> None:
         super().__init__()
         self.plan = plan
-        self.disconnect = disconnect
+        self.markers = markers
         self.underground = underground
         self.width = width
         self.height = PLAN_PT
@@ -145,29 +156,28 @@ class AerialSitePlan(Flowable):
             self._polyline(plan.lot, close=True)
             c.setDash()
 
-        c.setStrokeColor(colors.white)
-        c.setLineWidth(4.6)
-        c.setLineCap(1)
-        self._polyline(plan.route_points)
-        c.setStrokeColor(COPPER)
-        c.setLineWidth(2.6)
-        if self.underground:
-            c.setDash(8, 4)
-        self._polyline(plan.route_points)
-        c.setDash()
+        points = plan.route_points
+        if points:
+            c.setStrokeColor(colors.white)
+            c.setLineWidth(4.6)
+            c.setLineCap(1)
+            self._polyline(points)
+            c.setStrokeColor(COPPER)
+            c.setLineWidth(2.6)
+            if self.underground:
+                c.setDash(8, 4)
+            self._polyline(points)
+            c.setDash()
 
-        self._marker(plan.panel, INK, "P")
-        self._marker(plan.charger, COPPER, "EV")
-        if self.disconnect:
-            cx, cy = plan.charger
-            self._marker((cx + 36, cy), GREEN, "D")
+        for marker in self.markers:
+            self._marker(marker.point, marker.color, marker.letter)
 
         self._north_and_scale()
 
-        points = plan.route_points
-        a, b = max(zip(points, points[1:]), key=lambda pair: math.dist(*pair))
-        mx, my = self._xy(((a[0] + b[0]) / 2, (a[1] + b[1]) / 2))
-        self._label(mx, my, f"{plan.measured_route_ft} ft route", bold=True)
+        if len(points) > 1:
+            a, b = max(zip(points, points[1:]), key=lambda pair: math.dist(*pair))
+            mx, my = self._xy(((a[0] + b[0]) / 2, (a[1] + b[1]) / 2))
+            self._label(mx, my, f"{plan.measured_route_ft} ft route", bold=True)
 
         edges = sorted(
             (edge for edge in plan.lot_edges if edge.length_ft >= MIN_LOT_LABEL_FT),
