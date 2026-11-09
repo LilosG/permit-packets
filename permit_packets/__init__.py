@@ -1,6 +1,6 @@
 """Electrical permit packets.
 
-`core.circuits` and `core.load_calculation` hold the code rules any electrical permit
-uses. Each permit type gets its own module on top of them, starting with
-`ev_charger`.
+`core` holds what every permit uses: the code rules, property lookup, the site
+plan and the shared PDF parts. Each permit type is a `JobType` under
+`job_types`, starting with `ev_charger`. See the README for adding one.
 """
