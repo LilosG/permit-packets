@@ -96,6 +96,9 @@ section + section { border-top: 1px solid var(--rule); }
 .rows div { display: flex; justify-content: space-between; gap: 16px; padding-block: 9px; border-top: 1px solid var(--rule); }
 .rows dt { color: var(--muted); font-size: 15px; }
 .rows dd { margin: 0; font: 500 15px/1.5 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hero-link { display: inline-block; margin: 0 0 22px; font: 500 15px/1.4 var(--body); color: var(--band-ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--copper); }
+.hero-link:hover { text-decoration-thickness: 2px; }
+.hero-link:focus-visible { outline: 2px solid var(--copper); outline-offset: 3px; }
 .intro { font-size: 15px !important; color: var(--band-ink) !important; padding-top: 14px; border-top: 1px solid var(--band-muted); }
 .pages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .pages figure { margin: 0; display: grid; gap: 8px; min-width: 0; align-content: start; }
@@ -189,6 +192,7 @@ section + section { border-top: 1px solid var(--rule); }
     <div class="brand">Lilos Growth · For electrical contractors</div>
     <h1>Electrical permit packets, ready for your review.</h1>
     <p>A system built for your company that turns walkthrough notes into a draft permit packet for EV chargers, panel and service upgrades, subpanels and 240 V circuits. Each packet is set up for your city's checklist, so you spend your time reviewing it, not assembling it.</p>
+    <a class="hero-link" href="#worth">See what permits cost you now &rarr;</a>
     <p class="intro">I'm Mike Prickett, owner of Lilos Growth in San Diego. We help local service companies with websites, local SEO and automations like this one.</p>
   </div>
 </header>
