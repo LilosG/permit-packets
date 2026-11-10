@@ -55,12 +55,13 @@ class JobType:
 
 
 # Job types import the classes above, so they come after them.
+from permit_packets.job_types.appliance_circuit import JOB_TYPE as APPLIANCE_CIRCUIT  # noqa: E402
 from permit_packets.job_types.ev_charger import JOB_TYPE as EV_CHARGER  # noqa: E402
 from permit_packets.job_types.service_upgrade import JOB_TYPE as SERVICE_UPGRADE  # noqa: E402
 from permit_packets.job_types.subpanel import JOB_TYPE as SUBPANEL  # noqa: E402
 
 REGISTRY: dict[str, JobType] = {
-    job_type.key: job_type for job_type in (EV_CHARGER, SERVICE_UPGRADE, SUBPANEL)
+    job_type.key: job_type for job_type in (EV_CHARGER, SERVICE_UPGRADE, SUBPANEL, APPLIANCE_CIRCUIT)
 }
 
 

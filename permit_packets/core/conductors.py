@@ -214,3 +214,101 @@ def feeder_conduit(feeder: Feeder, conduit_type: str) -> str:
         if fill <= capacity:
             return size
     raise ValueError(f"{fill:.3f} sq in is too much wire for {conduit_type} up to {sizes[-1][0]}")
+
+
+# Branch circuits to a 240 V appliance: copper THWN-2 at the 60 C or 75 C column.
+
+@dataclass(frozen=True)
+class BranchConductor:
+    size: str
+    ampacity_60c: int
+    ampacity_75c: int
+    circular_mils: int
+    area_sq_in: float
+
+    def ampacity(self, terminals_75c: bool) -> int:
+        return self.ampacity_75c if terminals_75c else self.ampacity_60c
+
+
+# NEC 310.16 copper, Chapter 9 Table 8 circular mils, Chapter 9 Table 5 THWN-2 area.
+# (size, 60 C A, 75 C A, circular mils, area in sq in)
+BRANCH_COPPER = tuple(BranchConductor(*row) for row in (
+    ("14", 15, 20, 4110, 0.0097),
+    ("12", 20, 25, 6530, 0.0133),
+    ("10", 30, 35, 10380, 0.0211),
+    ("8", 40, 50, 16510, 0.0366),
+    ("6", 55, 65, 26240, 0.0507),
+    ("4", 70, 85, 41740, 0.0824),
+    ("3", 85, 100, 52620, 0.0973),
+    ("2", 95, 115, 66360, 0.1158),
+    ("1", 110, 130, 83690, 0.1562),
+))
+# NEC 240.4(D): the largest breaker allowed on small copper conductors.
+SMALL_CONDUCTOR_LIMIT = {"14": 15, "12": 20, "10": 30}
+STANDARD_BREAKERS = (15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110, 125)
+LARGEST_BRANCH_SIZE = "1"
+
+
+@dataclass(frozen=True)
+class Branch:
+    wire: BranchConductor
+    egc: str
+    upsized: bool
+    vd_volts: float
+    vd_percent: float
+
+
+def _branch_start(
+    breaker: int, terminals_75c: bool, hvac_mca: float | None,
+) -> BranchConductor:
+    """The smallest wire for the circuit before voltage drop. A non-HVAC wire must carry the
+    breaker and be allowed on it (NEC 240.4(D)); an HVAC wire carries the MCA (240.4(G), 440)."""
+    for wire in BRANCH_COPPER:
+        if hvac_mca is not None:
+            if wire.ampacity(terminals_75c) >= hvac_mca:
+                return wire
+        elif wire.ampacity(terminals_75c) >= breaker and breaker <= SMALL_CONDUCTOR_LIMIT.get(wire.size, breaker):
+            return wire
+    column = 75 if terminals_75c else 60
+    raise ValueError(f"no copper size up to #1 carries a {breaker} A circuit at the {column}\N{DEGREE SIGN}C column")
+
+
+def _branch_egc(breaker: int, start: BranchConductor, chosen: BranchConductor) -> str:
+    """The EGC for the breaker (NEC 250.122), grown with the hots when they were upsized (250.122(B))
+    and never larger than the hots (250.122(A))."""
+    base = next(row[1] for row in EGC_TABLE if breaker <= row[0])
+    required = _ground_properties(base)[0] * chosen.circular_mils / start.circular_mils * EGC_TOLERANCE
+    sizes = [*SMALL_GROUND_AREA_SQ_IN, *(conductor.size for conductor in COPPER_75C)]
+    for size in sizes:
+        if _ground_properties(size)[0] >= required:
+            return size if _ground_properties(size)[0] <= chosen.circular_mils else chosen.size
+    return chosen.size
+
+
+def size_branch(
+    *, breaker: int, load_amps: float, run_ft: float, terminals_75c: bool, hvac_mca: float | None = None,
+) -> Branch:
+    """Start at the smallest wire the breaker (or HVAC MCA) allows, then step up until voltage
+    drop at the load is within 3%, up to #1."""
+    start = _branch_start(breaker, terminals_75c, hvac_mca)
+    chosen = start
+    for wire in BRANCH_COPPER[BRANCH_COPPER.index(start):]:
+        chosen = wire
+        drop = 2 * COPPER_K * load_amps * run_ft / wire.circular_mils
+        if drop / FEEDER_VOLTS * 100 <= MAX_FEEDER_VOLTAGE_DROP_PERCENT or wire.size == LARGEST_BRANCH_SIZE:
+            break
+    drop = 2 * COPPER_K * load_amps * run_ft / chosen.circular_mils
+    return Branch(
+        wire=chosen, egc=_branch_egc(breaker, start, chosen), upsized=chosen is not start,
+        vd_volts=drop, vd_percent=drop / FEEDER_VOLTS * 100,
+    )
+
+
+def branch_conduit(branch: Branch, hots_and_neutral: int, conduit_type: str) -> str:
+    """The smallest conduit that holds the hots, any neutral and the EGC at 40% fill."""
+    fill = hots_and_neutral * branch.wire.area_sq_in + _ground_properties(branch.egc)[1]
+    sizes = SERVICE_CONDUIT_FILL_SQ_IN[conduit_type]
+    for size, capacity in sizes:
+        if fill <= capacity:
+            return size
+    raise ValueError(f"{fill:.3f} sq in is too much wire for {conduit_type} up to {sizes[-1][0]}")

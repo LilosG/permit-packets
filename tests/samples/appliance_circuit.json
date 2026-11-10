@@ -1,0 +1,25 @@
+{
+  "customer": "Sample Homeowner",
+  "address": "123 Sample St",
+  "contractor": "Sample Electric, LLC",
+  "license_number": "ROC 000000",
+  "jurisdiction_key": "oro-valley-az",
+  "appliance": "hot_tub",
+  "appliance_model": "",
+  "nameplate_amps": 40,
+  "gfci": "spa_pack",
+  "disconnect_distance_ft": 8,
+  "location": "outdoor",
+  "wiring": "PVC",
+  "run_ft": 40,
+  "trench_ft": 25,
+  "service_amps": 200,
+  "open_breaker_spaces": 4,
+  "home": {
+    "square_feet": 2400,
+    "range_va": 12000,
+    "dryer_va": 5000,
+    "water_heater_va": 4500,
+    "cooling_va": 7200
+  }
+}

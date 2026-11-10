@@ -21,6 +21,7 @@ os.environ["DEMO_PASSWORD"] = "test-password"
 # load from tests/samples, already in the current request shape.
 SAMPLE_CASES = {
     "ev_charger": "oro_valley_attached_no_plan", "service_upgrade": "service_upgrade", "subpanel": "subpanel",
+    "appliance_circuit": "appliance_circuit",
 }
 SAMPLES = Path(__file__).parent / "samples"
 
@@ -40,7 +41,7 @@ def _sample(key: str) -> dict:
 
 def test_job_types_lists_only_what_the_client_bought(client):
     body = client.get("/api/job-types").json()["job_types"]
-    assert [job_type["key"] for job_type in body] == ["ev_charger", "service_upgrade", "subpanel"]
+    assert [job_type["key"] for job_type in body] == ["ev_charger", "service_upgrade", "subpanel", "appliance_circuit"]
     ev = body[0]
     assert (ev["slug"], ev["short_label"], ev["icon"], ev["feature_page"]) == ("ev-charger", "EV", "ev", 2)
     assert ev["route_between"] == ["panel", "charger"]
@@ -82,7 +83,7 @@ def test_an_unknown_job_type_on_a_property_call_is_refused(client):
 def test_the_default_client_is_the_demo(monkeypatch):
     monkeypatch.delenv("PERMIT_CLIENT", raising=False)
     assert current_client().key == "demo"
-    assert current_client().job_types == ("ev_charger", "service_upgrade", "subpanel")
+    assert current_client().job_types == ("ev_charger", "service_upgrade", "subpanel", "appliance_circuit")
 
 
 def test_an_unknown_client_raises(monkeypatch):
@@ -143,7 +144,7 @@ def test_the_page_loads_its_assets_with_a_version(client):
     assert response.headers["cache-control"] == "no-store"
     assert "{{ASSET_VERSION}}" not in response.text
     versions = re.findall(r'(?:src|href)="/assets/[^"?]+\?v=([0-9a-f]{10})"', response.text)
-    assert len(versions) == 5
+    assert len(versions) == 6
     assert len(set(versions)) == 1
     assert versions[0] == app_module.ASSET_VERSION
 

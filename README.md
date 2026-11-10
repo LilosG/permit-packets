@@ -10,7 +10,7 @@ permit_packets/
   clients.py                   Which job types a deployment sells (PERMIT_CLIENT, default "demo")
   core/                        The shared engine
     circuits.py                Code rules any electrical permit uses (wire, breaker, conduit)
-    conductors.py              Service conductors, grounding electrode conductors, service conduit, solar 120% rule, feeders to a subpanel
+    conductors.py              Service conductors, grounding electrode conductors, service conduit, solar 120% rule, feeders to a subpanel, branch circuits to a 240 V appliance
     load_calculation.py        Optional dwelling load calculation
     property_lookup.py         Address to city, building outlines, lot lines and an aerial
     property_plan.py           A property to scale, with named markers and an optional route
@@ -28,6 +28,7 @@ permit_packets/
     ev_charger/                EV charger: calc, pdf, schema, api
     service_upgrade/           Panel / service upgrade: calc, pdf, schema, api
     subpanel/                  Subpanel / feeder: calc, pdf, schema, api
+    appliance_circuit/         240 V circuit (hot tub, sauna, heat pump, mini-split, other): calc, pdf, schema, api
   static/
     index.html                 The page shell
     assets/css/app.css
@@ -39,7 +40,7 @@ tests/
 
 A city not in `jurisdictions/` gets the general checklist and says so. So does a known city that has no checklist for the job type.
 
-Job types so far: `ev_charger`, `service_upgrade` and `subpanel`. City service-upgrade and subpanel checklists are added per client during setup, so Oro Valley and El Cajon use the general ones for now.
+Job types so far: `ev_charger`, `service_upgrade`, `subpanel` and `appliance_circuit`. City service-upgrade, subpanel and 240 V circuit checklists are added per client during setup, so Oro Valley and El Cajon use the general ones for now.
 
 Every packet is marked as a demo. Results are drafts and need review before anyone relies on them.
 

@@ -15,6 +15,7 @@
     ev: `<svg ${ICON_ATTRS}><rect x="4" y="3" width="12" height="22" rx="2"/><path d="M11 8l-3 5h4l-3 5"/><path d="M16 13h4a3 3 0 0 1 3 3v5"/><rect x="20" y="21" width="6" height="4" rx="1"/></svg>`,
     panel: `<svg ${ICON_ATTRS}><rect x="5" y="3" width="18" height="22" rx="2"/><path d="M9 8h4M15 8h4M9 13h4M15 13h4M9 18h4M15 18h4"/></svg>`,
     subpanel: `<svg ${ICON_ATTRS}><rect x="3" y="3" width="13" height="16" rx="2"/><path d="M6 8h2M11 8h2M6 12h2M11 12h2"/><path d="M16 14h3v4"/><rect x="17" y="18" width="8" height="8" rx="1.5"/></svg>`,
+    circuit: `<svg ${ICON_ATTRS}><path d="M10 3v6M18 3v6"/><path d="M7 9h14v4a7 7 0 0 1-14 0z"/><path d="M14 20v3a3 3 0 0 0 3 3h5"/></svg>`,
   };
   const FALLBACK_ICON = `<svg ${ICON_ATTRS}><rect x="5" y="5" width="18" height="18" rx="2"/></svg>`;
 
