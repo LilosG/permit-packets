@@ -144,7 +144,7 @@ def test_the_page_loads_its_assets_with_a_version(client):
     assert response.headers["cache-control"] == "no-store"
     assert "{{ASSET_VERSION}}" not in response.text
     versions = re.findall(r'(?:src|href)="/assets/[^"?]+\?v=([0-9a-f]{10})"', response.text)
-    assert len(versions) == 5
+    assert len(versions) == 6
     assert len(set(versions)) == 1
     assert versions[0] == app_module.ASSET_VERSION
 

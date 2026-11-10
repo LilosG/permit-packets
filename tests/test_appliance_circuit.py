@@ -469,3 +469,18 @@ def test_the_job_types_list_has_the_four_types_in_order(client):
         "Checklist and checks", "Permit data", "Site plan", "One-line diagram", "Load calculation",
         "Equipment data", "Pre-submittal review"]
     assert REGISTRY["appliance_circuit"].zip_name == "appliance-circuit-permit-documents-demo.zip"
+
+
+def test_the_signed_in_page_loads_the_script_with_a_version(client):
+    page = client.get("/").text
+    assert re.search(r'src="/assets/js/job-types/appliance-circuit\.js\?v=[0-9a-f]{10}"', page)
+    assert page.index("appliance-circuit.js") < page.index("/assets/js/app.js")
+    assert 'data-job-type="appliance_circuit"' in page
+    assert client.get("/assets/js/job-types/appliance-circuit.js").status_code == 200
+
+
+def test_the_form_uses_ac_names_that_cannot_clash_with_other_types(client):
+    page = client.get("/").text
+    block = page[page.index('data-job-type="appliance_circuit"'):page.index('data-uses="home_loads"')]
+    names = set(re.findall(r'name="([^"]+)"', block))
+    assert names and all(name.startswith("ac_") for name in names)
