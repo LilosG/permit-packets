@@ -269,7 +269,8 @@ def _branch_start(
                 return wire
         elif wire.ampacity(terminals_75c) >= breaker and breaker <= SMALL_CONDUCTOR_LIMIT.get(wire.size, breaker):
             return wire
-    raise ValueError(f"no listed wire size carries the {breaker} A circuit")
+    column = 75 if terminals_75c else 60
+    raise ValueError(f"no copper size up to #1 carries a {breaker} A circuit at the {column}\N{DEGREE SIGN}C column")
 
 
 def _branch_egc(breaker: int, start: BranchConductor, chosen: BranchConductor) -> str:
