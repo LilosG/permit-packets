@@ -205,11 +205,12 @@ section + section { border-top: 1px solid var(--rule); }
 </style>
 </head>
 <body>
+<!-- Sample-packet CTA URL: appears in 3 links (header, under hero, bottom section). To change it, find and replace https://lilosgrowth.com/automations/electrical-permit-packets -->
 <header class="hero">
   <div class="wrap">
     <div class="topbar">
       <div class="brand">Lilos Growth · For electrical contractors</div>
-      <a class="cta cta-sm" data-cta>Get a sample packet</a>
+      <a class="cta cta-sm" href="https://lilosgrowth.com/automations/electrical-permit-packets">Get a sample packet</a>
     </div>
     <h1>Electrical permit packets, ready for your review.</h1>
     <p>A system built for your company that turns walkthrough notes into a draft permit packet for EV chargers, panel and service upgrades, subpanels and 240 V circuits. Each packet is set up for your city's checklist, so you spend your time reviewing it, not assembling it.</p>
@@ -219,7 +220,7 @@ section + section { border-top: 1px solid var(--rule); }
 </header>
 
 <div class="cta-row">
-  <div class="wrap"><a class="cta cta-primary" data-cta>Get a sample packet for your city</a></div>
+  <div class="wrap"><a class="cta cta-primary" href="https://lilosgrowth.com/automations/electrical-permit-packets">Get a sample packet for your city</a></div>
 </div>
 
 <main>
@@ -549,7 +550,7 @@ section + section { border-top: 1px solid var(--rule); }
   <div class="wrap">
     <h2 id="cta-end-title">See it on your city's permits</h2>
     <p>Tell us where you work and which permits you pull, and we'll send a sample packet built around that city's requirements.</p>
-    <a class="cta cta-primary" data-cta>Request a sample packet</a>
+    <a class="cta cta-primary" href="https://lilosgrowth.com/automations/electrical-permit-packets">Request a sample packet</a>
   </div>
 </section>
 
@@ -559,12 +560,6 @@ section + section { border-top: 1px solid var(--rule); }
   <button type="button" id="page-view-close">Close</button>
   <img id="page-view-image" alt="">
 </dialog>
-
-<script>
-/* Where the "sample packet" buttons go. Change it here. */
-var SAMPLE_PACKET_URL = "https://lilosgrowth.com/automations/electrical-permit-packets";
-document.querySelectorAll("[data-cta]").forEach(function (link) { link.href = SAMPLE_PACKET_URL; });
-</script>
 
 <script>
 (function () {
