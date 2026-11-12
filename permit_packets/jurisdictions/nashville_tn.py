@@ -15,12 +15,19 @@ SERVICE_UPGRADE = "service_upgrade"
 
 ADOPTED_CODES_URL = "https://www.nashville.gov/departments/codes/codes-administration/adopted-codes-list"
 EPERMITS_GUIDE_URL = "https://filetransfer.nashville.gov/Portals/0/SiteContent/Codes/docs/ePermitsUserGuide.pdf"
-CODE_NOTE = "Metro Nashville enforces the 2023 NEC with local amendments (BL2025-898). Confirm amendments with Metro Codes."
+CODE_NOTE = "Metro Nashville enforces the 2023 NEC with local amendments in Metro Code 16.20.150 (BL2025-898)."
+AMENDMENTS_URL = "https://nashville.legistar.com/gateway.aspx?m=l&id=/matter.aspx?key=19170"
 
 LISTED_CONDUIT = Note(
     "always",
     "Metro Codes inspectors are rejecting unlisted PVC. Use conduit bearing an approved listing stamp.",
 )
+TORQUE = Note(
+    "always",
+    "Metro amendment to 110.14(D): use a calibrated torque tool on specified terminations, and mark "
+    "service and feeder terminations after torquing, before inspection.",
+)
+POWER_FOR_FINAL = Note("always", "Metro amendment to 110.12: power must be on at the building for the final inspection.")
 NO_PUBLISHED_EV_CHECKLIST = Note(
     "always",
     "Metro has no published residential EV checklist. Keep this packet in the job file and attach "
@@ -55,7 +62,10 @@ NASHVILLE = Jurisdiction(
             notes=(
                 NO_PUBLISHED_EV_CHECKLIST,
                 LISTED_CONDUIT,
-                Note("disconnect", "NEC 625.43: the disconnect must be readily accessible and lockable open."),
+                TORQUE,
+                POWER_FOR_FINAL,
+                Note("disconnect", "Metro's amended 625.43: EVSE over 60 A or 150 V to ground needs a readily "
+                     "accessible disconnect, lockable open. One- and two-family dwellings need no separate emergency disconnect."),
                 Note("trench", "Call Tennessee 811 at least 3 working days before trenching."),
             ),
         ),
@@ -74,6 +84,15 @@ NASHVILLE = Jurisdiction(
             code_note=CODE_NOTE,
             notes=(
                 LISTED_CONDUIT,
+                TORQUE,
+                POWER_FOR_FINAL,
+                Note("always", "Metro amendment to 230.1: NES sets the meter base location."),
+                Note("always", "Metro amendment to 230.70(A)(1): the main disconnect must be within 5 ft of where "
+                     "the service conductors leave the meter base."),
+                Note("always", "Metro amendment to 230.43: service entrance conductors in conduit on brick, stone, "
+                     "masonry or metal walls."),
+                Note("always", "Metro amendment to 250.50: bond all grounding electrodes; a concrete-encased "
+                     "electrode must be visible at the service inspection where reachable."),
                 Note("always", "Build the meter base and service to NES Electric Service Guidelines (current version) and confirm with NES."),
             ),
         ),
