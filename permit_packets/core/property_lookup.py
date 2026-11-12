@@ -73,6 +73,12 @@ COUNTIES = {
         lambda number, street: f"ADDRESS_OL LIKE '{_quoted(number)} %{_quoted(street)}%'",
         lambda attributes: str(attributes.get("ADDRESS_OL") or "").split(" ", 1)[0],
     ),
+    "47037": County(
+        "https://maps.nashville.gov/arcgis/rest/services/Cadastral/Parcels/MapServer/0/query",
+        "APN", "Lot lines: Metro Nashville Planning, Parcels", "PropHouse,PropAddr",
+        lambda number, street: f"PropHouse='{_quoted(number)}' AND PropAddr LIKE '{_quoted(number)} %{_quoted(street)}%'",
+        lambda attributes: str(attributes.get("PropHouse") or ""),
+    ),
     "06073": County(
         "https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",
         "APN", "Lot lines: San Diego County GIS", "SITUS_ADDRESS",
@@ -175,6 +181,23 @@ def tidy_address(matched: str) -> str:
     return f"{re.sub(r'\b[0-9]*[A-Z]+\b', word, street)}, {city.title()}, {state} {zip_code}"
 
 
+# Consolidated city-counties come back from the Census as e.g.
+# "Nashville-Davidson metropolitan government (balance)". The city is the first name.
+CONSOLIDATED_PLACE = re.compile(
+    r"^([^-]+)-.*\b(metropolitan government|urban county|unified government|consolidated government)\b.*$",
+    re.IGNORECASE,
+)
+
+
+def place_name(census_name: str) -> str:
+    """The city a Census incorporated-place name stands for."""
+    name = census_name.strip()
+    consolidated = CONSOLIDATED_PLACE.match(name)
+    if consolidated:
+        return consolidated.group(1).strip()
+    return re.sub(r"\s+(city|town|village|CDP|borough)$", "", name)
+
+
 def geocode(client: httpx.Client, address: str) -> Match:
     try:
         response = client.get(CENSUS_URL, timeout=LOOKUP_TIMEOUT, params={
@@ -193,7 +216,7 @@ def geocode(client: httpx.Client, address: str) -> Match:
     geographies = match["geographies"]
     place = next(iter(geographies.get("Incorporated Places") or []), {})
     county = next(iter(geographies.get("Counties") or []), {})
-    city = re.sub(r"\s+(city|town|village|CDP|borough)$", "", place.get("NAME", ""))
+    city = place_name(place.get("NAME", ""))
     parts = match["matchedAddress"].split(",")
     return Match(
         address=tidy_address(match["matchedAddress"]),

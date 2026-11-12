@@ -40,3 +40,18 @@ def test_jurisdiction_json_has_exactly_the_keys_the_page_reads():
     assert body["sets_required"] == 2
     assert body["source_url"].endswith("electric-car-charging-stations.pdf")
     assert len(body["checklist"]) == 7
+
+
+def test_nashville_census_place_name_resolves_to_metro_nashville():
+    from permit_packets.core.property_lookup import place_name
+    from permit_packets.jurisdictions import NASHVILLE
+
+    assert place_name("Nashville-Davidson metropolitan government (balance)") == "Nashville"
+    assert place_name("Las Vegas city") == "Las Vegas"
+    assert jurisdiction_for(place_name("Nashville-Davidson metropolitan government (balance)"), "TN") is NASHVILLE
+    body = jurisdiction_json(NASHVILLE, "ev_charger")
+    assert body["known"] is True
+    assert body["needs_parcel_number"] is True
+    assert "2023 NEC" in body["code_note"]
+    assert jurisdiction_json(NASHVILLE, "service_upgrade")["known"] is True
+    assert jurisdiction_json(NASHVILLE, "subpanel")["known"] is False

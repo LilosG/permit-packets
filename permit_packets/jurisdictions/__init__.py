@@ -30,6 +30,7 @@ class Checklist:
     source_url: str = ""
     code_note: str = DEFAULT_CODE_NOTE
     notes: tuple[Note, ...] = ()
+    source_label: str = "From the city's published checklist"
 
 
 @dataclass(frozen=True)
@@ -65,9 +66,10 @@ class Jurisdiction:
 # The city modules import the classes above, so they come after them.
 from permit_packets.jurisdictions.el_cajon_ca import EL_CAJON  # noqa: E402
 from permit_packets.jurisdictions.general import GENERAL_CHECKLISTS  # noqa: E402
+from permit_packets.jurisdictions.nashville_tn import NASHVILLE  # noqa: E402
 from permit_packets.jurisdictions.oro_valley_az import ORO_VALLEY  # noqa: E402
 
-KNOWN = {(j.name.lower(), j.state): j for j in (ORO_VALLEY, EL_CAJON)}
+KNOWN = {(j.name.lower(), j.state): j for j in (ORO_VALLEY, EL_CAJON, NASHVILLE)}
 
 
 def jurisdiction_for(city: str | None, state: str | None) -> Jurisdiction:

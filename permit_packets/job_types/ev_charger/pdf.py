@@ -267,7 +267,7 @@ def _cover(packet: EvPacket) -> list:
     job = packet.job
     jurisdiction = job.jurisdiction
     checklist_cell = (
-        f"{jurisdiction.label}\nFrom the city's published checklist"
+        f"{jurisdiction.label}\n{jurisdiction.checklist_for('ev_charger').source_label}"
         if jurisdiction.known_for("ev_charger")
         else f"{jurisdiction.label}\nGeneral checklist, city rules added in setup"
     )
