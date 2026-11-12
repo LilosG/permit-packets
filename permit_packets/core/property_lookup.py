@@ -41,6 +41,15 @@ STRUCTURES_URL = (
     "https://services2.arcgis.com/FiaPA4ga0iQKduv3/ArcGIS/rest/services/USA_Structures_View/FeatureServer/0/query"
 )
 USGS_IMAGE_URL = "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage"
+# Local government orthophotos, much sharper than NAIP. Used first inside their coverage box.
+# (west, south, east, north) in degrees, export URL, credit.
+LOCAL_AERIALS = (
+    (
+        (-87.06, 35.96, -86.51, 36.41),
+        "https://maps.nashville.gov/arcgis/rest/services/Imagery/2026Imagery_WGS84/MapServer/export",
+        "Aerial: Metro Nashville-Davidson County, 2026 imagery",
+    ),
+)
 MAPBOX_IMAGE_URL = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/{lon},{lat},{zoom:.2f},0,0/{px}x{px}@2x"
 
 
@@ -544,11 +553,34 @@ def _usgs_aerial(client: httpx.Client, view: PlanView) -> bytes:
     return response.content
 
 
+def _local_aerial(client: httpx.Client, view: PlanView) -> tuple[bytes, str] | None:
+    """A local government orthophoto covering the view, if one is set up."""
+    for (west, south, east, north), url, credit in LOCAL_AERIALS:
+        if not (west <= view.longitude <= east and south <= view.latitude <= north):
+            continue
+        x_min, y_min, x_max, y_max = view.bbox()
+        response = client.get(url, timeout=AERIAL_TIMEOUT, params={
+            "bbox": f"{x_min},{y_min},{x_max},{y_max}", "bboxSR": 102100, "imageSR": 102100,
+            "size": f"{AERIAL_PIXELS},{AERIAL_PIXELS}", "format": "jpg", "f": "image",
+        })
+        response.raise_for_status()
+        if not response.headers.get("content-type", "").startswith("image/"):
+            raise httpx.HTTPError("no image returned")
+        return response.content, credit
+    return None
+
+
 def fetch_aerial(view: PlanView, client: httpx.Client | None = None) -> tuple[bytes, str]:
     owns_client = client is None
     client = client or httpx.Client(follow_redirects=True)
     token = os.environ.get("MAPBOX_TOKEN")
     try:
+        try:
+            local = _local_aerial(client, view)
+            if local:
+                return _finish(local[0]), local[1]
+        except (httpx.HTTPError, OSError):
+            pass
         if token:
             try:
                 return _finish(_mapbox_aerial(client, view, token)), MAPBOX_CREDIT

@@ -55,3 +55,29 @@ def test_nashville_census_place_name_resolves_to_metro_nashville():
     assert "2023 NEC" in body["code_note"]
     assert jurisdiction_json(NASHVILLE, "service_upgrade")["known"] is True
     assert jurisdiction_json(NASHVILLE, "subpanel")["known"] is False
+
+
+def test_a_nashville_view_uses_metro_aerial_first():
+    from io import BytesIO
+
+    import httpx
+    from PIL import Image
+
+    from permit_packets.core import property_lookup
+    from permit_packets.core.property_plan import PlanView
+
+    buffer = BytesIO()
+    Image.new("RGB", (10, 10)).save(buffer, format="JPEG")
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.host)
+        return httpx.Response(200, headers={"content-type": "image/jpeg"}, content=buffer.getvalue())
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        _, credit = property_lookup.fetch_aerial(PlanView(36.1499, -86.8258, 30), client)
+        assert seen == ["maps.nashville.gov"]
+        assert "Metro Nashville" in credit
+        seen.clear()
+        _, credit = property_lookup.fetch_aerial(PlanView(36.1699, -115.14, 30), client)
+        assert seen and "maps.nashville.gov" not in seen
