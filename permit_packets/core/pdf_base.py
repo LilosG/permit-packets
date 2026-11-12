@@ -28,6 +28,7 @@ SOFT = colors.HexColor("#f4e4d8")
 GREEN = colors.HexColor("#1f7a58")
 PALE = colors.HexColor("#eef1f3")
 WATERMARK = colors.HexColor("#e9edf0")
+WATERMARK_INK = colors.HexColor("#3a4a57")
 WIDTH, HEIGHT = letter
 MARGIN = 0.7 * inch
 CONTENT = WIDTH - 2 * MARGIN
@@ -80,14 +81,19 @@ def _heads(*labels: str) -> list[Paragraph]:
     return [_p(label, CELL_BOLD) for label in labels]
 
 
-def _page(canvas, doc) -> None:
+def _watermark(canvas, doc) -> None:
+    """Drawn after the page content and see-through, so table fills can't hide part of it."""
     canvas.saveState()
-    canvas.setFillColor(WATERMARK)
+    canvas.setFillColor(WATERMARK_INK)
+    canvas.setFillAlpha(0.09)
     canvas.setFont("Helvetica-Bold", 58)
     canvas.translate(WIDTH / 2, HEIGHT / 2)
     canvas.rotate(38)
     canvas.drawCentredString(0, -20, "DEMO")
     canvas.restoreState()
+
+
+def _page(canvas, doc) -> None:
     canvas.saveState()
     canvas.setFont("Helvetica-Bold", 8)
     canvas.setFillColor(COPPER)
@@ -140,7 +146,7 @@ def build_document(sections: list[list], *, title: str) -> bytes:
     )
     frame = Frame(MARGIN, 0.6 * inch, CONTENT, HEIGHT - 1.2 * inch,
                   leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
-    doc.addPageTemplates([PageTemplate(id="page", frames=[frame], onPage=_page)])
+    doc.addPageTemplates([PageTemplate(id="page", frames=[frame], onPage=_page, onPageEnd=_watermark)])
     doc.build(story, canvasmaker=NumberedCanvas)
     return buffer.getvalue()
 

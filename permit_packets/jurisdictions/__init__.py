@@ -48,6 +48,8 @@ class Jurisdiction:
     submit_how: str = "Confirm how this city takes submittals."
     sets_required: int = 1
     needs_parcel_number: bool = False
+    utility: str = ""
+    utility_short: str = ""
     checklists: dict[str, Checklist] = field(default_factory=dict)
 
     @property

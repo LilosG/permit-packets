@@ -46,13 +46,15 @@ NASHVILLE = Jurisdiction(
         "using the contractor's Metro-registered account. Schedule inspections in ePermits or at (615) 862-6560."
     ),
     needs_parcel_number=True,
+    utility="Nashville Electric Service (NES)",
+    utility_short="NES",
     checklists={
         EV_CHARGER: Checklist(
             items=(
                 Requirement("ePermits electrical application: address/parcel, scope, contract value and quantities", "application"),
                 Requirement("Tennessee contractor license and Metro Codes electrical registration", "application"),
                 Requirement("Load calculation with the charger at 100% of its rating (NEC 220, 625.42)", "load"),
-                Requirement("One-line diagram with breaker, conductors, conduit and disconnect", "one_line"),
+                Requirement("One-line diagram with breaker, conductors, conduit, and disconnect (if required)", "one_line"),
                 Requirement("Charger data sheet and NRTL listing (UL 2594 / UL 2202)", "equipment"),
                 Requirement("Site plan showing the panel, charger and route", "site_plan"),
             ),

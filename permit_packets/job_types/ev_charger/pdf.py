@@ -169,7 +169,10 @@ class OneLine(Flowable):
                 c.drawCentredString(bx + box_w / 2, mid + 8 - i * 10, line)
 
         xs = [0, 120]
-        box(xs[0], "UTILITY METER", ["Existing", "120/240 V", "1-phase"])
+        meter_lines = ["Existing", "120/240 V", "1-phase"]
+        if job.jurisdiction.utility_short:
+            meter_lines.append(job.jurisdiction.utility_short)
+        box(xs[0], "UTILITY METER", meter_lines)
         box(xs[1], "MAIN PANEL",
             [f"{job.service_amps} A service", f"New {circuit.breaker} A, 2-pole",
              f"{job.open_breaker_spaces} spaces open"], SOFT)
@@ -333,6 +336,41 @@ def _application(packet: EvPacket) -> list:
         rows=application_fields(packet), scope=scope_of_work(packet), inspections=inspections)
 
 
+OUTDOOR_GFCI_MAX_BREAKER = 50
+
+
+def _code_notes(packet: EvPacket) -> list[str]:
+    """Plain code notes for the one-line and equipment pages."""
+    job = packet.job
+    code = job.jurisdiction.code_name
+    notes = []
+    if job.jurisdiction.utility:
+        notes.append(f"Utility: {job.jurisdiction.utility}.")
+    if not packet.disconnect_amps:
+        notes.append(
+            f"No separate EVSE disconnect: {job.charger_amps} A at 240 V (120 V to ground) is within "
+            f"the 60 A and 150 V limits of {code} 625.43."
+        )
+    if job.connection == "hardwired":
+        notes.append(
+            f"Hardwired EVSE: the GFCI rule in {code} 625.54 covers receptacle outlets only. Personnel "
+            f"protection is built into the listed EVSE ({code} 625.22)."
+        )
+        if job.location == "exterior_wall" and packet.circuit.breaker <= OUTDOOR_GFCI_MAX_BREAKER:
+            notes.append(
+                f"Outdoor outlet on a {packet.circuit.breaker} A circuit: confirm with the inspector whether "
+                f"{code} 210.8(F) GFCI protection applies."
+            )
+    return notes
+
+
+def _notes_block(packet: EvPacket) -> list:
+    notes = _code_notes(packet)
+    if not notes:
+        return []
+    return [Spacer(1, 12), _p("Code notes", H2)] + [_p(f"\u2022 {note}", SMALL) for note in notes]
+
+
 def _one_line(packet: EvPacket) -> list:
     circuit = packet.circuit
     wires = f"2 #{circuit.wire.size} Cu THWN-2, 1 #{circuit.ground} Cu EGC"
@@ -353,6 +391,7 @@ def _one_line(packet: EvPacket) -> list:
                + [[_p(cell) for cell in row] for row in rows],
                [1.6 * inch, 1.9 * inch, 1.6 * inch, CONTENT - 5.1 * inch]),
     ]
+    story += _notes_block(packet)
     if packet.underground_conduit:
         story += [Spacer(1, 12), _p("Trench detail", H2), Trench(packet.underground_conduit)]
     return story
@@ -393,7 +432,7 @@ def _equipment(packet: EvPacket) -> list:
         Spacer(1, 10),
         _table([_heads("Item", "Specification", "Listing")] + [[_p(a), _p(b), _p(c)] for a, b, c in rows],
                [1.5 * inch, CONTENT - 3.2 * inch, 1.7 * inch]),
-    ]
+    ] + _notes_block(packet)
 
 
 def _review(packet: EvPacket) -> list:
