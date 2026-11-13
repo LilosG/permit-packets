@@ -74,7 +74,7 @@ td { padding: 12px 16px; border-bottom: 1px solid var(--line-2); vertical-align:
 tbody tr { cursor: pointer; transition: background .12s; }
 tbody tr:hover { background: #fafbfc; }
 tbody tr:last-child td { border-bottom: 0; }
-.addr b { display: block; font-weight: 600; }
+.addr b { display: block; font-weight: 600; white-space: nowrap; }
 .addr span { color: var(--muted); font-size: 12.5px; }
 .type { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
 .type i { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
@@ -187,7 +187,7 @@ tbody tr:last-child td { border-bottom: 0; }
 <script>
 (() => {
   const params = new URLSearchParams(location.search);
-  const company = params.get("company") || "Your company";
+  const company = params.get("company") || params.get("contractor") || "Your company";
   const cities = (params.get("cities") || "San Francisco,Daly City,San Mateo,South San Francisco,Millbrae")
     .split(",").map(s => s.trim()).filter(Boolean);
   document.getElementById("org-name").textContent = company;
@@ -231,6 +231,18 @@ tbody tr:last-child td { border-bottom: 0; }
     permit: ["draft", "review"].includes(stage) ? "" : `E-2026-${String(48213 + i * 37).padStart(6, "0")}`,
   }));
 
+  // Packets built in the builder on this browser, newest first.
+  try {
+    const typeKey = { "EV charger": "ev", "Panel / service upgrade": "service", "Subpanel / feeder": "subpanel", "240 V circuit": "circuit" };
+    JSON.parse(localStorage.getItem("pp-demo-jobs") || "[]").forEach((b, i) => {
+      jobs.unshift({
+        id: 1000 + i, addr: b.addr, cust: b.cust, type: typeKey[b.typeLabel] || "ev", stage: b.stage,
+        scope: "Built in the packet builder", city: b.city || city(i), updated: new Date(b.updated),
+        created: new Date(b.updated), permit: "", fresh: true,
+      });
+    });
+  } catch (e) { /* no saved jobs */ }
+
   let filter = "all";
   const $ = id => document.getElementById(id);
 
@@ -263,11 +275,11 @@ tbody tr:last-child td { border-bottom: 0; }
     const list = jobs
       .filter(j => filter === "all" || j.stage === filter)
       .filter(j => !q || [j.addr, j.cust, j.permit, j.city].join(" ").toLowerCase().includes(q))
-      .sort((a, b) => b.updated - a.updated);
+      .sort((a, b) => (b.fresh ? 1 : 0) - (a.fresh ? 1 : 0) || b.updated - a.updated);
     $("empty").hidden = list.length > 0;
     $("rows").innerHTML = list.map(j => `
       <tr data-id="${j.id}">
-        <td class="addr"><b>${j.addr}</b><span>${j.cust}</span></td>
+        <td class="addr"><b>${j.addr}${j.fresh ? ' <span class="demo-tag" style="margin-left:6px">New</span>' : ""}</b><span>${j.cust}</span></td>
         <td class="col-type"><span class="type"><i style="background:${TYPES[j.type][1]}"></i>${TYPES[j.type][0]}</span></td>
         <td class="col-city">${j.city}</td>
         <td class="col-permit">${j.permit ? `<span class="mono">${j.permit}</span>` : `<span class="dim">—</span>`}</td>
@@ -353,6 +365,7 @@ tbody tr:last-child td { border-bottom: 0; }
     }
   });
 
+  document.querySelectorAll('a[href="/"]').forEach(a => { a.href = "/" + location.search; });
   render();
 })();
 </script>

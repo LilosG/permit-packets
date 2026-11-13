@@ -435,6 +435,37 @@
     form.elements[box.dataset.load].value = box.checked ? box.dataset.va : 0;
   }));
 
+  /* ---- Prospect branding from the link: ?logo=elc&contractor=ELC%20Contractor%20LLC ---- */
+  const linkParams = new URLSearchParams(location.search);
+  let contractorLogo = null;
+  const logoSlug = (linkParams.get('logo') || '').replace(/[^a-z0-9-]/gi, '');
+  if (logoSlug) {
+    fetch(`/assets/logos/${logoSlug}.png`).then((r) => (r.ok ? r.blob() : null)).then((blob) => {
+      if (!blob) return;
+      const reader = new FileReader();
+      reader.onload = () => { contractorLogo = String(reader.result).split(',')[1]; };
+      reader.readAsDataURL(blob);
+    }).catch(() => {});
+  }
+  const linkContractor = linkParams.get('contractor') || linkParams.get('company');
+  if (linkContractor) form.elements.contractor.value = linkContractor;
+  const dashLink = document.querySelector('.bar-link');
+  if (dashLink) dashLink.href = `/dashboard${location.search}`;
+
+  /* Packets built here show up on the demo dashboard (this browser only). */
+  function rememberJob(job, result, stage) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('pp-demo-jobs') || '[]');
+      const key = `${result.address}|${job.customer}`;
+      const entry = {
+        key, addr: String(result.address || '').split(',')[0], cust: job.customer,
+        city: result.jurisdiction?.name || '', typeLabel: lastType?.label || '', stage, updated: Date.now(),
+      };
+      const rest = saved.filter((item) => item.key !== key);
+      localStorage.setItem('pp-demo-jobs', JSON.stringify([entry, ...rest].slice(0, 20)));
+    } catch { /* storage unavailable: the dashboard just shows its sample jobs */ }
+  }
+
   /* ---- The job ---- */
   function jobData() {
     const data = new FormData(form);
@@ -443,6 +474,7 @@
       sample_mode: data.has('sample_mode'),
       ...typeModule().jobFields(data),
     };
+    if (contractorLogo) job.contractor_logo_base64 = contractorLogo;
     if (current.uses_home_loads) {
       job.home = {};
       $$('[data-home]').forEach((input) => { job.home[input.name] = Number(input.value); });
@@ -543,6 +575,7 @@
       lastType = type;
       await tickResults(result);
       renderReview(result);
+      rememberJob(job, result, 'review');
       show(3);
     } catch (error) {
       show(2);
@@ -552,7 +585,11 @@
   });
 
   $('#flags').addEventListener('change', updateApproval);
-  $('#approve').addEventListener('click', () => { renderSubmit(lastResult); show(4); });
+  $('#approve').addEventListener('click', () => {
+    renderSubmit(lastResult);
+    rememberJob(lastJob, lastResult, 'submitted');
+    show(4);
+  });
   $('#edit').addEventListener('click', () => show(2));
   $('#restart').addEventListener('click', () => show(firstStep()));
   $('#documents').addEventListener('click', async () => {
