@@ -49,6 +49,11 @@ LOCAL_AERIALS = (
         "https://maps.nashville.gov/arcgis/rest/services/Imagery/2026Imagery_WGS84/MapServer/export",
         "Aerial: Metro Nashville-Davidson County, 2026 imagery",
     ),
+    (
+        (-84.33, 33.84, -75.46, 36.59),
+        "https://services.nconemap.gov/secure/rest/services/Imagery/Orthoimagery_Latest/ImageServer/exportImage",
+        "Aerial: NC OneMap, NC Orthoimagery Program (latest)",
+    ),
 )
 MAPBOX_IMAGE_URL = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/{lon},{lat},{zoom:.2f},0,0/{px}x{px}@2x"
 
@@ -96,6 +101,13 @@ COUNTIES = {
         lambda number, street: f"street='{_quoted(street)}' AND from_st='{_quoted(number)}'",
         lambda attributes: str(attributes.get("from_st") or "").lstrip("0"),
         lambda street_type: f"st_type='{_quoted(street_type.upper())}'",
+    ),
+    "37119": County(
+        "https://meckgis.mecklenburgcountync.gov/server/rest/services/TaxParcel_camadata/FeatureServer/0/query",
+        "pid", "Lot lines: Mecklenburg County GIS", "streetnumber,streetname",
+        lambda number, street: f"streetnumber='{_quoted(number)}' AND streetname LIKE '{_quoted(street)}%'",
+        lambda attributes: str(attributes.get("streetnumber") or ""),
+        lambda street_type: f"streetname LIKE '% {_quoted(street_type.upper())}'",
     ),
     "06073": County(
         "https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",

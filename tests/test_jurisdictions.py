@@ -120,3 +120,16 @@ def test_a_contractor_logo_goes_on_the_packet_and_bad_logos_are_refused():
     bad = client.post("/api/jobs/ev-charger/packet",
                       json={**case, "contractor_logo_base64": base64.b64encode(b"not an image").decode()})
     assert bad.status_code == 422
+
+
+def test_charlotte_uses_mecklenburg_tip_and_duke_energy():
+    from permit_packets.core.property_lookup import COUNTIES, LOCAL_AERIALS, place_name
+    from permit_packets.jurisdictions import CHARLOTTE
+
+    assert jurisdiction_for(place_name("Charlotte city"), "NC") is CHARLOTTE
+    assert CHARLOTTE.utility == "Duke Energy"
+    assert jurisdiction_json(CHARLOTTE, "ev_charger")["known"] is True
+    assert jurisdiction_json(CHARLOTTE, "service_upgrade")["known"] is True
+    assert "2023 North Carolina Electrical Code" in jurisdiction_json(CHARLOTTE, "ev_charger")["code_note"]
+    assert "37119" in COUNTIES
+    assert any("nconemap" in url for _, url, _ in LOCAL_AERIALS)
