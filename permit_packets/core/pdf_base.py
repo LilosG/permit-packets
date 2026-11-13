@@ -1,6 +1,7 @@
 """What every permit packet shares: the page look, the cover and the review page."""
 from __future__ import annotations
 
+from contextvars import ContextVar
 from io import BytesIO
 from xml.sax.saxutils import escape
 
@@ -8,10 +9,12 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
+    Image,
     PageBreak,
     PageTemplate,
     Paragraph,
@@ -30,6 +33,12 @@ PALE = colors.HexColor("#eef1f3")
 WATERMARK = colors.HexColor("#e9edf0")
 WATERMARK_INK = colors.HexColor("#3a4a57")
 WIDTH, HEIGHT = letter
+# The contractor's logo for the packet being built, as PNG/JPEG bytes. Set per request.
+CONTRACTOR_LOGO: ContextVar[bytes | None] = ContextVar("contractor_logo", default=None)
+HEADER_LOGO_H = 0.3 * inch
+COVER_LOGO_W = 1.9 * inch
+COVER_LOGO_H = 1.0 * inch
+
 MARGIN = 0.7 * inch
 CONTENT = WIDTH - 2 * MARGIN
 
@@ -100,7 +109,14 @@ def _page(canvas, doc) -> None:
     canvas.drawString(MARGIN, HEIGHT - 0.42 * inch, "DEMO PACKET: NOT FOR SUBMISSION")
     canvas.setFillColor(MUTED)
     canvas.setFont("Helvetica", 8)
-    canvas.drawRightString(WIDTH - MARGIN, HEIGHT - 0.42 * inch, "Lilos Growth")
+    logo = CONTRACTOR_LOGO.get()
+    if logo and canvas.getPageNumber() > 1:
+        reader = ImageReader(BytesIO(logo))
+        width, height = reader.getSize()
+        w = HEADER_LOGO_H * width / height
+        canvas.drawImage(reader, WIDTH - MARGIN - w, HEIGHT - 0.5 * inch, w, HEADER_LOGO_H, mask="auto")
+    elif not logo:
+        canvas.drawRightString(WIDTH - MARGIN, HEIGHT - 0.42 * inch, "Lilos Growth")
     canvas.setStrokeColor(RULE)
     canvas.line(MARGIN, 0.5 * inch, WIDTH - MARGIN, 0.5 * inch)
     canvas.drawString(
@@ -164,6 +180,21 @@ def cover_page(
 ) -> list:
     """The first page: the job, the city's checklist, the engineering checks and the flags."""
     story = [_p(title, H1), _p(address, BODY), Spacer(1, 8)]
+    logo = CONTRACTOR_LOGO.get()
+    if logo:
+        reader = ImageReader(BytesIO(logo))
+        width, height = reader.getSize()
+        scale = min(COVER_LOGO_W / width, COVER_LOGO_H / height)
+        image = Image(BytesIO(logo), width * scale, height * scale)
+        story = [Table(
+            [[[_p(title, H1), _p(address, BODY)], image]],
+            colWidths=[CONTENT - COVER_LOGO_W, COVER_LOGO_W],
+            style=TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]),
+        ), Spacer(1, 8)]
     story += [
         _table(
             [[_p("JOB", LABEL), _p("CONTRACTOR", LABEL), _p("CHECKLIST", LABEL)],
@@ -254,7 +285,8 @@ def load_page(load, *, method: str, service_rows: list[tuple[str, str]]) -> list
     add("Subtotal", "", load.subtotal_va, True)
     add("First 10,000 VA", "100%", load.first_va)
     add("Remainder", f"{load.subtotal_va - load.first_va:,.0f} VA x 40%", load.remainder_va)
-    add(load.hvac_label, "Larger of heating or cooling, 100%", load.hvac_va)
+    if load.hvac_va:
+        add(load.hvac_label, "Larger of heating or cooling, 100%", load.hvac_va)
     for line in load.added_loads:
         add(line.label, line.basis, line.va)
     add("Total calculated load", "", load.total_va, True)

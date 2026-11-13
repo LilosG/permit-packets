@@ -81,3 +81,42 @@ def test_a_nashville_view_uses_metro_aerial_first():
         seen.clear()
         _, credit = property_lookup.fetch_aerial(PlanView(36.1699, -115.14, 30), client)
         assert seen and "maps.nashville.gov" not in seen
+
+
+def test_san_francisco_uses_dbi_e02_and_pge():
+    from permit_packets.core.property_lookup import COUNTIES, place_name
+    from permit_packets.jurisdictions import SAN_FRANCISCO
+
+    assert jurisdiction_for(place_name("San Francisco city"), "CA") is SAN_FRANCISCO
+    body = jurisdiction_json(SAN_FRANCISCO, "ev_charger")
+    assert body["known"] is True and body["code_name"] == "CEC"
+    assert "2025 San Francisco Electrical Code" in body["code_note"]
+    assert SAN_FRANCISCO.utility_short == "PG&E"
+    assert "06075" in COUNTIES
+
+
+def test_a_contractor_logo_goes_on_the_packet_and_bad_logos_are_refused():
+    import base64
+    import json
+    from io import BytesIO
+    from pathlib import Path
+
+    from fastapi.testclient import TestClient
+    from PIL import Image
+
+    from app import app
+
+    client = TestClient(app)
+    assert client.post("/api/signin", json={"password": "test-password"}).status_code == 200
+    case = json.loads((Path(__file__).parent / "golden/cases/las_vegas_general_sample_mode.json").read_text())
+    case.pop("plan")
+    buffer = BytesIO()
+    Image.new("RGBA", (300, 120), (240, 120, 20, 255)).save(buffer, format="PNG")
+    with_logo = client.post("/api/jobs/ev-charger/packet",
+                            json={**case, "contractor_logo_base64": base64.b64encode(buffer.getvalue()).decode()})
+    plain = client.post("/api/jobs/ev-charger/packet", json=case)
+    assert with_logo.status_code == plain.status_code == 200
+    assert len(with_logo.json()["pdf"]) > len(plain.json()["pdf"])
+    bad = client.post("/api/jobs/ev-charger/packet",
+                      json={**case, "contractor_logo_base64": base64.b64encode(b"not an image").decode()})
+    assert bad.status_code == 422

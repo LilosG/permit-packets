@@ -88,6 +88,12 @@ COUNTIES = {
         lambda number, street: f"PropHouse='{_quoted(number)}' AND PropAddr LIKE '{_quoted(number)} %{_quoted(street)}%'",
         lambda attributes: str(attributes.get("PropHouse") or ""),
     ),
+    "06075": County(
+        "https://sfplanninggis.org/arcgiswa/rest/services/PlanningData/MapServer/23/query",
+        "blklot", "Lot lines: San Francisco Planning, Parcels", "from_st,street",
+        lambda number, street: f"street='{_quoted(street)}' AND from_st='{_quoted(number)}'",
+        lambda attributes: str(attributes.get("from_st") or "").lstrip("0"),
+    ),
     "06073": County(
         "https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",
         "APN", "Lot lines: San Diego County GIS", "SITUS_ADDRESS",

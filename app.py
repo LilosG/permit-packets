@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from permit_packets.clients import current_client
+from permit_packets.core.pdf_base import CONTRACTOR_LOGO
 from permit_packets.core.preview import packet_documents_zip, packet_page_images
 from permit_packets.core.property_lookup import (
     AddressNotFound,
@@ -213,13 +214,37 @@ def job_types() -> dict:
     return {"job_types": [_job_type_json(REGISTRY[key]) for key in current_client().job_types]}
 
 
+MAX_LOGO_BASE64 = 700_000
+
+
+def _contractor_logo(payload: dict[str, Any]) -> bytes | None:
+    """The optional contractor logo: a PNG or JPEG, base64, shown on the cover and page headers."""
+    encoded = payload.pop("contractor_logo_base64", None)
+    if not encoded:
+        return None
+    if not isinstance(encoded, str) or len(encoded) > MAX_LOGO_BASE64:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The logo must be a PNG or JPEG under 500 KB")
+    try:
+        logo = base64.b64decode(encoded, validate=True)
+    except ValueError as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The logo is not valid base64") from error
+    if not (logo.startswith(b"\x89PNG") or logo.startswith(b"\xff\xd8")):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The logo must be a PNG or JPEG")
+    return logo
+
+
 def _build(slug: str, payload: dict[str, Any]) -> tuple[JobType, PacketResult]:
     job_type = _enabled_job_type(slug)
+    logo = _contractor_logo(payload)
     try:
         request = job_type.request_model.model_validate(payload)
     except ValidationError as error:
         raise RequestValidationError(error.errors(include_url=False)) from error
-    return job_type, job_type.build_response(request)
+    token = CONTRACTOR_LOGO.set(logo)
+    try:
+        return job_type, job_type.build_response(request)
+    finally:
+        CONTRACTOR_LOGO.reset(token)
 
 
 @app.post("/api/jobs/{slug}/packet", dependencies=[Depends(require_session)])
