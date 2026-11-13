@@ -67,6 +67,8 @@ class County:
     address_fields: str
     address_where: Callable[[str, str], str]
     house_number: Callable[[dict], str]
+    # Narrows an address match by street type, where a county has e.g. both 27th Ave and 27th St.
+    type_where: Callable[[str], str] | None = None
 
 
 COUNTIES = {
@@ -93,6 +95,7 @@ COUNTIES = {
         "blklot", "Lot lines: San Francisco Planning, Parcels", "from_st,street",
         lambda number, street: f"street='{_quoted(street)}' AND from_st='{_quoted(number)}'",
         lambda attributes: str(attributes.get("from_st") or "").lstrip("0"),
+        lambda street_type: f"st_type='{_quoted(street_type.upper())}'",
     ),
     "06073": County(
         "https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",
@@ -154,6 +157,7 @@ class Match:
     county_fips: str
     house_number: str = ""
     street_name: str = ""
+    street_type: str = ""  # Census suffixType, e.g. AVE or ST
 
 
 @dataclass(frozen=True)
@@ -242,6 +246,7 @@ def geocode(client: httpx.Client, address: str) -> Match:
         county_fips=county.get("GEOID", ""),
         house_number=match["matchedAddress"].split(" ", 1)[0],
         street_name=match.get("addressComponents", {}).get("streetName", ""),
+        street_type=match.get("addressComponents", {}).get("suffixType", ""),
     )
 
 
@@ -375,7 +380,8 @@ def parcel_for_address(client: httpx.Client, match: Match) -> Parcel | None:
     if not county or not match.house_number.isdigit() or not match.street_name:
         return None
     features = _arcgis_features(client, county.url, {
-        "where": county.address_where(match.house_number, match.street_name),
+        "where": county.address_where(match.house_number, match.street_name) + (
+            f" AND {county.type_where(match.street_type)}" if county.type_where and match.street_type else ""),
         "outFields": _parcel_fields(county),
     })
     features = [feature for feature in features if _rings(feature)]
