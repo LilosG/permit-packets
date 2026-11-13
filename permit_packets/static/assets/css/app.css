@@ -144,3 +144,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   .fields dt { grid-column: 1 / -1; }
   .actions button, .actions a.button { width: 100%; text-align: center; }
 }
+
+.bar-right { display: inline-flex; align-items: center; gap: 18px; }
+.bar-link { color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 6px 12px; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; }
+.bar-link:hover { background: rgba(255,255,255,.1); }

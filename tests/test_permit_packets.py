@@ -561,3 +561,16 @@ def test_suggestions_fail_quietly():
 
 def test_suggest_route_needs_a_session(public_client):
     assert public_client.post("/api/property/suggest", json={"text": "12 Main"}).status_code == 401
+
+
+def test_dashboard_needs_sign_in_and_serves_the_demo():
+    from fastapi.testclient import TestClient
+
+    from app import app
+
+    anonymous = TestClient(app)
+    assert anonymous.get("/dashboard", follow_redirects=False).status_code == 303
+    signed_in = TestClient(app)
+    assert signed_in.post("/api/signin", json={"password": "test-password"}).status_code == 200
+    page = signed_in.get("/dashboard")
+    assert page.status_code == 200 and "Permits" in page.text

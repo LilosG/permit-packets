@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
@@ -96,6 +96,13 @@ def demo_page(request: Request) -> Response:
     if not _signed_in(request):
         return _page("signin.html")
     return HTMLResponse(INDEX_HTML, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/dashboard")
+def dashboard_page(request: Request) -> Response:
+    if not _signed_in(request):
+        return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
+    return _page("dashboard.html")
 
 
 @app.post("/api/signin")
