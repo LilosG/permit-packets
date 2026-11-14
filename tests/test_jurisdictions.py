@@ -23,10 +23,10 @@ def test_a_known_city_without_a_checklist_for_a_job_type_falls_back_to_the_gener
 
 
 def test_an_unknown_city_gets_the_general_checklist_and_says_so():
-    mesa = jurisdiction_for("Mesa", "AZ")
-    assert not mesa.known_for("ev_charger")
-    assert mesa.checklist_for("ev_charger") is GENERAL_CHECKLISTS["ev_charger"]
-    assert jurisdiction_by_key("nowhere", "Mesa", "AZ").label == "Mesa, AZ"
+    yuma = jurisdiction_for("Yuma", "AZ")
+    assert not yuma.known_for("ev_charger")
+    assert yuma.checklist_for("ev_charger") is GENERAL_CHECKLISTS["ev_charger"]
+    assert jurisdiction_by_key("nowhere", "Yuma", "AZ").label == "Yuma, AZ"
 
 
 def test_jurisdiction_json_has_exactly_the_keys_the_page_reads():
@@ -67,7 +67,7 @@ def test_a_nashville_view_uses_metro_aerial_first():
     from permit_packets.core.property_plan import PlanView
 
     buffer = BytesIO()
-    Image.new("RGB", (10, 10)).save(buffer, format="JPEG")
+    Image.effect_noise((10, 10), 60).convert("RGB").save(buffer, format="JPEG")
     seen = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -133,3 +133,33 @@ def test_charlotte_uses_mecklenburg_tip_and_duke_energy():
     assert "2023 North Carolina Electrical Code" in jurisdiction_json(CHARLOTTE, "ev_charger")["code_note"]
     assert "37119" in COUNTIES
     assert any("nconemap" in url for _, url, _ in LOCAL_AERIALS)
+
+
+def test_mesa_uses_mesa_electrical_code_amendments_and_srp():
+    from permit_packets.core.property_lookup import COUNTIES, LOCAL_AERIALS, place_name
+    from permit_packets.jurisdictions import MESA
+
+    assert jurisdiction_for(place_name("Mesa city"), "AZ") is MESA
+    assert MESA.utility_short == "SRP"
+    ev = jurisdiction_json(MESA, "ev_charger")
+    assert ev["known"] is True and "2023 NEC with Mesa amendments" in ev["code_note"]
+    assert jurisdiction_json(MESA, "service_upgrade")["known"] is True
+    assert "04013" in COUNTIES
+    assert any("mcassessor" in url for _, url, _ in LOCAL_AERIALS)
+
+
+def test_blank_aerial_is_skipped():
+    from io import BytesIO
+
+    from PIL import Image
+
+    from permit_packets.core.property_lookup import _blank
+
+    def jpg(color_or_image):
+        out = BytesIO()
+        (color_or_image if isinstance(color_or_image, Image.Image) else Image.new("RGB", (40, 40), color_or_image)).save(out, "JPEG")
+        return out.getvalue()
+
+    noisy = Image.effect_noise((40, 40), 60).convert("RGB")
+    assert _blank(jpg((255, 255, 255)))
+    assert not _blank(jpg(noisy))

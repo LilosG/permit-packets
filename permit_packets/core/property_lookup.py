@@ -54,6 +54,11 @@ LOCAL_AERIALS = (
         "https://services.nconemap.gov/secure/rest/services/Imagery/Orthoimagery_Latest/ImageServer/exportImage",
         "Aerial: NC OneMap, NC Orthoimagery Program (latest)",
     ),
+    (
+        (-113.34, 32.50, -111.04, 34.05),
+        "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Imagery/Aerials2026/MapServer/export",
+        "Aerial: Maricopa County Assessor, 2026 imagery",
+    ),
 )
 MAPBOX_IMAGE_URL = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/{lon},{lat},{zoom:.2f},0,0/{px}x{px}@2x"
 
@@ -108,6 +113,13 @@ COUNTIES = {
         lambda number, street: f"streetnumber='{_quoted(number)}' AND streetname LIKE '{_quoted(street)}%'",
         lambda attributes: str(attributes.get("streetnumber") or ""),
         lambda street_type: f"streetname LIKE '% {_quoted(street_type.upper())}'",
+    ),
+    "04013": County(
+        "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query",
+        "APN_DASH", "Lot lines: Maricopa County Assessor", "PHYSICAL_STREET_NUM,PHYSICAL_STREET_NAME",
+        lambda number, street: f"PHYSICAL_STREET_NUM='{_quoted(number)}' AND PHYSICAL_STREET_NAME='{_quoted(street.upper())}'",
+        lambda attributes: str(attributes.get("PHYSICAL_STREET_NUM") or "").strip(),
+        lambda street_type: f"PHYSICAL_STREET_TYPE='{_quoted(street_type.upper())}'",
     ),
     "06073": County(
         "https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",
@@ -590,8 +602,16 @@ def _local_aerial(client: httpx.Client, view: PlanView) -> tuple[bytes, str] | N
         response.raise_for_status()
         if not response.headers.get("content-type", "").startswith("image/"):
             raise httpx.HTTPError("no image returned")
+        if _blank(response.content):
+            continue  # the box reaches past this county's coverage
         return response.content, credit
     return None
+
+
+def _blank(image: bytes) -> bool:
+    """True for a single-color image, which map servers return outside their coverage."""
+    low, high = Image.open(BytesIO(image)).convert("L").getextrema()
+    return high - low < 8
 
 
 def fetch_aerial(view: PlanView, client: httpx.Client | None = None) -> tuple[bytes, str]:

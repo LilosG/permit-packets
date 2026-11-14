@@ -299,9 +299,9 @@ def test_every_lot_line_keeps_its_dimension_when_a_marker_sits_on_it():
 def test_city_comes_from_the_address_and_unknown_cities_are_labeled():
     assert jurisdiction_for("Oro Valley", "AZ") is ORO_VALLEY
     assert jurisdiction_for("el cajon", "ca") is EL_CAJON
-    other = jurisdiction_for("Mesa", "AZ")
+    other = jurisdiction_for("Yuma", "AZ")
     assert not other.known
-    assert other.label == "Mesa, AZ"
+    assert other.label == "Yuma, AZ"
 
 
 def test_el_cajon_rules_reach_the_flags():
