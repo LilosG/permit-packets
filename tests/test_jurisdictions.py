@@ -163,3 +163,11 @@ def test_blank_aerial_is_skipped():
     noisy = Image.effect_noise((40, 40), 60).convert("RGB")
     assert _blank(jpg((255, 255, 255)))
     assert not _blank(jpg(noisy))
+
+
+def test_mesa_and_charlotte_cover_all_four_job_types():
+    from permit_packets.jurisdictions import CHARLOTTE, MESA
+
+    for jurisdiction in (MESA, CHARLOTTE):
+        for job_type in ("ev_charger", "service_upgrade", "subpanel", "appliance_circuit"):
+            assert jurisdiction.known_for(job_type), (jurisdiction.key, job_type)

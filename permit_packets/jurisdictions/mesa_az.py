@@ -14,6 +14,8 @@ from permit_packets.jurisdictions import Checklist, Jurisdiction, Note, Requirem
 
 EV_CHARGER = "ev_charger"
 SERVICE_UPGRADE = "service_upgrade"
+SUBPANEL = "subpanel"
+APPLIANCE_CIRCUIT = "appliance_circuit"
 
 DIMES_URL = "https://aca-prod.accela.com/MESA/Default.aspx"
 NEC_AMENDMENTS_URL = (
@@ -31,6 +33,12 @@ UTILITY_CHECK = Note(
     "SRP serves most of Mesa. Downtown Mesa is served by Mesa Electric and some areas by APS: "
     "confirm the utility on the customer's bill.",
 )
+EMT_EGC = Note("always", "Mesa Electrical Code 250.118(A)(4): EMT counts as the equipment grounding "
+               "path only with an additional equipment grounding conductor pulled in it.")
+HOT_CLIMATE = Note("always", "Mesa summers pass 115°F: apply the ambient temperature correction "
+                   "(NEC 310.15(B)(1)) to conductors in conduit exposed to the sun.")
+APPLICATION = Requirement("DIMES residential electrical permit: address/APN, scope and valuation", "application")
+LICENSE = Requirement("Contractor Licensure Verification Form and Arizona ROC electrical license", "application")
 AZ_811 = Note(
     "trench",
     "Contact Arizona 811 at least two full working days before digging (811 or (602) 263-1100 in "
@@ -103,6 +111,50 @@ MESA = Jurisdiction(
                 Note("always", "Mesa's Residential Utility Repair permit in DIMES lists installing a residential "
                      "200 A panel with no plan upload. Confirm with Permit Services that the scope fits it."),
                 UTILITY_CHECK,
+            ),
+        ),
+        SUBPANEL: Checklist(
+            items=(
+                APPLICATION,
+                LICENSE,
+                Requirement("Load calculation for the feeder and subpanel (NEC 220)", "load"),
+                Requirement("One-line diagram with the feeder breaker, 4-wire feeder and a separate EGC in EMT "
+                            "(Mesa 250.118(A)(4))", "one_line"),
+                Requirement("Subpanel specifications and listing", "equipment"),
+                Requirement("Site plan showing the main panel, subpanel and feeder route", "site_plan"),
+            ),
+            source_url=NEC_AMENDMENTS_URL,
+            source_label=SOURCE_LABEL,
+            code_note=CODE_NOTE,
+            notes=(
+                Note("always", "Subpanel: keep the neutral and ground bars separate and remove the bonding screw or "
+                     "strap. The neutral is bonded only at the service disconnect (NEC 250.24(A)(5), 250.142(B))."),
+                Note("always", "Subpanel in a detached building: add a grounding electrode there (NEC 250.32) and a "
+                     "disconnect at the building (NEC 225.31)."),
+                EMT_EGC,
+                HOT_CLIMATE,
+                AZ_811,
+            ),
+        ),
+        APPLIANCE_CIRCUIT: Checklist(
+            items=(
+                APPLICATION,
+                LICENSE,
+                Requirement("Load calculation with the new appliance (NEC 220)", "load"),
+                Requirement("One-line diagram with breaker, conductors, disconnect and a separate EGC in EMT "
+                            "(Mesa 250.118(A)(4))", "one_line"),
+                Requirement("Appliance data sheet with nameplate rating and listing", "equipment"),
+                Requirement("Site plan showing the panel, the appliance and the route", "site_plan"),
+            ),
+            source_url=NEC_AMENDMENTS_URL,
+            source_label=SOURCE_LABEL,
+            code_note=CODE_NOTE,
+            notes=(
+                Note("always", "Air conditioners, heat pumps and motor-driven appliances need a disconnect within "
+                     "sight of the unit (NEC 440.14, 422.31)."),
+                EMT_EGC,
+                HOT_CLIMATE,
+                AZ_811,
             ),
         ),
     },

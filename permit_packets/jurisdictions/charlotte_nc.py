@@ -14,6 +14,8 @@ from permit_packets.jurisdictions import Checklist, Jurisdiction, Note, Requirem
 
 EV_CHARGER = "ev_charger"
 SERVICE_UPGRADE = "service_upgrade"
+SUBPANEL = "subpanel"
+APPLIANCE_CIRCUIT = "appliance_circuit"
 
 TIP_URL = "https://code.mecknc.gov/permitting/tip"
 CODE_CHANGES_URL = "https://code.mecknc.gov/site-menu/code-change-central"
@@ -28,6 +30,8 @@ NO_PUBLISHED_CHECKLIST = Note(
     "Mecklenburg publishes no residential checklist for this work. Keep this packet in the job "
     "file for the inspector and any reviewer.",
 )
+APPLICATION = Requirement("TIP stand-alone electrical permit: address/parcel, scope and valuation", "application")
+LICENSE = Requirement("NC electrical contractor license and County bond/trust account", "application")
 NC_811 = Note("trench", "Call NC 811 at least 3 full working days before digging.")
 
 CHARLOTTE = Jurisdiction(
@@ -87,6 +91,46 @@ CHARLOTTE = Jurisdiction(
                      "disconnect, readily accessible and marked."),
                 Note("always", "Coordinate the meter pull, disconnect and reconnect with Duke Energy before "
                      "scheduling the work."),
+            ),
+        ),
+        SUBPANEL: Checklist(
+            items=(
+                APPLICATION,
+                LICENSE,
+                Requirement("Load calculation for the feeder and subpanel (NEC 220)", "load"),
+                Requirement("One-line diagram with the feeder breaker, 4-wire feeder and EGC", "one_line"),
+                Requirement("Subpanel specifications and listing", "equipment"),
+                Requirement("Site plan showing the main panel, subpanel and feeder route", "site_plan"),
+            ),
+            source_url=TIP_URL,
+            source_label=SOURCE_LABEL,
+            code_note=CODE_NOTE,
+            notes=(
+                NO_PUBLISHED_CHECKLIST,
+                Note("always", "Subpanel: keep the neutral and ground bars separate and remove the bonding screw or "
+                     "strap. The neutral is bonded only at the service disconnect (NEC 250.24(A)(5), 250.142(B))."),
+                Note("always", "Subpanel in a detached building: add a grounding electrode there (NEC 250.32) and a "
+                     "disconnect at the building (NEC 225.31)."),
+                NC_811,
+            ),
+        ),
+        APPLIANCE_CIRCUIT: Checklist(
+            items=(
+                APPLICATION,
+                LICENSE,
+                Requirement("Load calculation with the new appliance (NEC 220)", "load"),
+                Requirement("One-line diagram with breaker, conductors and disconnect", "one_line"),
+                Requirement("Appliance data sheet with nameplate rating and listing", "equipment"),
+                Requirement("Site plan showing the panel, the appliance and the route", "site_plan"),
+            ),
+            source_url=TIP_URL,
+            source_label=SOURCE_LABEL,
+            code_note=CODE_NOTE,
+            notes=(
+                NO_PUBLISHED_CHECKLIST,
+                Note("always", "Air conditioners, heat pumps and motor-driven appliances need a disconnect within "
+                     "sight of the unit (NEC 440.14, 422.31)."),
+                NC_811,
             ),
         ),
     },
