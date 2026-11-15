@@ -267,12 +267,38 @@ def test_a_service_that_is_too_small_for_the_load_fails_and_is_not_ready(client)
 def test_the_sample_job_passes_every_check(client):
     body = _packet(client)
     assert all(check["passed"] for check in body["checks"])
-    assert _checks(body)["Service conductors"]["result"] == (
+    # The sample is a meter-main: the measured run is the feeder from the meter-main to the panel, 4-wire.
+    assert _checks(body)["Feeder conductors, meter-main to panel"]["result"] == (
         "#2/0 Cu THWN-2, 175 A at 75\N{DEGREE SIGN}C, for 200 A x 83% = 166.0 A (310.12)")
     assert _checks(body)["Panel rating"]["result"] == "200 A bus, 200 A main"
     assert _checks(body)["Grounding electrode conductor"]["result"] == "Rods: #6 Cu; Water pipe: #4 Cu"
-    assert _checks(body)["Conduit fill"]["result"] == '3 #2/0 in 1-1/2" PVC, 40% fill'
+    assert _checks(body)["Conduit fill"]["result"] == '3 #2/0 + 1 #6 EGC in 1-1/2" PVC, 40% fill'
     assert "Solar (120% rule)" not in _checks(body)
+    assert any("neutral bar isolated" in flag and "250.24(A)(5)" in flag for flag in body["flags"])
+
+
+def test_a_main_panel_with_a_separate_meter_gets_three_wire_service_conductors(client):
+    body = _packet(client, equipment="main_panel")
+    assert _checks(body)["Service conductors"]["result"] == (
+        "#2/0 Cu THWN-2, 175 A at 75\N{DEGREE SIGN}C, for 200 A x 83% = 166.0 A (310.12)")
+    assert _checks(body)["Conduit fill"]["result"] == '3 #2/0 in 1-1/2" PVC, 40% fill'
+    assert not any("neutral bar isolated" in flag for flag in body["flags"])
+    text = _text(body)
+    assert "Run new service entrance conductors, 3 #2/0 Cu THWN-2 in 1-1/2\" PVC conduit, 8 ft from the meter" in text
+
+
+def test_a_meter_main_scope_names_the_feeder_and_its_egc(client):
+    text = _text(_packet(client))
+    assert "Run a feeder from the meter-main to the panel, 3 #2/0 Cu THWN-2 + 1 #6 Cu EGC" in text
+    assert "from the meter to the main" not in text
+    assert "Feeder, meter-main to panel" in text
+
+
+def test_the_utility_request_names_the_city_utility_when_the_job_gives_none(client):
+    body = _packet(client, jurisdiction_key="nashville-tn", city="Nashville", state="TN")
+    text = _text(body)
+    assert "Utility Nashville Electric Service (NES)" in text
+    assert "Add the utility" not in text
 
 
 def test_no_conduit_drops_the_conduit_check(client):
@@ -286,7 +312,8 @@ def test_aluminum_sizes_up_and_reads_kcmil(client):
     body = _packet(client, material="aluminum", existing_service_amps=200, new_service_amps=225, bus_amps=225)
     assert body["service_conductor"] == "250 kcmil Al"
     assert body["conduit"] == '2" PVC'
-    assert "250 kcmil Al THWN-2" in _checks(body)["Service conductors"]["result"]
+    assert "250 kcmil Al THWN-2" in _checks(body)["Feeder conductors, meter-main to panel"]["result"]
+    assert "+ 1 #2 EGC" in _checks(body)["Conduit fill"]["result"]  # Table 250.122: 225 A is the 300 A row, #2 Al
 
 
 def test_the_solar_120_percent_rule_fails_as_a_check(client):
@@ -354,10 +381,11 @@ def test_flags_come_in_the_order_the_job_needs_them(client):
     assert flags[1].startswith("Submit the utility service request (page 7)")
     assert flags[3].startswith("Relocating the meter")
     assert flags[-1] == "Confirm the adopted code edition."
-    assert flags[-2].startswith("This site plan is a schematic")
-    assert flags[-5].startswith("This home has solar")
-    assert flags[-4] == "Enter the panel's existing circuits for the panel schedule."
-    assert flags[-3].startswith("Enter the panel's location")
+    assert flags[-2].startswith("NEC 230.85")  # the general service checklist's note
+    assert flags[-3].startswith("This site plan is a schematic")
+    assert flags[-6].startswith("This home has solar")
+    assert flags[-5] == "Enter the panel's existing circuits for the panel schedule."
+    assert flags[-4].startswith("Enter the panel's location")
 
 
 def test_a_plan_removes_the_schematic_flag(client):

@@ -12,6 +12,8 @@ from permit_packets.core.conductors import (
     SERVICE_CONDUCTOR_FACTOR,
     Conductor,
     Material,
+    conduit_with_egc,
+    egc_for,
     gec_size,
     service_conductor,
     service_conduit,
@@ -117,6 +119,12 @@ class ServicePacket:
     checks: list[Check]
     flags: list[str] = field(default_factory=list)
     heat: HeatCalc | None = None
+    # A meter-main feeds the panel through a feeder past the service disconnect: two hots, a neutral and this EGC.
+    feeder_egc: str | None = None
+
+    @property
+    def is_meter_main(self) -> bool:
+        return self.job.equipment == "meter_main"
 
     @property
     def ready(self) -> bool:
@@ -151,6 +159,10 @@ def _flags(job: ServiceJob, gecs: dict[str, str]) -> list[str]:
     if job.existing_brand in BRAND_LABELS:
         flags.append(
             f"Existing panel is a {BRAND_LABELS[job.existing_brand]}. Note it in the scope as the reason for replacement.")
+    if job.equipment == "meter_main":
+        flags.append("The panel fed from the meter-main is past the service disconnect: keep its neutral bar isolated "
+                     "from ground, bond the equipment grounding conductor to the enclosure and leave out the main "
+                     "bonding jumper (250.24(A)(5), 250.142(B)).")
     if SMALLEST_UNPROTECTED_GEC in gecs.values():
         flags.append("A #8 grounding electrode conductor must be protected in raceway or armor (250.64(B)).")
     flags += [
@@ -183,18 +195,26 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
         electrode: gec_size(conductor, job.material, electrode)
         for electrode in ELECTRODE_LABELS if electrode in job.electrodes
     }
-    conduit = service_conduit(conductor, job.conduit) if job.conduit != "none" else None
+    feeder_egc = egc_for(job.new_service_amps, job.material) if job.equipment == "meter_main" else None
+    if job.conduit == "none":
+        conduit = None
+    elif feeder_egc:
+        conduit = conduit_with_egc(conductor, feeder_egc, job.conduit)
+    else:
+        conduit = service_conduit(conductor, job.conduit)
     metal = MATERIAL_ABBREVIATIONS[job.material]
     required = SERVICE_CONDUCTOR_FACTOR * job.new_service_amps
     heat = (
-        heat_calc(conductor.size, job.material, job.design_ambient_f, cap_a=conductor.ampacity_75c, carries_a=required)
+        heat_calc(conductor.size, job.material, job.design_ambient_f, cap_a=conductor.ampacity_75c, carries_a=required,
+                  carries_label="83% of service (310.12)")
         if job.design_ambient_f is not None else None
     )
+    conductor_check = "Feeder conductors, meter-main to panel" if feeder_egc else "Service conductors"
     checks = [
         Check("Service capacity",
               f"{load.computed_amps:.1f} A computed on the new {job.new_service_amps} A service",
               load.computed_amps <= job.new_service_amps),
-        Check("Service conductors",
+        Check(conductor_check,
               f"{wire_label(conductor.size)} {metal} THWN-2, {conductor.ampacity_75c} A at 75\N{DEGREE SIGN}C, "
               f"for {job.new_service_amps} A x 83% = {required:.1f} A (310.12)",
               conductor.ampacity_75c >= required),
@@ -206,7 +226,9 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
               True),
     ]
     if conduit:
-        checks.append(Check("Conduit fill", f"3 {wire_label(conductor.size)} in {conduit} {job.conduit}, 40% fill", True))
+        ground = f" + 1 #{feeder_egc} EGC" if feeder_egc else ""
+        checks.append(Check("Conduit fill",
+                            f"3 {wire_label(conductor.size)}{ground} in {conduit} {job.conduit}, 40% fill", True))
     if job.has_solar:
         total = job.new_service_amps + job.pv_breaker_amps
         checks.append(Check(
@@ -226,5 +248,5 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
         checks.append(gec)
     return ServicePacket(
         job=job, load=load, existing_load=existing_load, conductor=conductor, gecs=gecs,
-        conduit_size=conduit, checks=checks, flags=_flags(job, gecs), heat=heat,
+        conduit_size=conduit, checks=checks, flags=_flags(job, gecs), heat=heat, feeder_egc=feeder_egc,
     )

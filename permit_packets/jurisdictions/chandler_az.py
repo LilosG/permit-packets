@@ -55,7 +55,7 @@ GEC = Requirement("Grounding electrode conductor and electrode shown: 8 ft groun
 
 NO_CHECKLIST = ("Chandler publishes no {job} checklist. These items are the \"Electrical Permits\" section of its "
                 "Homeowner Building Permit Manual, which covers all residential electrical work, plus the general "
-                "NEC items. " + CODE_NOTE)
+                "NEC items.")  # the code note is its own flag (checklist.code_note)
 UTILITY_CHECK = Note(
     "always",
     "SRP and APS both serve Chandler. Confirm the utility on the customer's bill; the city's Engineering & "
@@ -128,6 +128,8 @@ CHANDLER = Jurisdiction(
             code_note=CODE_NOTE,
             notes=(
                 _fallback("service upgrade"),
+                Note("always", "2023 NEC 230.85: replacing the service equipment of a one- or two-family dwelling "
+                     "requires an outdoor emergency disconnect, readily accessible and marked."),
                 Note("always", "Chandler manual: an overhead service needs its point of attachment on the "
                      "weatherhead mast. Homes with metal water or gas piping have bonding requirements that vary "
                      "by pipe location: ask the Chandler plan review counter.", MANUAL_URL),

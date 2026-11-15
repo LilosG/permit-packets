@@ -18,6 +18,9 @@ WORKSHEET_URL = "https://media.api.sf.gov/documents/DBI_Worksheet_for_Electrical
 DBI_URL = "https://www.sf.gov/departments--department-building-inspection"
 PDF_RULES_URL = "https://www.sf.gov/information--how-create-pdfs-your-plans-or-addenda"
 PLANS_URL = "https://www.sf.gov/reports--october-2023--prepare-your-plans-your-site-permit-application"
+# San Francisco Building Code 106A.1.16 and 106A.1.16.1 (EVSE permits and general requirements), as printed in
+# Ordinance 12-26 (File No. 251024, passed February 3, 2026), which carries the current section text.
+SFBC_EVSE_URL = "https://www.sfbos.org/sites/default/files/o0012-26.pdf"
 CODE_NOTE = (
     "San Francisco enforces the 2025 San Francisco Electrical Code: the 2025 California "
     "Electrical Code (2023 NEC base) with local amendments, operative January 1, 2026. DBI: filings on or "
@@ -85,10 +88,12 @@ SAN_FRANCISCO = Jurisdiction(
                 Note("always", "DBI's plan-prep pages ask for an empty 8.5 x 11 in area on the title sheet for agency "
                      "stamps. It does not fit beside this cover, so the last page of the packet is that blank area, "
                      "drawn at true size. Move it up to the title sheet if DBI wants it there.", PLANS_URL),
-                Note("always", "DBI E-02: store the coupling means of the charger not less than 18 in and not more "
-                     "than 48 in above the finished floor (CEC 625.50).", E02_URL),
-                Note("always", "DBI E-02: the charger is permanently connected and fastened in place per the "
-                     "manufacturer's instructions.", E02_URL),
+                Note("indoor", "San Francisco Building Code 106A.1.16.1: store the charger's coupling means (the "
+                     "connector) not less than 18 in and not more than 48 in above the finished floor.", SFBC_EVSE_URL),
+                Note("outdoor", "San Francisco Building Code 106A.1.16.1: outdoors, store the charger's coupling means "
+                     "(the connector) at least 24 in above grade (CEC 625.50).", SFBC_EVSE_URL),
+                Note("always", "San Francisco Building Code 106A.1.16.1: fasten the Level 2 charger in place per the "
+                     "manufacturer's instructions and CEC 625.44.", SFBC_EVSE_URL),
                 Note("always", "DBI E-02: the electrical plan and calculations are signed and stamped by a California "
                      "registered electrical engineer or by the licensed electrical contractor responsible for the "
                      "design and installation.", E02_URL),

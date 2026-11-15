@@ -166,7 +166,8 @@ def _flags(job: EvJob, load: LoadCalculation, circuit: Circuit, disconnect: int 
         flags.append("This site plan is a schematic. Replace it with the property's plan before submitting.")
     if job.jurisdiction.needs_parcel_number and not (job.plan and job.plan.parcel_number):
         flags.append("This city needs the parcel number on the application.")
-    active = {"always"} | ({"disconnect"} if disconnect else set()) | ({"trench"} if job.trench_ft else set())
+    active = ({"always", "outdoor" if job.location == "exterior_wall" else "indoor"}
+              | ({"disconnect"} if disconnect else set()) | ({"trench"} if job.trench_ft else set()))
     checklist = job.jurisdiction.checklist_for("ev_charger")
     flags += [note.text for note in checklist.notes if note.when in active]
     flags.append(checklist.code_note)

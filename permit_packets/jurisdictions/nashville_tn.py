@@ -8,8 +8,11 @@ license and Metro registration). Metro publishes no residential EV charger, serv
 general NEC checklist, with the Metro items below that Metro does publish, and the packet says so.
 Electric utility is Nashville Electric Service (NES), which approves service work separately.
 
-Not found published, so not in the packet: the exact text of Metro's local NEC amendments (Metro Code
-Chapter 16.20 on Municode, which blocked direct download) and the Tennessee statewide NEC edition.
+Metro's NEC amendments are Metro Code 16.20.150 (Municode). The ones that touch these jobs are carried
+below with their text: 110.12 (power on for the final inspection), 230.1 (NES sets the meter base location),
+230.43 (service entrance conductors in conduit on masonry or metal walls), 230.70(A)(1) (main service
+disconnect within 5 ft of where the service conductors leave the meter base and enter the building) and
+625.43 (EVSE disconnecting means).
 """
 from __future__ import annotations
 
@@ -30,8 +33,7 @@ NES_GUIDELINES_URL = (
     "https://www.nespower.com/-/media/project/nes/common/pdfs/builders-and-developers/electric-service-guidelines-v21.pdf"
 )
 CODE_NOTE = (
-    "Metro Nashville lists the 2023 NEC as adopted with local amendments (Metro Code Chapter 16.20). "
-    "Confirm the amendments with Metro Codes."
+    "Metro Nashville enforces the 2023 NEC with the local amendments in Metro Code 16.20.150."
 )
 SOURCE_LABEL = "General NEC checklist plus what Metro Codes publishes (Metro has no residential checklist for this job)"
 
@@ -41,10 +43,34 @@ NO_PUBLISHED_CHECKLIST = Note(
     "Metro has adopted. Keep this packet in the job file and attach it in ePermits if the reviewer asks.",
     ADOPTED_CODES_URL,
 )
-NEC_AMENDMENTS = Note(
+# Metro Code 16.20.150, amendments to the 2023 NEC (text as published on Municode).
+FINAL_POWER = Note(
     "always",
-    "Metro Code Chapter 16.20 adopts the 2023 NEC with local amendments, including 230.1 (the meter location "
-    "provision), 210.70(C), 334.15(C) and 680.14. Read the chapter for the exact wording before design.",
+    "Metro amendment to NEC 110.12: electrical power must be supplied to the building for the inspector to "
+    "perform the final inspection.",
+    MUNICODE_URL,
+)
+METER_LOCATION = Note(
+    "always",
+    "Metro amendment to NEC 230.1: the power supplier (NES) determines the physical location of the meter base.",
+    MUNICODE_URL,
+)
+SE_CONDUIT = Note(
+    "always",
+    "Metro amendment to NEC 230.43: service entrance conductors must be in conduit where they serve a structure "
+    "with exterior walls of brick, stone, masonry, metal or metal-clad.",
+    MUNICODE_URL,
+)
+DISCONNECT_5_FT = Note(
+    "always",
+    "Metro amendment to NEC 230.70(A)(1): the main service disconnecting means must be no more than 5 ft from "
+    "the point where the service conductors leave the load side of the meter base and enter the building.",
+    MUNICODE_URL,
+)
+EVSE_DISCONNECT = Note(
+    "disconnect",
+    "Metro amendment to NEC 625.43: for fixed-in-place EVSE rated more than 60 A or more than 150 V to ground, "
+    "the disconnecting means must be provided and installed in a readily accessible location.",
     MUNICODE_URL,
 )
 NES_RELEASE = Note(
@@ -90,7 +116,7 @@ NASHVILLE = Jurisdiction(
         "https://ashrae-meteo.info/v3.0/index.php?lat=36.12&lng=-86.69&place=%27%27&wmo=723270&ashrae_version=2017"
     ),
     code_note=CODE_NOTE,
-    fallback_notes=(NEC_AMENDMENTS, NES_RELEASE),
+    fallback_notes=(FINAL_POWER, NES_RELEASE),
     utility="Nashville Electric Service (NES)",
     utility_short="NES",
     checklists={
@@ -106,7 +132,7 @@ NASHVILLE = Jurisdiction(
             source_url=EPERMITS_GUIDE_URL,
             source_label=SOURCE_LABEL,
             code_note=CODE_NOTE,
-            notes=(_note("EV charger"), NEC_AMENDMENTS),
+            notes=(_note("EV charger"), FINAL_POWER, EVSE_DISCONNECT),
         ),
         SERVICE_UPGRADE: Checklist(
             items=(
@@ -125,7 +151,12 @@ NASHVILLE = Jurisdiction(
             code_note=CODE_NOTE,
             notes=(
                 _note("service upgrade"),
-                NEC_AMENDMENTS,
+                DISCONNECT_5_FT,
+                Note("always", "2023 NEC 230.85: replacing the service equipment of a one- or two-family dwelling "
+                     "requires an outdoor emergency disconnect, readily accessible and marked."),
+                SE_CONDUIT,
+                METER_LOCATION,
+                FINAL_POWER,
                 NES_RELEASE,
                 Note("always", "Build the meter base and service to the NES Electric Service Guidelines (current "
                      "version) and confirm with NES.", NES_GUIDELINES_URL),

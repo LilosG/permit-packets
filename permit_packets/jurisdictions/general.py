@@ -19,6 +19,10 @@ GENERAL_CHECKLISTS: dict[str, Checklist] = {
         Requirement("Panel and meter equipment specifications and listing", "equipment"),
         Requirement("Utility service request", "utility"),
         SURGE_PROTECTION,
+    ), notes=(
+        # NEC 230.85, in the 2020 and 2023 NEC (every city here is on one of them).
+        Note("always", "NEC 230.85: replacing the service equipment of a one- or two-family dwelling requires an "
+                       "outdoor emergency disconnect, readily accessible and marked."),
     )),
     "subpanel": Checklist(items=(
         Requirement("Permit application", "application"),

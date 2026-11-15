@@ -114,6 +114,21 @@ def service_conduit(conductor: Conductor, conduit_type: str) -> str:
     raise ValueError(f"{fill:.3f} sq in is too much wire for {conduit_type} up to {sizes[-1][0]}")
 
 
+def egc_for(breaker: int, material: Material) -> str:
+    """NEC Table 250.122: the equipment grounding conductor for the breaker, in the run's material."""
+    return next(row[1 if material == "copper" else 2] for row in EGC_TABLE if breaker <= row[0])
+
+
+def conduit_with_egc(conductor: Conductor, egc: str, conduit_type: str) -> str:
+    """The smallest conduit that holds two hots, a full-size neutral and the EGC at 40% fill."""
+    fill = FEEDER_CONDUCTORS_IN_CONDUIT * conductor.area_sq_in + _ground_properties(egc)[1]
+    sizes = SERVICE_CONDUIT_FILL_SQ_IN[conduit_type]
+    for size, capacity in sizes:
+        if fill <= capacity:
+            return size
+    raise ValueError(f"{fill:.3f} sq in is too much wire for {conduit_type} up to {sizes[-1][0]}")
+
+
 def solar_fits(bus_amps: int, main_amps: int, pv_breaker_amps: int) -> bool:
     """NEC 705.12(B)(3)(2): main plus PV breaker within 120% of the bus, PV breaker at the far end."""
     return main_amps + pv_breaker_amps <= BUS_BACKFEED_FACTOR * bus_amps
@@ -213,7 +228,8 @@ def size_feeder(
     return Feeder(
         conductor=chosen, egc=_feeder_egc(breaker, material, start, chosen),
         upsized=chosen is not start, vd_volts=volts, vd_percent=percent,
-        heat=heat_calc(chosen.size, material, ambient_f, cap_a=chosen.ampacity_75c, carries_a=required)
+        heat=heat_calc(chosen.size, material, ambient_f, cap_a=chosen.ampacity_75c, carries_a=required,
+                       carries_label="83% of breaker (310.12)" if whole_dwelling else "breaker")
         if ambient_f is not None else None,
     )
 

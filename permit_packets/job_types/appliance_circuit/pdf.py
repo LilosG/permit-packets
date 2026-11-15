@@ -302,6 +302,10 @@ def _cover(packet: AppliancePacket) -> list:
     )
 
 
+# Where the appliance goes, as the scope sentence reads it.
+SCOPE_PLACES = {"indoor": "indoors", "outdoor": "outdoors", "detached": "at the detached building"}
+
+
 def scope_of_work(packet: AppliancePacket) -> str:
     job = packet.job
     model = f" ({job.appliance_model})" if job.appliance_model else ""
@@ -313,8 +317,8 @@ def scope_of_work(packet: AppliancePacket) -> str:
         else "Service capacity must be resolved before submittal."
     )
     return (
-        f"Install one dedicated 240 V, {packet.breaker} A circuit for a {_appliance(packet)}{model} at the "
-        f"{LOCATION_LABELS[job.location]}. "
+        f"Install one dedicated 240 V, {packet.breaker} A circuit for a {_appliance(packet)}{model} "
+        f"{SCOPE_PLACES[job.location]}. "
         f"Add a {packet.breaker} A, 2-pole breaker to the existing {job.service_amps} A main panel. "
         f"{route} a new {job.run_ft} ft branch circuit, {_wire_text(packet)}, "
         f"{'as cable' if packet.conduit_size is None else f'in {_conduit(packet)} conduit'}, "

@@ -687,6 +687,9 @@
           SAMPLE = { address: first.sample_address, jurisdiction_key: first.key, label: first.label };
           if (client.sheet_size) $('#sheet-size').options[0].textContent = `Default (${client.sheet_size === 'tabloid' ? '11 x 17' : 'Letter'})`;
           if (client.company_name) form.elements.contractor.value = client.company_name;
+          // A client's packet carries their own license number, never the demo's placeholder (the field is required).
+          form.elements.license_number.value = '';
+          form.elements.license_number.placeholder = 'Your contractor license number';
           $('#bar-city').textContent = client.cities.map((city) => city.label).join(' · ');
           $('#address').placeholder = `Job address in ${client.cities.map((city) => city.label).join(' or ')}`;
         }

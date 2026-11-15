@@ -27,7 +27,7 @@ SURGE_PROTECTION = Requirement(
 
 @dataclass(frozen=True)
 class Note:
-    when: str  # always, disconnect or trench
+    when: str  # always, disconnect, trench, indoor or outdoor (EV charger location)
     text: str
     source: str = ""  # URL of the page or form this note comes from
 
@@ -98,7 +98,7 @@ class Jurisdiction:
                     notes=base.notes + (Note(
                         "always",
                         f"{self.name} publishes no {job_type.replace('_', ' ')} checklist. This is the general NEC "
-                        f"checklist. {self.code_note}".strip()
+                        "checklist."  # the code note is its own flag (checklist.code_note), so it is not repeated here
                     ),) + self.fallback_notes,
                 )
         added = tuple(note for note in STATE_AMENDMENTS.get(self.state, ()) if note not in base.notes)

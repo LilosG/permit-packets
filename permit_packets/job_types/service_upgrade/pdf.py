@@ -48,7 +48,17 @@ def _metal(packet: ServicePacket) -> str:
 
 
 def _service_wire(packet: ServicePacket) -> str:
-    return f"3 {wire_label(packet.conductor.size)} {_metal(packet)} THWN-2"
+    wire = f"3 {wire_label(packet.conductor.size)} {_metal(packet)} THWN-2"
+    return f"{wire} + 1 #{packet.feeder_egc} {_metal(packet)} EGC" if packet.feeder_egc else wire
+
+
+def _run_name(packet: ServicePacket) -> str:
+    """What the measured run is: service conductors to a main panel, or a feeder from a meter-main to the panel."""
+    return "Feeder, meter-main to panel" if packet.is_meter_main else "Service conductors"
+
+
+def _utility_name(packet: ServicePacket) -> str:
+    return packet.job.utility or packet.job.jurisdiction.utility
 
 
 def _conduit_text(packet: ServicePacket) -> str:
@@ -165,7 +175,7 @@ class SitePlan(Flowable):
         c.setFont("Helvetica", 7.2)
         c.setFillColor(MUTED)
         for i, note in enumerate(["Schematic, not to scale.", "Field verify the locations.",
-                                  f"Service conductors, {job.se_length_ft} ft."]):
+                                  f"{_run_name(self.packet)}, {job.se_length_ft} ft."]):
             c.drawString(lx, note_y - 14 - i * 11, note)
         c.setFont("Helvetica", 7.5)
         c.setFillColor(INK)
@@ -230,13 +240,33 @@ class Riser(Flowable):
         c.drawCentredString(utility_x, mid + 15, "Service")
         c.setFont("Helvetica", 6.8)
         c.drawCentredString(utility_x, mid + 5, "overhead drop" if _drop(packet) == "overhead" else "lateral")
-        label_x = (xs[1] + box_w + xs[2]) / 2
-        c.setFont("Helvetica-Bold", 7.2)
-        c.drawCentredString(label_x, mid + 15, "Service conductors")
-        c.setFont("Helvetica", 6.8)
-        c.drawCentredString(label_x, mid + 5, _service_wire(packet))
-        c.drawCentredString(label_x, mid - 10, _conduit_text(packet))
-        c.drawCentredString(label_x, mid - 20, f"{job.se_length_ft} ft")
+        # Service conductors run meter to main panel. In a meter-main the meter and main share an enclosure and
+        # the measured run is the feeder from the main to the panel.
+        run_left = xs[2] if combo else xs[1]
+        same_left = xs[1] if combo else xs[2]
+        label_x = (run_left + box_w + run_left + box_w + gap) / 2
+        wire = _service_wire(packet)
+        if packet.feeder_egc:
+            # Wires above the connecting line, conduit and length below it.
+            c.setFont("Helvetica-Bold", 7.2)
+            c.drawCentredString(label_x, mid + 24, "Feeder")
+            c.setFont("Helvetica", 6.8)
+            c.drawCentredString(label_x, mid + 14, f"3 {wire_label(packet.conductor.size)} {_metal(packet)} THWN-2")
+            c.drawCentredString(label_x, mid + 5, f"+ 1 #{packet.feeder_egc} {_metal(packet)} EGC")
+            c.drawCentredString(label_x, mid - 10, _conduit_text(packet))
+            c.drawCentredString(label_x, mid - 20, f"{job.se_length_ft} ft")
+        else:
+            c.setFont("Helvetica-Bold", 7.2)
+            c.drawCentredString(label_x, mid + 15, "Service conductors")
+            c.setFont("Helvetica", 6.8)
+            c.drawCentredString(label_x, mid + 5, wire)
+            c.drawCentredString(label_x, mid - 10, _conduit_text(packet))
+            c.drawCentredString(label_x, mid - 20, f"{job.se_length_ft} ft")
+        same_x = (same_left + box_w + same_left + box_w + gap) / 2
+        c.setFont("Helvetica", 6.4)
+        c.setFillColor(MUTED)
+        c.drawCentredString(same_x, mid - 10, "same enclosure")
+        c.setFillColor(INK)
 
         # Grounding electrode conductor down from the main to a rail, then one drop to each electrode.
         main_x = xs[2] + box_w / 2
@@ -354,12 +384,18 @@ def scope_of_work(packet: ServicePacket) -> str:
     relocated = ", relocating the meter" if job.relocated else ""
     brand = (f" The existing {BRAND_LABELS[job.existing_brand]} panel is being replaced for that reason."
              if job.existing_brand in BRAND_LABELS else "")
-    utility = job.utility or "the utility"
+    utility = _utility_name(packet) or "the utility"
     run = (f"{_service_wire(packet)} in {packet.conduit_size} {job.conduit} conduit"
            if packet.conduit_size else f"{_service_wire(packet)} as cable, without conduit")
+    if packet.is_meter_main:
+        conductors = (f"The {job.service_drop} service lands in the meter-main. Run a feeder from the meter-main to "
+                      f"the panel, {run}, {job.se_length_ft} ft, with the panel's neutral isolated from ground "
+                      f"(NEC 250.24(A)(5)). ")
+    else:
+        conductors = (f"Run new service entrance conductors, {run}, {job.se_length_ft} ft from the meter to the main, "
+                      f"from an {job.service_drop} service. ")
     return (
-        f"{opening}{relocated}. Run new service entrance conductors, {run}, "
-        f"{job.se_length_ft} ft from the meter to the main, from an {job.service_drop} service. "
+        f"{opening}{relocated}. {conductors}"
         f"Ground the service with {_electrode_scope(packet)}. Bond the water pipe and the gas pipe. "
         f"Transfer the existing branch circuits to the new panel. "
         f"Coordinate the disconnect and reconnect with {utility}.{brand}"
@@ -420,7 +456,7 @@ def _site_plan(packet: ServicePacket) -> list:
         legend.append(f"Meter to panel, {plan.measured_route_ft} ft measured on plan")
     if plan.lot:
         legend.append("Dashed yellow: lot line")
-    measures = [f"Service conductors: {job.se_length_ft} ft"]
+    measures = [f"{_run_name(packet)}: {job.se_length_ft} ft"]
     setback = plan.distance_to_lot_line_ft(plan.markers["panel"])
     if setback is not None:
         measures.append(f"Panel to nearest lot line: {setback} ft")
@@ -439,8 +475,9 @@ def _surge_line(job) -> list[str]:
 def _riser(packet: ServicePacket) -> list:
     job = packet.job
     rows = [
-        ["Service conductors", f"{_service_wire(packet)}, {packet.conductor.ampacity_75c} A at 75\N{DEGREE SIGN}C",
-         _conduit_text(packet), f"{job.new_service_amps} A, 2-pole main"],
+        [_run_name(packet), f"{_service_wire(packet)}, {packet.conductor.ampacity_75c} A at 75\N{DEGREE SIGN}C",
+         _conduit_text(packet),
+         f"{job.new_service_amps} A, 2-pole main" + (" in the meter-main" if packet.is_meter_main else "")],
     ]
     rows += [
         [f"GEC to {ELECTRODE_LABELS[electrode].lower()}", f"1 #{size} Cu",
@@ -486,7 +523,7 @@ def _load(packet: ServicePacket) -> list:
 def _utility(packet: ServicePacket) -> list:
     job = packet.job
     rows = [
-        ("Utility", job.utility or "Add the utility"),
+        ("Utility", _utility_name(packet) or "Add the utility"),
         ("Service address", job.address),
         ("Customer", job.customer),
         ("Meter number", job.meter_number or "Add from the meter"),

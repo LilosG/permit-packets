@@ -185,7 +185,11 @@ def _flags(job: ApplianceJob, load: LoadCalculation, branch: Branch) -> list[str
     if job.appliance == "hot_tub":
         flags += [
             "Bond the spa's metal parts and equipment per the manufacturer and 680.42/680.26.",
-            "Keep receptacles at least 6 ft from the spa, and GFCI-protect any within 20 ft (680.43).",
+            # Outdoor spas follow Part II through 680.42 (680.22(A)); indoor ones 680.43(A).
+            "Keep receptacles at least 6 ft from the spa's inside walls, and GFCI-protect 15 and 20 A, 125 to 250 V "
+            "receptacles within 20 ft (680.42, 680.22(A))." if job.location == "outdoor" else
+            "Keep receptacles at least 6 ft from the spa's inside walls, and GFCI-protect 125 V, 30 A or smaller "
+            "receptacles within 10 ft (680.43(A)).",
             "Check overhead line clearances above the spa (680.9).",
             "The disconnect must be within sight of the spa.",
         ]
