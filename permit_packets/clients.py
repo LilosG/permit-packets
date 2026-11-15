@@ -58,6 +58,7 @@ CLIENTS: dict[str, Client] = {
     # added if JBee signs on.
     "jbee": _client("jbee", "JBee Industries", "https://jbindustrieshvac.com", "jbee.png", "chandler-az"),
     "volta": _client("volta", "Volta Electrical", "https://www.voltaelectricians.com", "volta.png", "bellevue-wa"),
+    "jacob": _client("jacob", "Jacob Electric", "", "jacob.png", "bellevue-wa"),
 }
 
 
