@@ -3,7 +3,7 @@
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 "IBM Plex Sans", system-ui, sans-serif; }
 header { background: var(--ink); color: #fff; }
-.bar { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; max-width: 1120px; margin: 0 auto; padding: 14px 16px; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1120px; margin: 0 auto; padding: 14px 16px; }
 .bar strong { font: 700 22px/1.1 var(--display); }
 .bar span { color: #c5ced5; font-size: 14px; }
 main { max-width: 1120px; margin: 0 auto; padding: 20px 16px 56px; }
@@ -140,7 +140,9 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   .stats div:nth-child(n+3) { border-top: 1px solid var(--rule); }
   ol.steps li { padding: 8px; font-size: 13px; }
   .search { flex-direction: column; }
-  .bar span { display: none; }
+  #bar-city { display: none; }
+  .bar-right { gap: 8px; }
+  .bar-link { padding: 5px 10px; font-size: 13px; }
   .fields div { grid-template-columns: minmax(0, 1fr) auto; }
   .fields dt { grid-column: 1 / -1; }
   .actions button, .actions a.button { width: 100%; text-align: center; }
@@ -151,4 +153,5 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
 .bar-link:hover { background: rgba(255,255,255,.1); }
 .bar-form { margin: 0; }
 button.bar-link { background: none; font-family: inherit; line-height: inherit; cursor: pointer; }
-.brand-logo { height: 28px; width: auto; display: block; }
+/* A white plate so dark lettering in a client logo reads on the dark header. */
+.brand-logo { height: 40px; width: auto; max-width: 180px; object-fit: contain; display: block; background: #fff; padding: 4px 8px; border-radius: 6px; }
