@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
-from pypdf import PdfReader, PdfWriter
+from pypdf import PageObject, PdfReader, PdfWriter, Transformation
 
 DATA_SHEETS = Path(__file__).parent / "data_sheets"
 ATTACHMENTS_KEY = "/PacketAttachments"
@@ -97,6 +97,24 @@ def find_equipment(model: str, kind: str) -> Equipment | None:
     return None
 
 
+DATA_SHEET_MARGIN_PT = 18.0  # a quarter inch all round when a data sheet is fitted to the packet's sheet
+
+
+def _add_on_packet_sheet(writer: PdfWriter, page: PageObject, width: float, height: float) -> None:
+    """A manufacturer's page centered on a sheet the packet's size, scaled down only if it doesn't fit.
+
+    Cities that take one combined PDF want every sheet one standard size (Chandler: one size from
+    8.5 x 11 up to 30 x 42), and manufacturers print on whatever size they like."""
+    box = page.mediabox  # library data sheets are unrotated (tests/test_equipment.py)
+    w, h = float(box.width), float(box.height)
+    room_w, room_h = width - 2 * DATA_SHEET_MARGIN_PT, height - 2 * DATA_SHEET_MARGIN_PT
+    scale = min(1.0, room_w / w, room_h / h)
+    x = (width - w * scale) / 2 - float(box.left) * scale
+    y = (height - h * scale) / 2 - float(box.bottom) * scale
+    sheet = writer.add_blank_page(width=width, height=height)
+    sheet.merge_transformed_page(page, Transformation().scale(scale).translate(x, y))
+
+
 def attach_data_sheets(packet_pdf: bytes, sheets: list[Equipment], *, after_title: str) -> bytes:
     """Insert each data sheet right after the packet page whose text starts with after_title."""
     if not sheets:
@@ -110,9 +128,11 @@ def attach_data_sheets(packet_pdf: bytes, sheets: list[Equipment], *, after_titl
     writer = PdfWriter()
     for page in packet.pages[:insert_at]:
         writer.add_page(page)
+    size = packet.pages[0].mediabox
+    width, height = float(size.width), float(size.height)
     for sheet in sheets:
         for page in PdfReader(str(sheet.data_sheet_path())).pages:
-            writer.add_page(page)
+            _add_on_packet_sheet(writer, page, width, height)
     for page in packet.pages[insert_at:]:
         writer.add_page(page)
     metadata = {key: str(value) for key, value in (packet.metadata or {}).items()}

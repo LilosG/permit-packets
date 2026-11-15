@@ -66,16 +66,15 @@ def _overlay(blank_in: tuple[float, float] | None, cover_bottom: float | None) -
     return PdfReader(BytesIO(buffer.getvalue())).pages[0]
 
 
-def _sheet(page: PageObject, scale: float, blank_in: tuple[float, float] | None) -> PageObject:
+def _add_sheet(writer: PdfWriter, page: PageObject, scale: float, blank_in: tuple[float, float] | None) -> None:
     box = page.mediabox
     width, height = float(box.width), float(box.height)
-    sheet = PageObject.create_blank_page(width=SHEET_W, height=SHEET_H)
+    sheet = writer.add_blank_page(width=SHEET_W, height=SHEET_H)  # in the writer before anything merges onto it
     x = (SHEET_W - width * scale) / 2
     y = SHEET_H - TOP_MARGIN - height * scale
     sheet.merge_transformed_page(page, Transformation().scale(scale).translate(x - float(box.left) * scale,
                                                                                  y - float(box.bottom) * scale))
     sheet.merge_page(_overlay(blank_in, y if blank_in else None))
-    return sheet
 
 
 def page_roles(page_count: int, titles: list[str], attachments: tuple[int, int] | None) -> list[str | None]:
@@ -95,9 +94,9 @@ def drawing_set(pdf: bytes, titles: list[str], blank_in: tuple[float, float] | N
     writer = PdfWriter()
     for page, title in zip(reader.pages, page_roles(len(reader.pages), titles, attachment_span(pdf))):
         if title == COVER_TITLE:
-            writer.add_page(_sheet(page, COVER_SCALE, blank_in))
+            _add_sheet(writer, page, COVER_SCALE, blank_in)
         elif title in DRAWING_TITLES:
-            writer.add_page(_sheet(page, SHEET_SCALE, None))
+            _add_sheet(writer, page, SHEET_SCALE, None)
         else:
             writer.add_page(page)
     if reader.metadata:

@@ -13,10 +13,10 @@ from tests.packet_helpers import complete_inputs, page_texts
 from tests.api_helpers import with_pdf
 
 PASSWORDS = {key: f"pw-{key}-0123456789" for key in CLIENTS if key != "demo"}
-CITIES = {"erke": "nashville-tn", "elc": "san-francisco-ca", "thee-electrician": "san-francisco-ca", "jbee": "mesa-az"}
+CITIES = {"erke": "nashville-tn", "elc": "san-francisco-ca", "thee-electrician": "san-francisco-ca", "jbee": "chandler-az"}
 LOGOS = {"erke": "erke.png", "elc": "elc.png", "thee-electrician": "thee.png", "jbee": "jbee.png"}
 BY_KEY = {j.key: j for j in KNOWN.values()}
-EXTRA_CITIES = {"jbee": ("chandler-az",)}
+EXTRA_CITIES: dict[str, tuple[str, ...]] = {}
 OTHER = {"erke": "mesa-az", "elc": "nashville-tn", "thee-electrician": "mesa-az", "jbee": "san-francisco-ca"}
 
 
@@ -173,7 +173,7 @@ def test_address_suggestions_are_limited_to_the_signed_in_clients_cities_and_the
     sign_in(PASSWORDS["jbee"]).post("/api/property/suggest", json=body)
     sign_in("demo-password").post("/api/property/suggest", json=body)
     assert asked[0] == ["san-francisco-ca"]
-    assert asked[1] == ["mesa-az", "chandler-az"]
+    assert asked[1] == ["chandler-az"]
     assert asked[2] == [j.key for j in KNOWN.values()]
     assert all(j.bbox and j.center for j in KNOWN.values())
 
@@ -197,7 +197,7 @@ def test_sign_out_is_in_the_header_of_every_page_and_lets_a_different_client_sig
     # The same browser can sign in as someone else, and sees only their cities.
     assert browser.post("/api/signin", json={"password": PASSWORDS["jbee"]}).status_code == 200
     info = browser.get("/api/client").json()
-    assert info["key"] == "jbee" and [c["key"] for c in info["cities"]] == ["mesa-az", "chandler-az"]
+    assert info["key"] == "jbee" and [c["key"] for c in info["cities"]] == ["chandler-az"]
 
 
 def test_signing_out_when_not_signed_in_still_goes_to_the_sign_in_page():

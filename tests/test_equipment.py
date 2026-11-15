@@ -151,3 +151,10 @@ def test_measured_demand_220_87_can_carry_a_home_the_220_82_calculation_rejects(
     pages = [page.extract_text() for page in PdfReader(BytesIO(base64.b64decode(body["pdf"]))).pages]
     load_page = next(text for text in pages if "Load Calculation" in text)
     assert "measured demand (NEC 220.87)" in load_page and "89.5 A" in load_page
+
+
+def test_library_data_sheets_are_unrotated_so_they_place_as_drawn():
+    from pypdf import PdfReader
+    from permit_packets.core.equipment import LIBRARY
+    for item in LIBRARY:
+        assert all(page.rotation == 0 for page in PdfReader(str(item.data_sheet_path())).pages), item.name

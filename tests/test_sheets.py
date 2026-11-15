@@ -56,7 +56,7 @@ def test_every_packet_page_is_drawn_at_the_sheet_size(key, size):
     assert set(_page_sizes(result.pdf, count)) == {SIZES[size]}
 
 
-def test_attached_data_sheets_keep_their_own_size():
+def test_attached_data_sheets_sit_on_the_packet_sheet_without_stretching():
     payload = {**sample("ev_charger"), "charger_model": "Tesla Wall Connector", "sheet_size": "tabloid"}
     result = build("ev_charger", payload)
     count = len(packet_pages(result.pdf))
@@ -66,8 +66,14 @@ def test_attached_data_sheets_keep_their_own_size():
     finally:
         document.close()
     assert len(sizes) > count
-    assert sizes[0] == SIZES["tabloid"]
-    assert any(size != SIZES["tabloid"] for size in sizes), "the manufacturer sheets were not stretched"
+    assert set(sizes) == {SIZES["tabloid"]}, "one sheet size for the whole PDF"
+    # Placed at 100% or smaller, never enlarged: the page's drawn content fits inside the original size.
+    from pypdf import PdfReader
+    from io import BytesIO
+    from permit_packets.core.equipment import attachment_span
+    after, attached = attachment_span(result.pdf)
+    page = PdfReader(BytesIO(result.pdf)).pages[after]
+    assert page.mediabox.width == SIZES["tabloid"][0]
 
 
 def test_the_request_overrides_the_city_default(monkeypatch):

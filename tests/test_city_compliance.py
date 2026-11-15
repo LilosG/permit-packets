@@ -241,3 +241,19 @@ def test_a_city_without_a_blank_area_gets_no_extra_sheet():
     result = build("ev_charger", complete_inputs("ev_charger", MESA))
     assert len(packet_pages(result.pdf)) == len(REGISTRY["ev_charger"].documents)
     assert not any("Reserved for DBI" in text for text in packet_pages(result.pdf))
+
+
+@pytest.mark.parametrize("key", ["ev_charger", "service_upgrade"])
+def test_attached_data_sheets_sit_on_the_packets_own_sheet_size(key):
+    """Chandler and other single-PDF cities want one sheet size: data sheets are fitted to the packet's."""
+    from permit_packets.jurisdictions import jurisdiction_by_key
+
+    result = build(key, complete_inputs(key, jurisdiction_by_key("chandler-az")))
+    span = attachment_span(result.pdf)
+    assert span, "a library model attaches its data sheet"
+    document = pypdfium2.PdfDocument(result.pdf)
+    try:
+        sizes = {(round(page.get_width()), round(page.get_height())) for page in document}
+    finally:
+        document.close()
+    assert sizes == {SHEET_POINTS["letter"]}

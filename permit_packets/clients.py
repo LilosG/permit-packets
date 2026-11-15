@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 from permit_packets.job_types import REGISTRY
@@ -54,10 +54,9 @@ CLIENTS: dict[str, Client] = {
     "elc": _client("elc", "ELC Contractor LLC", "https://electricelc.com", "elc.png", "san-francisco-ca"),
     "thee-electrician": _client(
         "thee-electrician", "Thee Electrician", "https://theeelectrician.co", "thee.png", "san-francisco-ca"),
-    "jbee": replace(
-        _client("jbee", "JBee Industries", "https://jbindustrieshvac.com", "jbee.png", "mesa-az"),
-        jurisdiction_keys=("mesa-az", "chandler-az"),
-    ),
+    # One city for the trial: Chandler, checked against Chandler's published requirements. More cities are
+    # added if JBee signs on.
+    "jbee": _client("jbee", "JBee Industries", "https://jbindustrieshvac.com", "jbee.png", "chandler-az"),
 }
 
 
