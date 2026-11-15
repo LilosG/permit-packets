@@ -26,6 +26,7 @@ from permit_packets.core.conductors import (
 )
 from permit_packets.job_types import REGISTRY
 from permit_packets.jurisdictions import ORO_VALLEY, jurisdiction_json
+from tests.api_helpers import with_pdf
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
@@ -51,9 +52,7 @@ def _payload(**changes) -> dict:
 
 
 def _packet(client, **changes) -> dict:
-    response = client.post(PACKET_URL, json=_payload(**changes))
-    assert response.status_code == 200, response.text
-    return response.json()
+    return with_pdf(client, PACKET_URL, _payload(**changes))
 
 
 def _text(body: dict) -> str:

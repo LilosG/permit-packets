@@ -18,6 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import app
+from tests.api_helpers import with_pdf
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
@@ -57,9 +58,7 @@ def test_every_case_has_a_snapshot():
 def test_packet_matches_its_snapshot(client, name):
     snapshot = _load("snapshots", name)
     request = to_current_request(_load("cases", name))
-    response = client.post(PACKET_URL, json=request)
-    assert response.status_code == 200
-    body = response.json()
+    body = with_pdf(client, PACKET_URL, request)
     for key, value in snapshot["response"].items():
         assert key in body, key
         assert body[key] == value, key

@@ -546,11 +546,40 @@
       const title = result.documents[index]?.title || '';
       return `<a href="${src}" target="_blank" rel="noopener" class="${index === feature ? 'feature' : ''}"><img src="${src}" alt="Packet page ${index + 1}: ${esc(title)}"></a>`;
     }).join('');
-    const bytes = Uint8Array.from(atob(result.pdf), (char) => char.charCodeAt(0));
+  }
+
+  /* The PDF comes from its own request (the preview and the PDF together are too big for one response).
+     The links stay off until it arrives; a newer build replaces an older one that is still loading. */
+  const PDF_LINKS = { '#open-packet': 'Open the full packet', '#download': 'Download packet (PDF)' };
+  let pdfBuild = 0;
+
+  function setPdfLinks(url, note) {
+    for (const [selector, label] of Object.entries(PDF_LINKS)) {
+      const link = $(selector);
+      if (url) {
+        link.href = url;
+        link.removeAttribute('aria-disabled');
+      } else {
+        link.removeAttribute('href');
+        link.setAttribute('aria-disabled', 'true');
+      }
+      link.textContent = note || label;
+    }
+  }
+
+  async function showPdf(pending) {
+    const build = ++pdfBuild;
     if (packetUrl) URL.revokeObjectURL(packetUrl);
-    packetUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-    $('#open-packet').href = packetUrl;
-    $('#download').href = packetUrl;
+    packetUrl = null;
+    setPdfLinks(null, 'Preparing the PDF…');
+    try {
+      const blob = await pending;
+      if (build !== pdfBuild) return;
+      packetUrl = URL.createObjectURL(blob);
+      setPdfLinks(packetUrl);
+    } catch (error) {
+      if (build === pdfBuild) setPdfLinks(null, `The PDF didn't load: ${error.message}`);
+    }
   }
 
   function updateApproval() {
@@ -589,6 +618,9 @@
     const type = current;
     $('#build-list').innerHTML = '';
     show('building');
+    // Both requests start together, so the PDF is usually ready by the time the review shows.
+    const pdf = api(`/api/jobs/${type.slug}/pdf`, job).then((response) => response.blob());
+    pdf.catch(() => {});  // a failed build is reported once, from the packet request below
     try {
       const response = await api(`/api/jobs/${type.slug}/packet`, job);
       const result = await response.json();
@@ -597,6 +629,7 @@
       lastType = type;
       await tickResults(result);
       renderReview(result);
+      showPdf(pdf);
       rememberJob(job, result, 'review');
       show(3);
     } catch (error) {

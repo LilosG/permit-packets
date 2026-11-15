@@ -45,6 +45,7 @@ button, a.button { display: inline-block; padding: 12px 20px; border: 1px solid 
 button.quiet, a.quiet { background: #fff; color: var(--ink); }
 button.link { padding: 0; border: 0; background: none; color: var(--copper); text-decoration: underline; }
 button:disabled { cursor: not-allowed; opacity: .4; }
+a.button[aria-disabled="true"] { cursor: progress; opacity: .55; }
 .error { margin-top: 14px; padding: 10px 12px; border: 1px solid #f3c2bd; background: var(--red-soft); color: var(--red); font-size: 15px; }
 ul.plain { margin: 0; padding: 0; list-style: none; }
 

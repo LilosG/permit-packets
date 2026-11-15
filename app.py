@@ -339,14 +339,27 @@ def _build(slug: str, payload: dict[str, Any], client: Client) -> tuple[JobType,
             var.reset(token)
 
 
+# The review screen and the PDF come from two requests. Vercel caps a function response at 4.5 MB, and the page
+# images plus the base64 PDF (data sheets included) reached about 4.1 MB in one response. The browser asks for
+# both at once; each rebuilds the packet from the same job, so they show the same packet.
 @app.post("/api/jobs/{slug}/packet", dependencies=[Depends(require_session)])
 def build_packet(slug: str, payload: dict[str, Any] = Body(...), client: Client = Depends(require_session)) -> dict:
     _, result = _build(slug, payload, client)
     return {
         **result.body,
         "pages": [base64.b64encode(page).decode() for page in packet_page_images(result.pdf)],
-        "pdf": base64.b64encode(result.pdf).decode(),
     }
+
+
+@app.post("/api/jobs/{slug}/pdf", dependencies=[Depends(require_session)])
+def packet_pdf(slug: str, payload: dict[str, Any] = Body(...), client: Client = Depends(require_session)) -> Response:
+    """The packet as one PDF file, sent as bytes rather than base64 (a third smaller)."""
+    _, result = _build(slug, payload, client)
+    return Response(
+        content=result.pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline", "Cache-Control": "private, no-store"},
+    )
 
 
 @app.post("/api/jobs/{slug}/documents", dependencies=[Depends(require_session)])

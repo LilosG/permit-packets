@@ -13,6 +13,7 @@ from permit_packets.core.preview import packet_documents_zip
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 from app import app  # noqa: E402
+from tests.api_helpers import with_pdf
 
 
 def test_every_library_item_has_its_data_sheet():
@@ -53,9 +54,7 @@ def _ev(client, model):
         open_breaker_spaces=4, charger_amps=48, location="attached_garage", run_ft=30, trench_ft=0,
         charger_model=model,
     )
-    response = client.post("/api/jobs/ev-charger/packet", json=payload)
-    assert response.status_code == 200, response.text
-    return response.json()
+    return with_pdf(client, "/api/jobs/ev-charger/packet", payload)
 
 
 def test_a_library_charger_attaches_its_data_sheet_after_the_equipment_page(client):
@@ -89,7 +88,7 @@ def test_the_panel_schedule_lists_entered_circuits_and_marks_the_new_breaker(cli
         open_breaker_spaces=4, charger_amps=48, location="attached_garage", run_ft=30, trench_ft=0,
         existing_circuits=payload_circuits,
     )
-    body = client.post("/api/jobs/ev-charger/packet", json=payload).json()
+    body = with_pdf(client, "/api/jobs/ev-charger/packet", payload)
     pages = [page.extract_text() for page in PdfReader(BytesIO(base64.b64decode(body["pdf"]))).pages]
     schedule = next(text for text in pages if "Panel Schedule" in text)
     assert "Range" in schedule and "50 A" in schedule and "EV charger, 48 A (this permit)" in schedule
@@ -118,7 +117,7 @@ def test_tabloid_draws_every_page_natively_at_11_x_17(client):
         open_breaker_spaces=4, charger_amps=48, location="attached_garage", run_ft=30, trench_ft=0,
         sheet_size="tabloid",
     )
-    body = client.post("/api/jobs/ev-charger/packet", json=payload).json()
+    body = with_pdf(client, "/api/jobs/ev-charger/packet", payload)
     assert body["sheet_size"] == "tabloid"
     sheets = PdfReader(BytesIO(base64.b64decode(body["pdf"]))).pages
     assert len(sheets) == len(body["pages"])
@@ -142,7 +141,7 @@ def test_measured_demand_220_87_can_carry_a_home_the_220_82_calculation_rejects(
     )
     without = client.post("/api/jobs/ev-charger/packet", json=payload).json()
     assert without["ready"] is False
-    body = client.post("/api/jobs/ev-charger/packet", json={**payload, "peak_demand_kw": 9.5}).json()
+    body = with_pdf(client, "/api/jobs/ev-charger/packet", {**payload, "peak_demand_kw": 9.5})
     capacity = next(check for check in body["checks"] if check["name"] == "Service capacity")
     # 9.5 kW x 1.25 = 11,875 VA, plus 32 A x 240 V x 1.25 = 9,600 VA: 21,475 VA / 240 V = 89.5 A
     assert capacity["result"] == "89.5 A by measured demand (220.87) on a 100 A service"

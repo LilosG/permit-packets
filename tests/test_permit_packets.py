@@ -34,6 +34,7 @@ from permit_packets.core.property_lookup import (
 )
 from permit_packets.core.panel_schedule import ExistingCircuit
 from permit_packets.core.property_plan import PlanView, PropertyPlan, clip_to, plan_scale, zoomed_scale
+from tests.api_helpers import with_pdf
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
@@ -205,7 +206,10 @@ def test_packet_route_returns_results_pages_and_pdf(client):
     assert (body["breaker"], body["wire"]) == (50, "#8 AWG Cu")
     assert len(body["pages"]) == 8
     assert base64.b64decode(body["pages"][0]).startswith(b"\xff\xd8")
-    assert base64.b64decode(body["pdf"]).startswith(b"%PDF")
+    assert "pdf" not in body, "the PDF comes from its own endpoint"
+    pdf = client.post("/api/jobs/ev-charger/pdf", json=_payload())
+    assert pdf.status_code == 200 and pdf.headers["content-type"] == "application/pdf"
+    assert pdf.content.startswith(b"%PDF")
     assert any(field["label"] == "Scope of work" for field in body["fields"])
 
 
@@ -229,7 +233,7 @@ def test_sample_mode_hides_the_address_and_parcel(client):
     plan = {"scale_ft_per_in": 30, "markers": {"panel": [400, 500], "charger": [600, 500]}, "lot": SQUARE_LOT,
             "parcel_number": "13831614010"}
     body = _payload(address="309 Real St, Las Vegas, NV", city="Las Vegas", state="NV", plan=plan, sample_mode=True)
-    response = client.post("/api/jobs/ev-charger/packet", json=body).json()
+    response = with_pdf(client, "/api/jobs/ev-charger/packet", body)
     assert response["address"] == "123 Sample St, Las Vegas, NV"
     text = " ".join(page.get_textpage().get_text_bounded()
                     for page in pypdfium2.PdfDocument(base64.b64decode(response["pdf"])))

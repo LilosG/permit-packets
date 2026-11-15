@@ -10,6 +10,7 @@ from app import app
 from permit_packets.clients import ALL_JOB_TYPES, CLIENTS, Client
 from permit_packets.jurisdictions import KNOWN
 from tests.packet_helpers import complete_inputs, page_texts
+from tests.api_helpers import with_pdf
 
 PASSWORDS = {key: f"pw-{key}-0123456789" for key in CLIENTS if key != "demo"}
 CITIES = {"erke": "nashville-tn", "elc": "san-francisco-ca", "thee-electrician": "san-francisco-ca", "jbee": "mesa-az"}
@@ -73,6 +74,7 @@ def test_client_gets_403_for_another_city(key):
     other = payload(OTHER[key])
     assert session.post("/api/jobs/ev-charger/packet", json=other).status_code == 403
     assert session.post("/api/jobs/ev-charger/documents", json=other).status_code == 403
+    assert session.post("/api/jobs/ev-charger/pdf", json=other).status_code == 403
     unknown = {**payload(CITIES[key]), "jurisdiction_key": "general", "city": "Nowhere", "state": "ZZ"}
     assert session.post("/api/jobs/ev-charger/packet", json=unknown).status_code == 403
 
@@ -80,9 +82,7 @@ def test_client_gets_403_for_another_city(key):
 @pytest.mark.parametrize("key", CITIES)
 def test_client_packet_has_no_demo_marks_and_names_the_company(key):
     session = sign_in(PASSWORDS[key])
-    response = session.post("/api/jobs/ev-charger/packet", json=payload(CITIES[key]))
-    assert response.status_code == 200
-    text = text_of(response.json()["pdf"])
+    text = text_of(with_pdf(session, "/api/jobs/ev-charger/packet", payload(CITIES[key]))["pdf"])
     assert "DEMO" not in text
     assert "NOT FOR SUBMISSION" not in text
 
@@ -92,9 +92,8 @@ def test_demo_login_keeps_its_demo_marks_and_every_city():
     info = session.get("/api/client").json()
     assert info["demo"] is True
     assert {c["key"] for c in info["cities"]} == set(BY_KEY)
-    response = session.post("/api/jobs/ev-charger/packet", json=payload("oro-valley-az"))
-    assert response.status_code == 200
-    assert "DEMO PACKET: NOT FOR SUBMISSION" in text_of(response.json()["pdf"])
+    assert "DEMO PACKET: NOT FOR SUBMISSION" in text_of(
+        with_pdf(session, "/api/jobs/ev-charger/packet", payload("oro-valley-az"))["pdf"])
 
 
 def test_a_session_cannot_be_moved_to_another_client():
@@ -136,8 +135,8 @@ def _title(pdf_b64: str) -> str:
 ])
 def test_demo_in_titles_and_zip_names_is_for_the_demo_login_only(job_type, slug):
     client_session, demo_session = sign_in(PASSWORDS["erke"]), sign_in("demo-password")
-    mine = client_session.post(f"/api/jobs/{slug}/packet", json=payload("nashville-tn", job_type)).json()
-    demo = demo_session.post(f"/api/jobs/{slug}/packet", json=payload("nashville-tn", job_type)).json()
+    mine = with_pdf(client_session, f"/api/jobs/{slug}/packet", payload("nashville-tn", job_type))
+    demo = with_pdf(demo_session, f"/api/jobs/{slug}/packet", payload("nashville-tn", job_type))
     assert "demo" not in _title(mine["pdf"]).lower()
     assert _title(demo["pdf"]).endswith("(demo)")
     mine_zip = client_session.post(f"/api/jobs/{slug}/documents", json=payload("nashville-tn", job_type))

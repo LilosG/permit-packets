@@ -111,12 +111,13 @@ AERIAL_SHIFT_FT: tuple[tuple[tuple[float, float, float, float], str, float, floa
 SF_FOOTPRINTS_URL = "https://data.sf.gov/resource/ynuv-fyni.geojson"
 SF_FOOTPRINTS_CREDIT = "Building outlines: City and County of San Francisco, Building Footprints (DataSF)"
 SAN_FRANCISCO_FIPS = "06075"
-# Mapbox satellite as raster tiles (the Static Images API caps at 1280 px and blends tiles, and it was asked for
-# z20.5, past the imagery's real detail, so it came back soft with a seam). Tiles come at @2x, 512 px each,
-# and are stitched and cropped to the plan's exact box.
+# Mapbox satellite as raster tiles (the Static Images API caps at 1280 px and blends tiles). Tiles come at @2x,
+# 512 px each, and are stitched and cropped to the plan's exact box. Mapbox serves Vexcel aerials over US cities
+# at zoom 16+ and has 7.5 cm detail to zoom 21 in places such as San Francisco
+# (https://docs.mapbox.com/data/tilesets/reference/mapbox-satellite/), so the zoom is picked to fill the plan
+# at AERIAL_PIXELS rather than stopping at z19 and stretching the picture about 4x.
 MAPBOX_TILE_URL = "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg90"
-MAPBOX_TARGET_M_PER_PIXEL = 0.15  # ground meters per tile pixel, or finer
-MAPBOX_MAX_ZOOM = 20  # z19 already gives 0.12 m per pixel at US latitudes; Mapbox's own detail ends about there
+MAPBOX_MAX_ZOOM = 20  # z20 at @2x is z21 detail: 0.06 m per pixel at US latitudes
 MAPBOX_TILE_LIMIT = 36
 WEB_MERCATOR_SPAN_M = 2 * math.pi * EARTH_RADIUS_M
 
@@ -206,7 +207,11 @@ LOOKUP_TIMEOUT = httpx.Timeout(14, connect=6)
 AERIAL_TIMEOUT = httpx.Timeout(40, connect=6)
 AERIAL_PIXELS = 1400
 TARGET_BRIGHTNESS = 110  # mean 0-255; darker pictures are lifted to about this
-JPEG_QUALITY = 78
+# The one lossy encode the picture gets on our side: sources come in as PNG (or Mapbox's own jpg90) and are
+# encoded once, at full chroma, because 4:2:0 chroma smears thin roof edges, lot fences and curbs.
+JPEG_QUALITY = 90
+# ArcGIS export format. "png" is 8-bit palette on MapServer exports (lossy color); png24 is full color, lossless.
+EXPORT_FORMAT = "png24"
 USER_AGENT = "LilosGrowth-PermitPackets/1.0"
 SUGGEST_TIMEOUT = httpx.Timeout(5, connect=3)
 SUGGESTION_LIMIT = 5
@@ -777,12 +782,13 @@ def _balance(image: Image.Image) -> Image.Image:
 
 
 def _finish(image_bytes: bytes) -> bytes:
+    """Levels and a light sharpen at the source's own resolution, one resize to AERIAL_PIXELS, one JPEG encode."""
     image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    if image.width != AERIAL_PIXELS:
+    image = _balance(image).filter(ImageFilter.UnsharpMask(radius=1, percent=60, threshold=2))
+    if image.size != (AERIAL_PIXELS, AERIAL_PIXELS):
         image = image.resize((AERIAL_PIXELS, AERIAL_PIXELS), Image.Resampling.LANCZOS)
-    image = _balance(image).filter(ImageFilter.UnsharpMask(radius=2, percent=70, threshold=2))
     buffer = BytesIO()
-    image.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+    image.save(buffer, format="JPEG", quality=JPEG_QUALITY, subsampling=0, optimize=True)
     return buffer.getvalue()
 
 
@@ -794,26 +800,40 @@ def shift_for(view: PlanView, source: str) -> tuple[float, float]:
     return 0.0, 0.0
 
 
-def mapbox_zoom(latitude: float, tile_px: int = 512) -> int:
-    """The coarsest web-mercator zoom whose tile pixels are MAPBOX_TARGET_M_PER_PIXEL or finer on the ground."""
-    ground_per_pixel_at_zoom_0 = WEB_MERCATOR_SPAN_M / tile_px * math.cos(math.radians(latitude))
-    return min(MAPBOX_MAX_ZOOM, math.ceil(math.log2(ground_per_pixel_at_zoom_0 / MAPBOX_TARGET_M_PER_PIXEL)))
+def _tile_span(box: tuple[float, float, float, float], zoom: int) -> tuple[float, float, float, float]:
+    """The box in tile units at this zoom (left, top, right, bottom), with y counted down from the top."""
+    west, south, east, north = box
+    tile_m = WEB_MERCATOR_SPAN_M / 2 ** zoom
+    origin = WEB_MERCATOR_SPAN_M / 2
+    return (west + origin) / tile_m, (origin - north) / tile_m, (east + origin) / tile_m, (origin - south) / tile_m
+
+
+def _tile_count(box: tuple[float, float, float, float], zoom: int) -> int:
+    left, top, right, bottom = _tile_span(box, zoom)
+    return (math.ceil(right) - math.floor(left)) * (math.ceil(bottom) - math.floor(top))
+
+
+def mapbox_zoom(view: PlanView, box: tuple[float, float, float, float] | None = None, tile_px: int = 512) -> int:
+    """The coarsest zoom whose tile pixels fill the plan at AERIAL_PIXELS across, capped at MAPBOX_MAX_ZOOM and
+    stepped down until the box takes MAPBOX_TILE_LIMIT tiles or fewer."""
+    box = box or view.bbox()
+    wanted_m_per_pixel = view.size_ft / FEET_PER_METER / AERIAL_PIXELS
+    ground_per_pixel_at_zoom_0 = WEB_MERCATOR_SPAN_M / tile_px * math.cos(math.radians(view.latitude))
+    zoom = min(MAPBOX_MAX_ZOOM, math.ceil(math.log2(ground_per_pixel_at_zoom_0 / wanted_m_per_pixel)))
+    while zoom > 0 and _tile_count(box, zoom) > MAPBOX_TILE_LIMIT:
+        zoom -= 1
+    return zoom
 
 
 def _mapbox_aerial(client: httpx.Client, view: PlanView, token: str, shifted: bool = True) -> bytes:
-    """Mapbox satellite tiles stitched and cropped to the plan box (moved by the measured shift, if any)."""
-    zoom = mapbox_zoom(view.latitude)
-    west, south, east, north = view.bbox(shift_for(view, "mapbox") if shifted else (0.0, 0.0))
+    """Mapbox satellite tiles stitched and cropped to the plan box (moved by the measured shift, if any), as a
+    lossless PNG so the only lossy encode after Mapbox's own is the one in _finish."""
+    box = view.bbox(shift_for(view, "mapbox") if shifted else (0.0, 0.0))
+    zoom = mapbox_zoom(view, box)
     tiles_across = 2 ** zoom
-    tile_m = WEB_MERCATOR_SPAN_M / tiles_across
-    origin = WEB_MERCATOR_SPAN_M / 2
-    # Tile coordinates of the box, in tiles, with y counted down from the top.
-    left, right = (west + origin) / tile_m, (east + origin) / tile_m
-    top, bottom = (origin - north) / tile_m, (origin - south) / tile_m
+    left, top, right, bottom = _tile_span(box, zoom)
     columns = range(math.floor(left), math.ceil(right))
     rows = range(math.floor(top), math.ceil(bottom))
-    if len(columns) * len(rows) > MAPBOX_TILE_LIMIT:
-        raise httpx.HTTPError("too many tiles for this view")
     canvas, tile_px = None, 0
     for column in columns:
         for row in rows:
@@ -829,10 +849,13 @@ def _mapbox_aerial(client: httpx.Client, view: PlanView, token: str, shifted: bo
             canvas.paste(tile, ((column - columns.start) * tile_px, (row - rows.start) * tile_px))
     if canvas is None:
         raise httpx.HTTPError("no tiles for this view")
-    box = ((left - columns.start) * tile_px, (top - rows.start) * tile_px,
-           (right - columns.start) * tile_px, (bottom - rows.start) * tile_px)
+    # The box is square, so crop one rounded side length from a rounded corner; rounding each edge on its own
+    # could give 723 x 724 and stretch the picture on resize.
+    side = round((right - left) * tile_px)
+    x0 = min(round((left - columns.start) * tile_px), canvas.width - side)
+    y0 = min(round((top - rows.start) * tile_px), canvas.height - side)
     out = BytesIO()
-    canvas.crop((round(box[0]), round(box[1]), round(box[2]), round(box[3]))).save(out, format="JPEG", quality=95)
+    canvas.crop((x0, y0, x0 + side, y0 + side)).save(out, format="PNG")
     return out.getvalue()
 
 
@@ -840,7 +863,7 @@ def _usgs_aerial(client: httpx.Client, view: PlanView) -> bytes:
     west, south, east, north = view.bbox(shift_for(view, "usgs"))
     response = client.get(USGS_IMAGE_URL, timeout=AERIAL_TIMEOUT, params={
         "bbox": f"{west},{south},{east},{north}", "bboxSR": 102100, "imageSR": 102100,
-        "size": "1000,1000", "format": "jpg", "f": "image",
+        "size": "1000,1000", "format": EXPORT_FORMAT, "f": "image",
         "interpolation": "RSP_BilinearInterpolation",
     })
     response.raise_for_status()
@@ -864,7 +887,7 @@ def _local_aerial(client: httpx.Client, view: PlanView) -> tuple[bytes, str] | N
         pixels = min(AERIAL_PIXELS, max(400, math.ceil(view.size_ft / FEET_PER_METER / (LOCAL_AERIAL_GSD_M.get(url, 0.15) / 2))))
         response = client.get(url, timeout=AERIAL_TIMEOUT, params={
             "bbox": f"{x_min},{y_min},{x_max},{y_max}", "bboxSR": 102100, "imageSR": 102100,
-            "size": f"{pixels},{pixels}", "format": "jpg", "f": "image",
+            "size": f"{pixels},{pixels}", "format": EXPORT_FORMAT, "f": "image",
         })
         response.raise_for_status()
         if not response.headers.get("content-type", "").startswith("image/"):

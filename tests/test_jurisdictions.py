@@ -11,6 +11,7 @@ from permit_packets.jurisdictions import (
     jurisdiction_json,
 )
 from permit_packets.jurisdictions.general import GENERAL_CHECKLISTS
+from tests.api_helpers import with_pdf
 
 
 def test_a_known_city_without_a_checklist_for_a_job_type_falls_back_to_the_general_one(monkeypatch):
@@ -115,11 +116,11 @@ def test_a_contractor_logo_goes_on_the_packet_and_bad_logos_are_refused():
     case.pop("plan")
     buffer = BytesIO()
     Image.new("RGBA", (300, 120), (240, 120, 20, 255)).save(buffer, format="PNG")
-    with_logo = client.post("/api/jobs/ev-charger/packet",
+    with_logo = client.post("/api/jobs/ev-charger/pdf",
                             json={**case, "contractor_logo_base64": base64.b64encode(buffer.getvalue()).decode()})
-    plain = client.post("/api/jobs/ev-charger/packet", json=case)
+    plain = client.post("/api/jobs/ev-charger/pdf", json=case)
     assert with_logo.status_code == plain.status_code == 200
-    assert len(with_logo.json()["pdf"]) > len(plain.json()["pdf"])
+    assert len(with_logo.content) > len(plain.content)
     bad = client.post("/api/jobs/ev-charger/packet",
                       json={**case, "contractor_logo_base64": base64.b64encode(b"not an image").decode()})
     assert bad.status_code == 422

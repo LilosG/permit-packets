@@ -284,18 +284,56 @@ def _picture(view: pl.PlanView, shifted: bool = True):
     from PIL import Image
     requests: list[tuple[int, int, int]] = []
     raw = pl._mapbox_aerial(_tile_server(requests), view, "pk.test", shifted=shifted)
-    return Image.open(BytesIO(raw)).convert("RGB"), requests
+    picture = Image.open(BytesIO(raw))
+    picture.load()
+    return picture, requests
 
 
-def test_mapbox_is_asked_for_z19_tiles_at_double_size_that_resolve_015_m_or_finer():
-    for latitude, longitude, scale in ((37.776, -122.4327, 20), (36.17, -115.14, 40), (33.4, -111.8, 100), (35.2, -80.83, 30)):
+def test_mapbox_zoom_fills_the_plan_at_full_resolution_within_the_tile_limit():
+    """z19 stretched a 140 ft San Francisco view about 4x. The zoom is now picked to fill AERIAL_PIXELS, up to
+    z20 at @2x (Mapbox's z21 detail), and stepped down only to stay inside MAPBOX_TILE_LIMIT."""
+    from permit_packets.core.property_plan import ENGINEER_SCALES_FT_PER_IN
+    for latitude, longitude in ((37.776, -122.4327), (36.17, -115.14), (33.4, -111.8), (35.2, -80.83)):
+        for scale in ENGINEER_SCALES_FT_PER_IN:
+            view = pl.PlanView(latitude, longitude, scale)
+            zoom = pl.mapbox_zoom(view)
+            assert zoom <= pl.MAPBOX_MAX_ZOOM and pl._tile_count(view.bbox(), zoom) <= pl.MAPBOX_TILE_LIMIT
+            left, _, right, _ = pl._tile_span(view.bbox(), zoom)
+            native_px = (right - left) * 512
+            # Full resolution, unless already at Mapbox's finest zoom or one finer would break the tile limit.
+            assert (native_px >= pl.AERIAL_PIXELS or zoom == pl.MAPBOX_MAX_ZOOM
+                    or pl._tile_count(view.bbox(), zoom + 1) > pl.MAPBOX_TILE_LIMIT), (latitude, scale, zoom)
+            # And not finer than needed: one zoom coarser would not fill the plan.
+            assert (right - left) * 256 < pl.AERIAL_PIXELS, (latitude, scale, zoom)
+    for latitude, longitude, scale in ((37.776, -122.4327, 20), (36.17, -115.14, 40), (33.4, -111.8, 100)):
         view = pl.PlanView(latitude, longitude, scale)
         picture, requests = _picture(view)
-        assert {z for z, _, _ in requests} == {19}
-        ground_m_per_pixel = view.size_ft / pl.FEET_PER_METER / picture.width
-        assert ground_m_per_pixel <= 0.15, f"{ground_m_per_pixel:.3f} m per pixel at {scale} ft/in"
-        assert picture.width == picture.height and len(requests) <= pl.MAPBOX_TILE_LIMIT
-    assert pl.mapbox_zoom(37.776) == 19
+        assert {z for z, _, _ in requests} == {pl.mapbox_zoom(view, view.bbox(pl.shift_for(view, "mapbox")))}
+        assert len(requests) <= pl.MAPBOX_TILE_LIMIT and picture.width == picture.height
+    sf = pl.PlanView(37.776, -122.4327, 20)
+    picture, _ = _picture(sf)
+    assert picture.width >= 700, "the 140 ft San Francisco view should come from about 720 real pixels, not 360"
+
+
+def test_aerial_is_encoded_once_at_full_chroma_and_sources_are_asked_for_lossless_png(monkeypatch):
+    from io import BytesIO
+    from PIL import Image
+    monkeypatch.delenv("MAPBOX_TOKEN", raising=False)
+    formats = []
+
+    def serve(request: httpx.Request) -> httpx.Response:
+        formats.append(request.url.params["format"])
+        out = BytesIO()
+        Image.new("RGB", (600, 600), (120, 110, 90)).save(out, "PNG")
+        return httpx.Response(200, content=out.getvalue(), headers={"content-type": "image/png"})
+
+    image, _ = pl.fetch_aerial(pl.PlanView(33.4152, -111.8315, 20), httpx.Client(transport=httpx.MockTransport(serve)))
+    assert formats and set(formats) == {"png24"}
+    picture = Image.open(BytesIO(image))
+    assert picture.format == "JPEG" and picture.size == (pl.AERIAL_PIXELS, pl.AERIAL_PIXELS)
+    assert picture.layer[0][1:3] == (1, 1), "chroma must not be subsampled"
+    raw, _ = _picture(pl.PlanView(37.776, -122.4327, 20))
+    assert raw.format == "PNG", "the stitched Mapbox crop must not be re-encoded as JPEG"
 
 
 def test_stitched_mapbox_tiles_have_no_seam_where_two_tiles_meet():
@@ -317,10 +355,11 @@ def test_mapbox_shift_moves_the_picture_by_the_measured_feet():
     moved, _ = _picture(view)
     plain, _ = _picture(view, shifted=False)
     assert moved.size == plain.size
-    centre = lambda im, band: np.asarray(im)[im.height // 2 - 8:im.height // 2 + 8, im.width // 2 - 8:im.width // 2 + 8, band].astype(float).mean()
+    centre = lambda im, band: float(np.asarray(im)[im.height // 2, im.width // 2, band])
+    steps = lambda a, b: (a - b + 128) % 256 - 128  # the gradient wraps every 256 steps (768 px)
     metres_per_pixel = view.size_ft / pl.FEET_PER_METER / plain.width
-    west_px = (centre(plain, 0) - centre(moved, 0)) * 3   # red counts three pixels per step
-    north_px = (centre(plain, 1) - centre(moved, 1)) * 3
+    west_px = steps(centre(plain, 0), centre(moved, 0)) * 3   # red counts three pixels per step
+    north_px = steps(centre(plain, 1), centre(moved, 1)) * 3
     assert west_px * metres_per_pixel * pl.FEET_PER_METER == pytest.approx(22, abs=1.5)
     assert north_px * metres_per_pixel * pl.FEET_PER_METER == pytest.approx(9, abs=1.5)
 

@@ -6,20 +6,32 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import pypdfium2
 
-SCALE = 1.5
-JPEG_QUALITY = 80
+# Preview renders, sharpest first: 144 dpi at full chroma (no 4:2:0 subsampling, which smears thin colored
+# plan lines and the aerial). A packet whose pages would pass PREVIEW_BUDGET_BYTES steps down, so the review
+# response stays well under Vercel's 4.5 MB function response limit (base64 adds a third). The third step is
+# the old 108 dpi setting. (scale, JPEG quality, chroma subsampling)
+RENDERS = ((2.0, 85, 0), (2.0, 75, 0), (1.5, 80, 2), (1.5, 65, 2))
+PREVIEW_BUDGET_BYTES = 2_500_000
+
+
+def _render(document: pypdfium2.PdfDocument, scale: float, quality: int, subsampling: int) -> list[bytes]:
+    images = []
+    for page in document:
+        buffer = BytesIO()
+        page.render(scale=scale).to_pil().convert("RGB").save(
+            buffer, format="JPEG", quality=quality, subsampling=subsampling,
+        )
+        images.append(buffer.getvalue())
+    return images
 
 
 def packet_page_images(pdf: bytes) -> list[bytes]:
     document = pypdfium2.PdfDocument(pdf)
     try:
-        images = []
-        for page in document:
-            buffer = BytesIO()
-            page.render(scale=SCALE).to_pil().convert("RGB").save(
-                buffer, format="JPEG", quality=JPEG_QUALITY,
-            )
-            images.append(buffer.getvalue())
+        for settings in RENDERS:
+            images = _render(document, *settings)
+            if sum(map(len, images)) <= PREVIEW_BUDGET_BYTES:
+                break
         return images
     finally:
         document.close()

@@ -14,6 +14,7 @@ from permit_packets.clients import CLIENTS, Client, current_client
 from permit_packets.job_types import REGISTRY, get_job_type
 
 from tests.test_ev_golden import GOLDEN, to_current_request
+from tests.api_helpers import with_pdf
 
 os.environ["DEMO_PASSWORD"] = "test-password"
 
@@ -52,11 +53,13 @@ def test_job_types_lists_only_what_the_client_bought(client):
 def test_job_types_need_a_session():
     assert TestClient(app).get("/api/job-types").status_code == 401
     assert TestClient(app).post("/api/jobs/ev-charger/packet", json={}).status_code == 401
+    assert TestClient(app).post("/api/jobs/ev-charger/pdf", json={}).status_code == 401
 
 
 def test_an_unknown_slug_is_a_404(client):
     assert client.post("/api/jobs/nope/packet", json={}).status_code == 404
     assert client.post("/api/jobs/nope/documents", json={}).status_code == 404
+    assert client.post("/api/jobs/nope/pdf", json={}).status_code == 404
 
 
 def test_a_registered_type_the_client_did_not_buy_is_a_404(client, monkeypatch):
@@ -64,10 +67,12 @@ def test_a_registered_type_the_client_did_not_buy_is_a_404(client, monkeypatch):
     assert client.get("/api/job-types").json() == {"job_types": []}
     assert client.post("/api/jobs/ev-charger/packet", json=_sample("ev_charger")).status_code == 404
     assert client.post("/api/jobs/ev-charger/documents", json=_sample("ev_charger")).status_code == 404
+    assert client.post("/api/jobs/ev-charger/pdf", json=_sample("ev_charger")).status_code == 404
 
 
 def test_bad_input_is_a_422_not_a_500(client):
     assert client.post("/api/jobs/ev-charger/packet", json={}).status_code == 422
+    assert client.post("/api/jobs/ev-charger/pdf", json={}).status_code == 422
     assert client.post("/api/jobs/ev-charger/packet", json={**_sample("ev_charger"), "charger_amps": 5}).status_code == 422
 
 
@@ -110,9 +115,7 @@ def test_slugs_and_keys_are_unique():
 def test_every_type_has_one_document_per_page(client, key):
     assert key in SAMPLE_CASES, "add a sample case for the new job type"
     job_type = REGISTRY[key]
-    response = client.post(f"/api/jobs/{job_type.slug}/packet", json=_sample(key))
-    assert response.status_code == 200
-    body = response.json()
+    body = with_pdf(client, f"/api/jobs/{job_type.slug}/packet", _sample(key))
     assert len(job_type.documents) == len(body["pages"])
     assert body["documents"] == [
         {"file_stem": d.file_stem, "title": d.title} for d in job_type.documents]
