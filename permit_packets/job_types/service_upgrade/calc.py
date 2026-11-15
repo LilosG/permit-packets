@@ -12,6 +12,7 @@ from permit_packets.core.conductors import (
     SERVICE_CONDUCTOR_FACTOR,
     Conductor,
     Material,
+    at_least,
     conduit_with_egc,
     egc_for,
     gec_size,
@@ -27,6 +28,7 @@ from permit_packets.core.load_calculation import (
     calculate_load,
 )
 from permit_packets.core.property_plan import PropertyPlan
+from permit_packets.core.raceways import above_ground, service_raceway
 from permit_packets.jurisdictions import ORO_VALLEY, Jurisdiction
 
 VOLTS = 240
@@ -35,7 +37,7 @@ BUS_AND_MAIN_FACTOR = 1.2
 Scope = Literal["upgrade", "replacement"]
 Equipment = Literal["meter_main", "main_panel"]
 ServiceDrop = Literal["overhead", "underground"]
-Conduit = Literal["PVC", "EMT", "none"]
+Conduit = Literal["PVC", "EMT", "RMC", "none"]
 Electrode = Literal["rods", "concrete_encased", "water_pipe"]
 EQUIPMENT_LABELS = {"meter_main": "Meter-main combo", "main_panel": "Main panel, meter separate"}
 MATERIAL_ABBREVIATIONS = {"copper": "Cu", "aluminum": "Al"}
@@ -78,6 +80,7 @@ class ServiceJob:
     relocated: bool = False
     material: Material = "copper"
     conduit: Conduit = "PVC"
+    main_outdoors: bool = False
     panel_model: str = ""
     existing_brand: str = "unknown"
     utility: str = ""
@@ -121,6 +124,10 @@ class ServicePacket:
     heat: HeatCalc | None = None
     # A meter-main feeds the panel through a feeder past the service disconnect: two hots, a neutral and this EGC.
     feeder_egc: str | None = None
+    raceway: str = "PVC"  # what the run is drawn in: the electrician's choice unless the city's amendments forbid it
+    # NEC 230.85: "main" when the main breaker is outdoors (a meter-main, or a main panel on an outside wall);
+    # "meter_disconnect" when the main panel is inside and a disconnect goes in at the meter.
+    emergency: str = "main"
 
     @property
     def is_meter_main(self) -> bool:
@@ -145,7 +152,23 @@ def surge_check(job: ServiceJob) -> Check:
     return Check("Surge protection", f"{SPD_LABELS[job.surge_protection]} SPD at the service (230.67)", True)
 
 
-def _flags(job: ServiceJob, gecs: dict[str, str]) -> list[str]:
+EMERGENCY_MARKINGS = {
+    "main": "EMERGENCY DISCONNECT, SERVICE DISCONNECT",
+    "meter_disconnect": "EMERGENCY DISCONNECT, METER DISCONNECT, NOT SERVICE EQUIPMENT",
+}
+
+
+def emergency_line(job: ServiceJob, emergency: str) -> str:
+    """What the riser, the scope and the checks say about the outdoor emergency disconnect (230.85)."""
+    if emergency == "main":
+        where = "meter-main" if job.equipment == "meter_main" else "main panel on the outside wall"
+        return (f"The {job.new_service_amps} A main breaker in the {where} is the outdoor emergency disconnect, "
+                f"marked \"{EMERGENCY_MARKINGS['main']}\" (230.85(1))")
+    return (f"A {job.new_service_amps} A meter disconnect at the meter, outdoors and readily accessible, is the "
+            f"emergency disconnect, marked \"{EMERGENCY_MARKINGS['meter_disconnect']}\" (230.85(2), 230.82(3))")
+
+
+def _flags(job: ServiceJob, gecs: dict[str, str], notes: tuple[str, ...] = ()) -> list[str]:
     flags = [
         "Check the existing loads against the home. They drive the service result.",
         "Submit the utility service request (page 7). The utility sets the disconnect and reconnect.",
@@ -165,9 +188,13 @@ def _flags(job: ServiceJob, gecs: dict[str, str]) -> list[str]:
                      "bonding jumper (250.24(A)(5), 250.142(B)).")
     if SMALLEST_UNPROTECTED_GEC in gecs.values():
         flags.append("A #8 grounding electrode conductor must be protected in raceway or armor (250.64(B)).")
+    flags += list(notes)
+    if job.jurisdiction.concrete_encased_note and "concrete_encased" not in gecs:
+        flags.append(job.jurisdiction.concrete_encased_note)
     flags += [
-        "Confirm the available fault current with the utility and the new equipment's short-circuit rating (110.9, 110.24).",
+        "Confirm the available fault current with the utility and the new equipment's short-circuit rating (110.9).",
         "Keep the working space in front of the panel clear: 30 in wide, 36 in deep (110.26).",
+        job.jurisdiction.afci_note or
         "Extended or modified branch circuits may need AFCI protection (210.12(D)). Confirm the city's position.",
     ]
     flags += exposure_flags(job)
@@ -196,12 +223,19 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
         for electrode in ELECTRODE_LABELS if electrode in job.electrodes
     }
     feeder_egc = egc_for(job.new_service_amps, job.material) if job.equipment == "meter_main" else None
-    if job.conduit == "none":
+    jurisdiction = job.jurisdiction
+    if feeder_egc:  # past the service disconnect: a feeder, so the service-entrance amendments don't apply
+        drawn = above_ground(jurisdiction, "cable" if job.conduit == "none" else job.conduit, "feeder")
+    else:
+        drawn = service_raceway(jurisdiction, job.conduit)
+    raceway = drawn.kind
+    if raceway == "cable":
         conduit = None
     elif feeder_egc:
-        conduit = conduit_with_egc(conductor, feeder_egc, job.conduit)
+        conduit = conduit_with_egc(conductor, feeder_egc, raceway)
     else:
-        conduit = service_conduit(conductor, job.conduit)
+        conduit = at_least(service_conduit(conductor, raceway), jurisdiction.min_service_raceway)
+    emergency = "main" if job.equipment == "meter_main" or job.main_outdoors else "meter_disconnect"
     metal = MATERIAL_ABBREVIATIONS[job.material]
     required = SERVICE_CONDUCTOR_FACTOR * job.new_service_amps
     heat = (
@@ -227,8 +261,17 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
     ]
     if conduit:
         ground = f" + 1 #{feeder_egc} EGC" if feeder_egc else ""
+        minimum = (f", {jurisdiction.min_service_raceway} minimum (local 230.43(B))"
+                   if jurisdiction.min_service_raceway and not feeder_egc else "")
         checks.append(Check("Conduit fill",
-                            f"3 {wire_label(conductor.size)}{ground} in {conduit} {job.conduit}, 40% fill", True))
+                            f"3 {wire_label(conductor.size)}{ground} in {conduit} {raceway}, 40% fill{minimum}", True))
+    checks.append(Check("Emergency disconnect", emergency_line(job, emergency), True))
+    limit = jurisdiction.max_meter_to_main_ft
+    if limit and emergency == "meter_disconnect":
+        checks.append(Check(
+            "Main disconnect distance",
+            f"{job.se_length_ft} ft from the meter to the main, {limit} ft limit ({jurisdiction.name} 230.70(A)(1))",
+            job.se_length_ft <= limit))
     if job.has_solar:
         total = job.new_service_amps + job.pv_breaker_amps
         checks.append(Check(
@@ -248,5 +291,6 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
         checks.append(gec)
     return ServicePacket(
         job=job, load=load, existing_load=existing_load, conductor=conductor, gecs=gecs,
-        conduit_size=conduit, checks=checks, flags=_flags(job, gecs), heat=heat, feeder_egc=feeder_egc,
+        conduit_size=conduit, checks=checks, flags=_flags(job, gecs, (drawn.note,) if drawn.note else ()),
+        heat=heat, feeder_egc=feeder_egc, raceway=raceway, emergency=emergency,
     )

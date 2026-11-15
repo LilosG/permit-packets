@@ -24,10 +24,6 @@ SERVICE_UPGRADE = "service_upgrade"
 ADOPTED_CODES_URL = "https://www.nashville.gov/departments/codes/codes-administration/adopted-codes-list"
 EPERMITS_GUIDE_URL = "https://filetransfer.nashville.gov/Portals/0/SiteContent/Codes/docs/ePermitsUserGuide.pdf"
 PV_URL = "https://www.nashville.gov/departments/codes/construction-and-permits/trades-permits/solar-panel-photovoltaic-permits"
-MUNICODE_URL = (
-    "https://library.municode.com/tn/metro_government_of_nashville_and_davidson_county/codes/code_of_ordinances"
-    "?nodeId=CD_TIT16BUCO_CH16.20ELCO_ARTIVIN"
-)
 NES_RULES_URL = "https://www.nespower.com/-/media/project/nes/common/pdfs/schedule-of-rules--regulations-10012023-lt.pdf"
 NES_GUIDELINES_URL = (
     "https://www.nespower.com/-/media/project/nes/common/pdfs/builders-and-developers/electric-service-guidelines-v21.pdf"
@@ -43,35 +39,67 @@ NO_PUBLISHED_CHECKLIST = Note(
     "Metro has adopted. Keep this packet in the job file and attach it in ePermits if the reviewer asks.",
     ADOPTED_CODES_URL,
 )
-# Metro Code 16.20.150, amendments to the 2023 NEC (text as published on Municode).
+# Metro Code 16.20.150, amendments to the 2023 NEC, as enacted by BL2025-898 (passed July 15, 2025).
+BL_URL = ("https://nashville.legistar.com/ViewReport.ashx?M=R&N=Master&GID=787&ID=7433986"
+          "&GUID=B8491A2F-6B1C-4507-A310-2058064BA422&Extra=WithText")
 FINAL_POWER = Note(
     "always",
     "Metro amendment to NEC 110.12: electrical power must be supplied to the building for the inspector to "
     "perform the final inspection.",
-    MUNICODE_URL,
+    BL_URL,
 )
 METER_LOCATION = Note(
     "always",
     "Metro amendment to NEC 230.1: the power supplier (NES) determines the physical location of the meter base.",
-    MUNICODE_URL,
+    BL_URL,
 )
 SE_CONDUIT = Note(
     "always",
     "Metro amendment to NEC 230.43: service entrance conductors must be in conduit where they serve a structure "
     "with exterior walls of brick, stone, masonry, metal or metal-clad.",
-    MUNICODE_URL,
+    BL_URL,
 )
 DISCONNECT_5_FT = Note(
     "always",
     "Metro amendment to NEC 230.70(A)(1): the main service disconnecting means must be no more than 5 ft from "
     "the point where the service conductors leave the load side of the meter base and enter the building.",
-    MUNICODE_URL,
+    BL_URL,
 )
 EVSE_DISCONNECT = Note(
     "disconnect",
-    "Metro amendment to NEC 625.43: for fixed-in-place EVSE rated more than 60 A or more than 150 V to ground, "
-    "the disconnecting means must be provided and installed in a readily accessible location.",
-    MUNICODE_URL,
+    "Metro amendment to NEC 625.43(A): for fixed-in-place EVSE rated more than 60 A or more than 150 V to ground, "
+    "the disconnecting means must be provided and installed in a readily accessible location. If it is remote "
+    "from the equipment, a plaque on the equipment must say where it is. It must be lockable open (110.25).",
+    BL_URL,
+)
+TORQUE = Note(
+    "always",
+    "Metro amendment to NEC 110.14(D): where a numeric torque is given, use a calibrated torque tool. On service "
+    "and feeder terminations, after confirming torque and before inspection, mark across each terminal, lug or "
+    "screw with a permanent mark.",
+    BL_URL,
+)
+MULTIPOLE = Note(
+    "always",
+    "Metro amendment to NEC 240.8: a 240 V circuit that needs no neutral must be on a multipole breaker. "
+    "Single-pole breakers with handle ties are not approved.",
+    BL_URL,
+)
+SMOKE_ALARMS = Note(
+    "always",
+    "Metro amendment to NEC 210.52(J): where interior service equipment is replaced or upgraded under "
+    "non-emergency conditions, the dwelling must have interconnected smoke alarms where the code requires them "
+    "for new dwellings. Wireless interconnection and battery power are allowed.",
+    BL_URL,
+)
+CONCRETE_ENCASED = (
+    "Metro amendment to NEC 250.50: a concrete-encased electrode must be in place and visible at the service "
+    "inspection, connected at an accessible interior point. Existing buildings are exempt only where the rebar "
+    "can't be reached without disturbing the concrete: note that on the job if it applies."
+)
+AFCI = (
+    "Metro amendment to NEC 210.12: AFCI breakers are optional where existing service equipment or load centers "
+    "are directly replaced, or relocated with no more than 6 ft of conductor extension and no added outlets."
 )
 NES_RELEASE = Note(
     "always",
@@ -98,7 +126,7 @@ NASHVILLE = Jurisdiction(
     bbox=(-87.0547, 35.9678, -86.5156, 36.4055), center=(-86.7811, 36.1645),  # Davidson County extent (Census) and downtown
     permit_area_by_location=True,
     department="Metro Codes and Building Safety, Permit Issuance",
-    phone="(615) 862-6517",
+    phone="(615) 862-6517",  # Permit Division, Metro Codes brochure "Who Can Obtain Building Permits"
     email="permitissuance@nashville.gov",
     website="https://epermits.nashville.gov",
     website_label="Metro Nashville ePermits",
@@ -116,7 +144,10 @@ NASHVILLE = Jurisdiction(
         "https://ashrae-meteo.info/v3.0/index.php?lat=36.12&lng=-86.69&place=%27%27&wmo=723270&ashrae_version=2017"
     ),
     code_note=CODE_NOTE,
-    fallback_notes=(FINAL_POWER, NES_RELEASE),
+    max_meter_to_main_ft=5,  # Metro amendment to 230.70(A)(1)
+    concrete_encased_note=CONCRETE_ENCASED,
+    afci_note=AFCI,
+    fallback_notes=(FINAL_POWER, TORQUE, MULTIPOLE),
     utility="Nashville Electric Service (NES)",
     utility_short="NES",
     checklists={
@@ -132,7 +163,7 @@ NASHVILLE = Jurisdiction(
             source_url=EPERMITS_GUIDE_URL,
             source_label=SOURCE_LABEL,
             code_note=CODE_NOTE,
-            notes=(_note("EV charger"), FINAL_POWER, EVSE_DISCONNECT),
+            notes=(_note("EV charger"), FINAL_POWER, MULTIPOLE, TORQUE, EVSE_DISCONNECT),
         ),
         SERVICE_UPGRADE: Checklist(
             items=(
@@ -156,6 +187,8 @@ NASHVILLE = Jurisdiction(
                      "requires an outdoor emergency disconnect, readily accessible and marked."),
                 SE_CONDUIT,
                 METER_LOCATION,
+                TORQUE,
+                SMOKE_ALARMS,
                 FINAL_POWER,
                 NES_RELEASE,
                 Note("always", "Build the meter base and service to the NES Electric Service Guidelines (current "

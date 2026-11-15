@@ -57,7 +57,17 @@ SERVICE_CONDUIT_FILL_SQ_IN = {
             ('2"', 1.316), ('2-1/2"', 1.878), ('3"', 2.907)),
     "EMT": (('3/4"', 0.213), ('1"', 0.346), ('1-1/4"', 0.598), ('1-1/2"', 0.814),
             ('2"', 1.342), ('2-1/2"', 2.343), ('3"', 3.538)),
+    "RMC": (('3/4"', 0.220), ('1"', 0.355), ('1-1/4"', 0.610), ('1-1/2"', 0.829),
+            ('2"', 1.363), ('2-1/2"', 1.946), ('3"', 3.000)),
 }
+TRADE_SIZES = ('3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"')
+
+
+def at_least(size: str, minimum: str | None) -> str:
+    """The larger of a trade size and a local minimum, such as San Francisco's 1-1/4 in service raceway."""
+    if not minimum:
+        return size
+    return size if TRADE_SIZES.index(size) >= TRADE_SIZES.index(minimum) else minimum
 
 # NEC 250.66 Table: the grounding electrode conductor (copper) by service conductor size.
 # Each row is (largest service conductor size it covers, GEC size).

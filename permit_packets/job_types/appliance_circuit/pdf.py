@@ -51,16 +51,22 @@ def _egc(packet: AppliancePacket) -> str:
 
 
 def _conduit(packet: AppliancePacket) -> str:
-    return "cable" if packet.conduit_size is None else f"{packet.conduit_size} {packet.job.wiring}"
+    if packet.conduit_size is None:
+        return f"Type {packet.cable_type} cable"
+    return packet.raceway_text or f"{packet.conduit_size} {packet.job.wiring}"
+
+
+def _insulation(packet: AppliancePacket) -> str:
+    return "" if packet.conduit_size is None else " THWN-2"
 
 
 def _wire_text(packet: AppliancePacket) -> str:
-    return f"{packet.job.conductors_in_conduit} {_size(packet)} Cu THWN-2 + {_egc(packet)} EGC"
+    return f"{packet.job.conductors_in_conduit} {_size(packet)} Cu{_insulation(packet)} + {_egc(packet)} EGC"
 
 
 def _circuit_label(packet: AppliancePacket) -> str:
     preposition = "as" if packet.conduit_size is None else "in"
-    return f"{packet.job.conductors_in_conduit} {_size(packet)} Cu THWN-2 + {_egc(packet)} EGC {preposition} {_conduit(packet)}"
+    return f"{_wire_text(packet)} {preposition} {_conduit(packet)}"
 
 
 class SitePlan(Flowable):
@@ -229,7 +235,7 @@ class OneLine(Flowable):
         c.setFont("Helvetica-Bold", 7.2)
         c.drawCentredString(label_x, mid + 27, f"{packet.breaker} A, 2-pole")
         c.setFont("Helvetica", 6.8)
-        c.drawCentredString(label_x, mid + 17, f"{job.conductors_in_conduit} {_size(packet)} Cu THWN-2")
+        c.drawCentredString(label_x, mid + 17, f"{job.conductors_in_conduit} {_size(packet)} Cu{_insulation(packet)}")
         c.drawCentredString(label_x, mid + 7, f"+ {_egc(packet)} EGC")
         preposition = "as" if packet.conduit_size is None else "in"
         c.drawCentredString(label_x, mid - 10, f"{preposition} {_conduit(packet)}")
@@ -321,7 +327,7 @@ def scope_of_work(packet: AppliancePacket) -> str:
         f"{SCOPE_PLACES[job.location]}. "
         f"Add a {packet.breaker} A, 2-pole breaker to the existing {job.service_amps} A main panel. "
         f"{route} a new {job.run_ft} ft branch circuit, {_wire_text(packet)}, "
-        f"{'as cable' if packet.conduit_size is None else f'in {_conduit(packet)} conduit'}, "
+        f"{'as' if packet.conduit_size is None else 'in'} {_conduit(packet)}, "
         f"from the main panel to {destination}. {service_note}"
     )
 
@@ -406,11 +412,11 @@ def _circuit_schedule(packet: AppliancePacket) -> list[tuple[str, str, str]]:
     drop_ok = "Within 3%" if branch.vd_percent <= 3 else "Over 3%, fix before submittal"
     neutral = "Neutral for the appliance's 120 V part" if job.needs_neutral else "No neutral needed"
     return [
-        ("Hot conductors", f"2 {_size(packet)} Cu THWN-2, {branch.wire.ampacity(job.terminals_75c)} A at {column}{DEGREE}C", hots),
-        ("Neutral", f"{_size(packet)} Cu THWN-2" if job.needs_neutral else "None", neutral),
+        ("Hot conductors", f"2 {_size(packet)} Cu{_insulation(packet)}, {branch.wire.ampacity(job.terminals_75c)} A at {column}{DEGREE}C", hots),
+        ("Neutral", f"{_size(packet)} Cu{_insulation(packet)}" if job.needs_neutral else "None", neutral),
         ("Equipment ground", f"1 {_egc(packet)} Cu", ground),
         ("Conduit and fill", (f"{_conduit(packet)}, {job.conductors_in_conduit + 1} wires, 40% fill"
-                              if packet.conduit_size else "Cable, no conduit fill"), "Chapter 9 Table 4"),
+                              if packet.conduit_size else f"{_conduit(packet)}, no conduit fill"), "Chapter 9 Table 4"),
         ("Breaker", f"{packet.breaker} A, 2-pole", "Matched to the main panel"),
         ("Run", f"{job.run_ft} ft one way", "Field verify"),
         ("Trench and cover", trench, "Confirm for the wiring method used"),

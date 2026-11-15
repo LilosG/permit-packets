@@ -152,6 +152,8 @@ def _flags(job: EvJob, load: LoadCalculation, circuit: Circuit, disconnect: int 
             flags.append(f"Attach the {job.charger_model} data sheet behind the equipment page. It isn't in the equipment library yet.")
     elif charger.max_amps < job.charger_amps:
         flags.append(f"The {charger.name} is rated {charger.max_amps} A, below the {job.charger_amps} A set here.")
+    flags.append("Wire sized at the 75\N{DEGREE SIGN}C column. Confirm the charger and breaker terminals are listed "
+                 "and marked for 75\N{DEGREE SIGN}C, as most Level 2 chargers are (110.14(C)(1)(a)).")
     if job.trench_ft:
         flags.append("Call 811 before trenching and field verify the route.")
     if disconnect:

@@ -46,6 +46,11 @@
     document.getElementById('wire-hint').textContent = `${measured} ft measured, plus ${EXTRA_WIRE_FT} ft to reach the equipment`;
   }
 
+  /* With the meter separate, ask where the main panel is: inside, it needs an outdoor disconnect at the meter (230.85). */
+  function syncEquipment() {
+    document.getElementById('main-location').hidden = field('equipment').value !== 'main_panel';
+  }
+
   function syncElectrodes() {
     const boxes = radios('electrodes');
     boxes[0].setCustomValidity(boxes.some((box) => box.checked) ? '' : 'Pick at least one grounding electrode.');
@@ -110,6 +115,7 @@
       field('bus_amps').addEventListener('input', () => { busEdited = true; });
       field('se_length_ft').addEventListener('input', () => { wireEdited = true; });
       radios('electrodes').forEach((box) => box.addEventListener('change', syncElectrodes));
+      radios('equipment').forEach((box) => box.addEventListener('change', syncEquipment));
       document.getElementById('solar').addEventListener('change', syncSolar);
       form.addEventListener('input', (event) => {
         const row = event.target.closest('.planned-row');
@@ -129,6 +135,7 @@
       syncService();
       syncElectrodes();
       syncSolar();
+      syncEquipment();
     },
     /* A new property starts a new plan, so the wire length is ours to fill in again. */
     onProperty() { wireEdited = false; },
@@ -146,7 +153,8 @@
       const solar = data.has('solar');
       const job = {
         scope: data.get('scope'), equipment: data.get('equipment'), service_drop: data.get('service_drop'),
-        relocated: data.get('relocated') === 'yes', material: data.get('material'), conduit: data.get('conduit'),
+        relocated: data.get('relocated') === 'yes',
+        main_outdoors: data.get('equipment') === 'main_panel' && data.get('main_outdoors') === 'yes', material: data.get('material'), conduit: data.get('conduit'),
         electrodes: data.getAll('electrodes'), panel_model: data.get('panel_model').trim(),
         existing_brand: data.get('existing_brand'), utility: data.get('utility').trim(),
         meter_number: data.get('meter_number').trim(), has_solar: solar, surge_protection: data.get('surge_protection') || null,

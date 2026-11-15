@@ -131,7 +131,8 @@ def _build_response(request: BaseModel) -> PacketResult:
         "breaker_amps": packet.breaker,
         "conductor": f"{_wire(packet)} Cu",
         "egc": f"{wire_label(packet.branch.egc)} Cu",
-        "conduit": "cable" if packet.conduit_size is None else f"{packet.conduit_size} {packet.job.wiring}",
+        "conduit": f"Type {packet.cable_type} cable" if packet.conduit_size is None
+        else (packet.raceway_text or f"{packet.conduit_size} {packet.job.wiring}"),
         "voltage_drop_percent": round(packet.branch.vd_percent, 1),
         "checks": [
             {"name": check.name, "result": check.result, "passed": check.passed}

@@ -20,7 +20,8 @@ class ServiceUpgradeRequest(JobRequestBase):
     service_drop: Literal["overhead", "underground"]
     relocated: bool = False
     material: Literal["copper", "aluminum"] = "copper"
-    conduit: Literal["PVC", "EMT", "none"] = "PVC"
+    conduit: Literal["PVC", "EMT", "RMC", "none"] = "PVC"
+    main_outdoors: bool = False  # main_panel only: the new main panel is on an outside wall (230.85)
     se_length_ft: int = Field(ge=1, le=200)
     electrodes: list[Literal["rods", "concrete_encased", "water_pipe"]] = Field(min_length=1)
     bus_amps: int = Field(ge=100, le=400)

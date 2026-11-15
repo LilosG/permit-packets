@@ -2,7 +2,7 @@
 the job, the checks and the flags."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 from permit_packets.core.heat import exposure_flags
@@ -27,6 +27,7 @@ from permit_packets.core.load_calculation import (
     calculate_load,
 )
 from permit_packets.core.property_plan import PropertyPlan
+from permit_packets.core.raceways import above_ground, outdoor_cable
 from permit_packets.jurisdictions import ORO_VALLEY, Jurisdiction
 
 Appliance = Literal["hot_tub", "sauna", "heat_pump", "mini_split", "other"]
@@ -133,6 +134,14 @@ class AppliancePacket:
     conduit_size: str | None  # None for cable
     checks: list[Check]
     flags: list[str] = field(default_factory=list)
+    raceway_text: str = ""  # the conduit as drawn, e.g. '3/4" PVC underground, 3/4" EMT above ground'
+
+    @property
+    def cable_type(self) -> str | None:
+        """NM-B indoors (334.10); UF-B outdoors and underground (340.10). None in conduit."""
+        if self.conduit_size is not None:
+            return None
+        return "NM-B" if self.job.location == "indoor" else "UF-B"
 
     @property
     def ready(self) -> bool:
@@ -159,8 +168,9 @@ def display_amps(value: float) -> str:
     return display_number(round(value, 1))
 
 
-def _flags(job: ApplianceJob, load: LoadCalculation, branch: Branch) -> list[str]:
+def _flags(job: ApplianceJob, load: LoadCalculation, branch: Branch, notes: tuple[str, ...] = ()) -> list[str]:
     flags = ["Check the existing loads against the home. They drive the service result."]
+    flags += list(notes)
     if load.computed_amps > job.service_amps:
         flags.append(
             f"The service is over capacity by {-load.spare_amps:.1f} A. Options are load management, "
@@ -226,6 +236,19 @@ def _flags(job: ApplianceJob, load: LoadCalculation, branch: Branch) -> list[str
 
 
 def build_appliance_packet(job: ApplianceJob) -> AppliancePacket:
+    notes: list[str] = []
+    if job.wiring == "cable":
+        drawn = outdoor_cable(job.jurisdiction, "cable", outdoors=job.location != "indoor")
+    else:
+        drawn = above_ground(job.jurisdiction, job.wiring, "circuit")
+    if drawn.note:
+        notes.append(drawn.note)
+    if drawn.kind != job.wiring and job.wiring == "cable":  # cable not allowed here: drawn in conduit
+        job = replace(job, wiring=drawn.kind)
+    if job.wiring == "cable" and job.terminals_75c:
+        # NM (334.80) and UF (340.80) conductors are rated at 60 C, whatever the terminals are.
+        job = replace(job, terminals_75c=False)
+        notes.append("Cable conductors are sized at the 60\N{DEGREE SIGN}C column (334.80, 340.80).")
     load_amps = job.load_amps
     label = sentence_case(APPLIANCE_LABELS[job.appliance])
     load = calculate_load(
@@ -244,9 +267,16 @@ def build_appliance_packet(job: ApplianceJob) -> AppliancePacket:
         breaker=breaker, load_amps=load_amps, run_ft=job.run_ft, terminals_75c=job.terminals_75c,
         hvac_mca=job.mca if job.is_hvac else None, ambient_f=job.design_ambient_f,
     )
-    conduit_size = (
-        None if job.wiring == "cable" else branch_conduit(branch, job.conductors_in_conduit, job.wiring)
-    )
+    if job.wiring == "cable":
+        conduit_size, raceway_text = None, ""
+    elif drawn.kind != job.wiring:  # PVC kept for the underground part only, metal raceway above ground
+        conduit_size = branch_conduit(branch, job.conductors_in_conduit, drawn.kind)
+        underground = branch_conduit(branch, job.conductors_in_conduit, job.wiring) if job.trench_ft else None
+        raceway_text = (f"{underground} {job.wiring} underground, {conduit_size} {drawn.kind} above ground"
+                        if underground else f"{conduit_size} {drawn.kind}")
+    else:
+        conduit_size = branch_conduit(branch, job.conductors_in_conduit, job.wiring)
+        raceway_text = f"{conduit_size} {job.wiring}"
     if job.is_hvac:
         breaker_check = Check(
             "Breaker", f"{breaker} A, nameplate max {job.mocp} A (440.22)",
@@ -271,7 +301,7 @@ def build_appliance_packet(job: ApplianceJob) -> AppliancePacket:
     ]
     if conduit_size:
         checks.append(Check(
-            "Conduit fill", f"{job.conductors_in_conduit + 1} wires in {conduit_size} {job.wiring}, 40% fill", True))
+            "Conduit fill", f"{job.conductors_in_conduit + 1} wires in {raceway_text}, 40% fill", True))
     if job.appliance == "hot_tub":
         gfci_result = {
             "breaker": "GFCI breaker (680.44)", "spa_pack": "Listed spa pack (680.44)",
@@ -291,5 +321,6 @@ def build_appliance_packet(job: ApplianceJob) -> AppliancePacket:
         checks.append(gec)
     return AppliancePacket(
         job=job, load=load, load_amps=load_amps, minimum_breaker=minimum, breaker=breaker,
-        branch=branch, conduit_size=conduit_size, checks=checks, flags=_flags(job, load, branch),
+        branch=branch, conduit_size=conduit_size, checks=checks, flags=_flags(job, load, branch, tuple(notes)),
+        raceway_text=raceway_text,
     )

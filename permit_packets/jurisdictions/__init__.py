@@ -78,6 +78,16 @@ class Jurisdiction:
     design_ambient_source: str = ""  # where that figure comes from, a URL
     # What this city enforces, for job types it publishes no checklist for (they use the general one).
     code_note: str = ""
+    # Local amendments to the NEC wiring methods. Empty or False: the NEC as published.
+    service_raceways: tuple[str, ...] = ()  # raceways allowed above ground for service-entrance conductors
+    min_service_raceway: str = ""  # smallest raceway for service-entrance conductors, e.g. '1-1/4"'
+    pvc_underground_only: bool = False  # PVC only underground or in concrete; metal raceway above ground
+    cable_outdoors: bool = True  # False where no cable type is allowed for a 240 V circuit outdoors
+    wiring_source: str = ""  # URL of the amendments behind the four fields above
+    # Local service rules. None or empty: the NEC as published.
+    max_meter_to_main_ft: int | None = None  # main disconnect within this distance of where conductors enter
+    concrete_encased_note: str = ""  # shown when a service upgrade has no concrete-encased electrode
+    afci_note: str = ""  # replaces the general AFCI flag on a service upgrade
     fallback_notes: tuple[Note, ...] = ()
     checklists: dict[str, Checklist] = field(default_factory=dict)
 

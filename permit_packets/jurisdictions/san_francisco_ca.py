@@ -21,6 +21,12 @@ PLANS_URL = "https://www.sf.gov/reports--october-2023--prepare-your-plans-your-s
 # San Francisco Building Code 106A.1.16 and 106A.1.16.1 (EVSE permits and general requirements), as printed in
 # Ordinance 12-26 (File No. 251024, passed February 3, 2026), which carries the current section text.
 SFBC_EVSE_URL = "https://www.sfbos.org/sites/default/files/o0012-26.pdf"
+# DBI's stand-alone list of the 2025 San Francisco Electrical Code amendments (Ordinance 228-25, operative
+# January 1, 2026): 230.43 (service-entrance wiring methods, 1-1/4 in minimum raceway), 352.10 (PVC only in
+# concrete, underground, cinder fill or corrosive locations), 340.10 (UF only at 50 V or less), 300.4(I) and
+# 330.12 (wiring under 8 ft is subject to damage; no MC there).
+SFEC_URL = "https://media.api.sf.gov/documents/2025_SF_Electrical_Code.pdf"
+PERMIT_PAGE_URL = "https://sf.gov/apply-electrical-permit"
 CODE_NOTE = (
     "San Francisco enforces the 2025 San Francisco Electrical Code: the 2025 California "
     "Electrical Code (2023 NEC base) with local amendments, operative January 1, 2026. DBI: filings on or "
@@ -31,8 +37,9 @@ SAN_FRANCISCO = Jurisdiction(
     key="san-francisco-ca", name="San Francisco", state="CA", known=True,
     bbox=(-122.5446, 37.6011, -122.3011, 37.8665), center=(-122.4194, 37.7792),  # Mapbox place bounds (west, south, east, north) and (lon, lat)
     code_name="CEC",
-    department="Department of Building Inspection (DBI), Permit Services",
-    phone="(628) 652-3720",
+    department="Department of Building Inspection (DBI), Permit Center",
+    phone="(628) 652-4900",  # Permit Center help desk, on the DBI electrical permit page (PERMIT_PAGE_URL)
+    email="permitsf@sfgov.org",
     website="https://sf.gov/apply-electrical-permit",
     website_label="DBI electrical permits (PermitSF)",
     submit_how=(
@@ -58,6 +65,11 @@ SAN_FRANCISCO = Jurisdiction(
     ),
     single_pdf_only=True,
     code_note=CODE_NOTE,
+    service_raceways=("RMC", "IMC"),  # SFEC 230.43(A): RMC, IMC, PVC, MI, busway, gutter, HDPE, NUCC, RTRC; PVC per 352.10
+    min_service_raceway='1-1/4"',  # SFEC 230.43(B)(1)
+    pvc_underground_only=True,  # SFEC 352.10: (A) concealed and the exposed uses are Reserved
+    cable_outdoors=False,  # SFEC 340.10: UF only at 50 V or less; NM is not for wet locations (334.12(B))
+    wiring_source=SFEC_URL,
     fallback_notes=(
         Note("always", "DBI Information Sheet E-01 (2019) routes electrical systems alterations, such as electric "
              "service upgrades, to DBI's electrical plan review with Title 24 compliance certificates on the plans, "
@@ -97,8 +109,9 @@ SAN_FRANCISCO = Jurisdiction(
                 Note("always", "DBI E-02: the electrical plan and calculations are signed and stamped by a California "
                      "registered electrical engineer or by the licensed electrical contractor responsible for the "
                      "design and installation.", E02_URL),
-                Note("disconnect", "DBI E-02: for a charger rated over 60 A or over 150 V to ground, the disconnecting "
-                     "means is readily accessible, in line of sight and within 50 ft of the charger.", E02_URL),
+                Note("disconnect", "CEC 625.43: a charger rated over 60 A or over 150 V to ground gets a disconnecting "
+                     "means in a readily accessible location, lockable open (110.25). If it is remote from the "
+                     "charger, put a plaque on the charger that says where the disconnect is."),
                 Note("trench", "DBI E-02: when trenching is required, all work complies with CEC 225 and CEC 300.",
                      E02_URL),
             ),

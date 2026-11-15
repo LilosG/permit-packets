@@ -50,7 +50,7 @@ def _egc(packet: SubpanelPacket) -> str:
 
 
 def _conduit(packet: SubpanelPacket) -> str:
-    return f"{packet.conduit_size} {packet.job.conduit}"
+    return packet.raceway_text or f"{packet.conduit_size} {packet.job.conduit}"
 
 
 def _wire_text(packet: SubpanelPacket) -> str:
@@ -322,7 +322,7 @@ def scope_of_work(packet: SubpanelPacket) -> str:
     return (
         f"Install one {job.subpanel_amps} A, 120/240 V subpanel{model} at the {LOCATION_LABELS[job.location]}. "
         f"Add a {job.feeder_breaker_amps} A, 2-pole breaker to the existing {job.service_amps} A main panel. "
-        f"{route} a new {job.run_ft} ft feeder, {_wire_text(packet)}, in {_conduit(packet)} conduit, "
+        f"{route} a new {job.run_ft} ft feeder, {_wire_text(packet)}, in {_conduit(packet)}, "
         f"from the main panel to the subpanel.{detached} "
         f"Keep neutral and ground separate in the subpanel. {service_note}"
     )

@@ -24,6 +24,7 @@ from permit_packets.core.load_calculation import (
     calculate_load,
 )
 from permit_packets.core.property_plan import PropertyPlan
+from permit_packets.core.raceways import above_ground
 from permit_packets.jurisdictions import ORO_VALLEY, Jurisdiction
 
 Location = Literal["same_building", "attached_garage", "detached_building"]
@@ -97,14 +98,18 @@ class SubpanelPacket:
     conduit_size: str
     checks: list[Check]
     flags: list[str] = field(default_factory=list)
+    raceway_text: str = ""  # the conduit as drawn, e.g. '1-1/4" PVC underground, 1-1/4" EMT above ground'
 
     @property
     def ready(self) -> bool:
         return all(check.passed for check in self.checks)
 
 
-def _flags(job: SubpanelJob, load: LoadCalculation, feeder: Feeder, assumed: bool) -> list[str]:
+def _flags(job: SubpanelJob, load: LoadCalculation, feeder: Feeder, assumed: bool,
+           raceway_note: str | None = None) -> list[str]:
     flags = ["Check the existing loads against the home. They drive the service result."]
+    if raceway_note:
+        flags.append(raceway_note)
     if load.computed_amps > job.service_amps:
         flags.append(
             f"The service is over capacity by {-load.spare_amps:.1f} A. Options are load management, "
@@ -161,7 +166,15 @@ def build_subpanel_packet(job: SubpanelJob) -> SubpanelPacket:
     feeder = size_feeder(
         job.feeder_breaker_amps, job.material, feeder_load, job.run_ft, whole_dwelling=job.whole_dwelling,
         ambient_f=job.design_ambient_f)
-    conduit_size = feeder_conduit(feeder, job.conduit)
+    drawn = above_ground(job.jurisdiction, job.conduit, "feeder")
+    if drawn.kind != job.conduit:  # PVC kept for the underground part only, metal raceway above ground
+        conduit_size = feeder_conduit(feeder, drawn.kind)
+        underground = feeder_conduit(feeder, job.conduit) if job.trench_ft else None
+        raceway_text = (f"{underground} {job.conduit} underground, {conduit_size} {drawn.kind} above ground"
+                        if underground else f"{conduit_size} {drawn.kind}")
+    else:
+        conduit_size = feeder_conduit(feeder, job.conduit)
+        raceway_text = f"{conduit_size} {job.conduit}"
     metal = MATERIAL_ABBREVIATIONS[job.material]
     size = wire_label(feeder.conductor.size)
     checks = [
@@ -180,7 +193,7 @@ def build_subpanel_packet(job: SubpanelJob) -> SubpanelPacket:
               feeder_load <= job.feeder_breaker_amps),
         Check("Voltage drop", f"{feeder.vd_volts:.1f} V, {feeder.vd_percent:.1f}% over {job.run_ft} ft",
               feeder.vd_percent <= MAX_FEEDER_VOLTAGE_DROP_PERCENT),
-        Check("Conduit fill", f"4 wires in {conduit_size} {job.conduit}, 40% fill", True),
+        Check("Conduit fill", f"4 wires in {raceway_text}, 40% fill", True),
     ]
     if feeder.heat:
         checks.append(Check("Temperature correction", feeder.heat.line, feeder.heat.passed))
@@ -191,5 +204,6 @@ def build_subpanel_packet(job: SubpanelJob) -> SubpanelPacket:
         checks.append(gec)
     return SubpanelPacket(
         job=job, load=load, feeder=feeder, feeder_load_amps=feeder_load, loads_assumed=assumed,
-        conduit_size=conduit_size, checks=checks, flags=_flags(job, load, feeder, assumed),
+        conduit_size=conduit_size, checks=checks, flags=_flags(job, load, feeder, assumed, drawn.note),
+        raceway_text=raceway_text,
     )

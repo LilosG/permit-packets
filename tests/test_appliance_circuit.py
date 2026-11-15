@@ -254,8 +254,8 @@ def test_the_neutral_changes_the_wire_count(client):
 def test_cable_has_no_conduit_fill_check(client):
     body = _packet(client, wiring="cable", trench_ft=0)
     assert "Conduit fill" not in [check["name"] for check in body["checks"]]
-    assert body["conduit"] == "cable"
-    assert "as cable" in _text(body)
+    assert body["conduit"] == "Type UF-B cable"  # outdoor sample: UF-B (340.10)
+    assert "as Type UF-B cable" in _text(body)
 
 
 def test_75c_terminals_size_the_wire_at_the_75c_column(client):

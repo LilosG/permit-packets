@@ -129,6 +129,10 @@
           <label class="choice"><input type="radio" name="equipment" value="meter_main" checked><span>Meter-main combo</span></label>
           <label class="choice"><input type="radio" name="equipment" value="main_panel"><span>Main panel, meter separate</span></label>
         </div></fieldset>
+        <fieldset id="main-location" hidden><legend>Main panel location</legend><div class="choices">
+          <label class="choice"><input type="radio" name="main_outdoors" value="no" checked><span>Inside</span></label>
+          <label class="choice"><input type="radio" name="main_outdoors" value="yes"><span>Outside wall</span></label>
+        </div></fieldset>
         <fieldset><legend>Service drop</legend><div class="choices">
           <label class="choice"><input type="radio" name="service_drop" value="overhead" checked><span>Overhead</span></label>
           <label class="choice"><input type="radio" name="service_drop" value="underground"><span>Underground</span></label>
@@ -149,6 +153,7 @@
         <fieldset><legend>Conduit</legend><div class="choices">
           <label class="choice"><input type="radio" name="conduit" value="PVC" checked><span>PVC</span></label>
           <label class="choice"><input type="radio" name="conduit" value="EMT"><span>EMT</span></label>
+          <label class="choice"><input type="radio" name="conduit" value="RMC"><span>RMC</span></label>
           <label class="choice"><input type="radio" name="conduit" value="none"><span>Cable, no conduit</span></label>
         </div></fieldset>
       </div>

@@ -27,8 +27,10 @@ from permit_packets.job_types.service_upgrade.calc import (
     ELECTRODE_LABELS,
     EQUIPMENT_LABELS,
     MATERIAL_ABBREVIATIONS,
+    EMERGENCY_MARKINGS,
     SPD_LABELS,
     ServicePacket,
+    emergency_line,
 )
 
 SECTION_PAGES = {
@@ -62,7 +64,7 @@ def _utility_name(packet: ServicePacket) -> str:
 
 
 def _conduit_text(packet: ServicePacket) -> str:
-    return f"{packet.conduit_size} {packet.job.conduit}" if packet.conduit_size else "Cable, no conduit"
+    return f"{packet.conduit_size} {packet.raceway}" if packet.conduit_size else "Cable, no conduit"
 
 
 def _title(packet: ServicePacket) -> str:
@@ -222,10 +224,13 @@ class Riser(Flowable):
             box(xs[1], "METER-MAIN", ["Meter socket", "and main breaker", "in one enclosure"])
             box(xs[2], f"MAIN {job.new_service_amps} A",
                 [f"{job.new_service_amps} A, 2-pole", "Main breaker", "in the meter-main"], SOFT)
+        elif packet.emergency == "meter_disconnect":
+            box(xs[1], "METER + DISCONNECT", ["Meter socket", f"{job.new_service_amps} A meter", "disconnect, outdoors"])
         else:
             box(xs[1], "METER", ["Utility meter", "Meter socket"])
             box(xs[2], f"MAIN {job.new_service_amps} A",
-                [f"{job.new_service_amps} A, 2-pole", "Main breaker", "in the main panel"], SOFT)
+                [f"{job.new_service_amps} A, 2-pole", "Main breaker", "outdoor main panel" if job.main_outdoors
+                 else "in the main panel"], SOFT)
         box(xs[3], f"PANEL {job.bus_amps} A bus",
             ["New panel", f"{job.bus_amps} A bus", "Branch circuits"])
 
@@ -385,7 +390,7 @@ def scope_of_work(packet: ServicePacket) -> str:
     brand = (f" The existing {BRAND_LABELS[job.existing_brand]} panel is being replaced for that reason."
              if job.existing_brand in BRAND_LABELS else "")
     utility = _utility_name(packet) or "the utility"
-    run = (f"{_service_wire(packet)} in {packet.conduit_size} {job.conduit} conduit"
+    run = (f"{_service_wire(packet)} in {packet.conduit_size} {packet.raceway} conduit"
            if packet.conduit_size else f"{_service_wire(packet)} as cable, without conduit")
     if packet.is_meter_main:
         conductors = (f"The {job.service_drop} service lands in the meter-main. Run a feeder from the meter-main to "
@@ -395,7 +400,7 @@ def scope_of_work(packet: ServicePacket) -> str:
         conductors = (f"Run new service entrance conductors, {run}, {job.se_length_ft} ft from the meter to the main, "
                       f"from an {job.service_drop} service. ")
     return (
-        f"{opening}{relocated}. {conductors}"
+        f"{opening}{relocated}. {conductors}{emergency_line(job, packet.emergency)}. "
         f"Ground the service with {_electrode_scope(packet)}. Bond the water pipe and the gas pipe. "
         f"Transfer the existing branch circuits to the new panel. "
         f"Coordinate the disconnect and reconnect with {utility}.{brand}"
@@ -466,6 +471,10 @@ def _site_plan(packet: ServicePacket) -> list:
     )
 
 
+def _emergency_legend(packet: ServicePacket) -> list[str]:
+    return [f"Emergency disconnect: {emergency_line(packet.job, packet.emergency)}"]
+
+
 def _surge_line(job) -> list[str]:
     if job.surge_protection not in SPD_LABELS:
         return []
@@ -479,6 +488,9 @@ def _riser(packet: ServicePacket) -> list:
          _conduit_text(packet),
          f"{job.new_service_amps} A, 2-pole main" + (" in the meter-main" if packet.is_meter_main else "")],
     ]
+    if packet.emergency == "meter_disconnect":
+        rows.insert(0, ["Meter disconnect", f"{job.new_service_amps} A, outdoor", "At the meter",
+                        "Emergency disconnect (230.85(2))"])
     rows += [
         [f"GEC to {ELECTRODE_LABELS[electrode].lower()}", f"1 #{size} Cu",
          "Raceway or armor (250.64(B))" if size == "8" else "Per 250.64(B)",
@@ -489,7 +501,7 @@ def _riser(packet: ServicePacket) -> list:
         _p("Riser Diagram", H1),
         _p("Service conductors, conduit, grounding electrode conductors and bonding.", SMALL),
         Spacer(1, 10),
-        diagram(Riser(packet), legend=one_line_data(packet.job) + _surge_line(job)),
+        diagram(Riser(packet), legend=one_line_data(packet.job) + _emergency_legend(packet) + _surge_line(job)),
         Spacer(1, 10),
         _p("Conductor and conduit schedule", H2),
         _table([_heads("Segment", "Conductors", "Conduit", "Protection")]
@@ -547,18 +559,22 @@ def _equipment(packet: ServicePacket) -> list:
     job = packet.job
     jurisdiction_code = job.jurisdiction.code_name
     sheet = find_equipment(job.panel_model, "panel")
+    extra = []
+    if packet.emergency == "meter_disconnect":
+        extra.append(("Meter disconnect", f"{job.new_service_amps} A, outdoor, suitable for use as service equipment, "
+                     f"marked \"{EMERGENCY_MARKINGS['meter_disconnect']}\"", f"{jurisdiction_code} 230.85(2)"))
     rows = [
         ("New service equipment",
          f"{sheet.name if sheet else job.panel_model or 'Add make and model'}, {job.bus_amps} A bus, "
          f"{job.new_service_amps} A main, {EQUIPMENT_LABELS[job.equipment].lower()}",
          sheet.listing if sheet else "Attach manufacturer data and NRTL listing"),
-        ("Service conductors",
+        (_run_name(packet),
          f"{_service_wire(packet)}, {_conduit_text(packet)}, {job.se_length_ft} ft",
          f"Listed, {jurisdiction_code} 310.12"),
         ("Grounding",
          "; ".join(f"{ELECTRODE_LABELS[electrode]}, #{size} Cu" for electrode, size in packet.gecs.items()),
          f"{jurisdiction_code} 250.66"),
-    ]
+    ] + extra
     return [
         _p("Equipment Data", H1),
         _p(f"The {sheet.name} data sheet from the manufacturer follows this page." if sheet else

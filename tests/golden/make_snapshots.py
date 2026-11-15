@@ -102,7 +102,9 @@ def snapshot(client: TestClient, payload: dict) -> dict:
     packet = client.post(PACKET_URL, json=payload)
     assert packet.status_code == 200, packet.text
     body = packet.json()
-    pdf = base64.b64decode(body["pdf"])
+    pdf_response = client.post(PACKET_URL.removesuffix("/packet") + "/pdf", json=payload)  # the PDF has its own endpoint
+    assert pdf_response.status_code == 200, pdf_response.text
+    pdf = pdf_response.content
     documents = client.post(DOCUMENTS_URL, json=payload)
     assert documents.status_code == 200, documents.text
     from zipfile import ZipFile
