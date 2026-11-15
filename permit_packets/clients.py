@@ -59,6 +59,7 @@ CLIENTS: dict[str, Client] = {
     "jbee": _client("jbee", "JBee Industries", "https://jbindustrieshvac.com", "jbee.png", "chandler-az"),
     "volta": _client("volta", "Volta Electrical", "https://www.voltaelectricians.com", "volta.png", "bellevue-wa"),
     "jacob": _client("jacob", "Jacob Electric", "", "jacob.png", "bellevue-wa"),
+    "luckycat": _client("luckycat", "Lucky Cat Electric", "https://luckycatelectric.com", "luckycat.png", "bellevue-wa"),
 }
 
 
