@@ -47,7 +47,7 @@ a { color: inherit; }
 .search input { width: 100%; height: 38px; padding: 0 12px 0 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font: inherit; color: var(--ink); box-shadow: var(--shadow); }
 .search input:focus { outline: none; border-color: #fdba8c; box-shadow: 0 0 0 3px rgba(234,106,31,.15); }
 .search svg { position: absolute; left: 11px; top: 11px; width: 16px; height: 16px; color: var(--faint); }
-.btn { height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-weight: 600; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; box-shadow: var(--shadow); }
+.btn { white-space: nowrap; flex: none; height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-weight: 600; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; box-shadow: var(--shadow); }
 .btn:hover { background: #fafafa; }
 .btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
 .btn.primary:hover { background: #1e293b; }
@@ -210,7 +210,7 @@ tbody tr:last-child td { border-bottom: 0; }
     document.querySelector(".foot").innerHTML = "";
     document.querySelector(".foot").append(Object.assign(document.createElement("b"), { textContent: "Service area" }),
       document.createElement("br"), area);
-    document.getElementById("sub").insertAdjacentHTML("afterend", '<div class="sub" id="preview-note">Preview: jobs are saved in this browser only.</div>');
+    document.getElementById("sub").insertAdjacentHTML("afterend", '<div class="sub" id="preview-note">Preview with sample jobs. Packets you build show at the top.</div>');
   }
   document.getElementById("org-name").textContent = company;
   const avatar = document.getElementById("org-initials");
@@ -254,7 +254,8 @@ tbody tr:last-child td { border-bottom: 0; }
     ["303 Laurel St", "N. Shah", "ev", "issued", 5, "48 A Tesla Wall Connector, garage"],
     ["77 Seacliff Ave", "C. Morgan", "service", "closed", 40, "Service upgrade with meter relocation"],
   ];
-  let jobs = (me.demo ? seed : []).map(([addr, cust, type, stage, upd, scope], i) => ({
+  // Every login shows the sample jobs, placed in its own cities, so a client sees how tracking works.
+  let jobs = seed.map(([addr, cust, type, stage, upd, scope], i) => ({
     id: i + 1, addr, cust, type, stage, scope, city: city(i), updated: day(upd),
     created: day(upd + 3 + (i % 5)),
     permit: ["draft", "review"].includes(stage) ? "" : `E-2026-${String(48213 + i * 37).padStart(6, "0")}`,
