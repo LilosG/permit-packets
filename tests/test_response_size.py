@@ -58,3 +58,18 @@ def test_an_ordinary_packet_previews_at_the_sharp_setting(client):
     first = Image.open(BytesIO(base64.b64decode(pages[0])))
     assert first.width >= 8.5 * 72 * 2 - 1, "the first render setting is 2x (144 dpi)"
     assert first.layer[0][1:3] == (1, 1), "full chroma"
+
+
+def test_the_heaviest_san_francisco_drawing_set_fits_on_both_requests(client):
+    """22 x 34 in sheets: the aerial is placed once, not copied per sheet, so the PDF stays small."""
+    from permit_packets.jurisdictions import jurisdiction_by_key
+    from tests.packet_helpers import complete_inputs
+
+    job = complete_inputs("ev_charger", jurisdiction_by_key("san-francisco-ca"))
+    job["charger_model"] = "Emporia Level 2 EV Charger"
+    job["plan"]["aerial_base64"] = _heaviest_aerial()
+    review = client.post("/api/jobs/ev-charger/packet", json=job)
+    pdf = client.post("/api/jobs/ev-charger/pdf", json=job)
+    assert review.status_code == pdf.status_code == 200, review.text[:200]
+    assert len(review.content) < HEADROOM * VERCEL_LIMIT, f"review response {len(review.content):,} bytes"
+    assert len(pdf.content) < HEADROOM * VERCEL_LIMIT, f"PDF response {len(pdf.content):,} bytes"
