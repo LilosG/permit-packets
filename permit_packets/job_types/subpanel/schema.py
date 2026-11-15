@@ -16,7 +16,7 @@ class SubpanelRequest(JobRequestBase):
     service_amps: int = Field(ge=60, le=400)
     open_breaker_spaces: int = Field(ge=0, le=60)
     location: Literal["same_building", "attached_garage", "detached_building"]
-    subpanel_amps: Literal[60, 100, 125, 150, 200]
+    subpanel_amps: Literal[60, 100, 125, 150, 200, 225]
     feeder_breaker_amps: Literal[60, 70, 90, 100, 125, 150, 200]
     material: Literal["copper", "aluminum"] = "aluminum"
     conduit: Literal["PVC", "EMT"] = "PVC"

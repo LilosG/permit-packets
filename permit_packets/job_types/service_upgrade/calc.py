@@ -28,6 +28,7 @@ from permit_packets.core.load_calculation import (
     calculate_load,
 )
 from permit_packets.core.property_plan import PropertyPlan
+from permit_packets.core.panel_model import service_panel_check
 from permit_packets.core.raceways import above_ground, service_raceway
 from permit_packets.jurisdictions import ORO_VALLEY, Jurisdiction
 
@@ -128,6 +129,10 @@ class ServicePacket:
     # NEC 230.85: "main" when the main breaker is outdoors (a meter-main, or a main panel on an outside wall);
     # "meter_disconnect" when the main panel is inside and a disconnect goes in at the meter.
     emergency: str = "main"
+    # Overhead upgrades: the new mast from the weatherhead to the meter, in RMC sized for the service conductors
+    # (230.28 mast strength; 230.43 wiring method). None for underground (the lateral is the utility's) and
+    # for a same-size panel replacement, which keeps the existing mast.
+    mast_conduit: str | None = None
 
     @property
     def is_meter_main(self) -> bool:
@@ -174,7 +179,8 @@ def _flags(job: ServiceJob, gecs: dict[str, str], notes: tuple[str, ...] = ()) -
         "Submit the utility service request (page 7). The utility sets the disconnect and reconnect.",
     ]
     if job.service_drop == "overhead":
-        flags.append("Confirm mast, weatherhead and drip-loop clearances against the utility's service requirements.")
+        flags.append("Confirm the mast size, its support, the point of attachment and drip-loop clearances against "
+                     "the utility's service requirements (230.24, 230.26, 230.28).")
     else:
         flags.append("Confirm the lateral conduit size and who supplies it with the utility.")
     if job.relocated:
@@ -236,6 +242,8 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
     else:
         conduit = at_least(service_conduit(conductor, raceway), jurisdiction.min_service_raceway)
     emergency = "main" if job.equipment == "meter_main" or job.main_outdoors else "meter_disconnect"
+    mast_conduit = (at_least(service_conduit(conductor, "RMC"), jurisdiction.min_service_raceway)
+                    if job.service_drop == "overhead" and job.scope == "upgrade" else None)
     metal = MATERIAL_ABBREVIATIONS[job.material]
     required = SERVICE_CONDUCTOR_FACTOR * job.new_service_amps
     heat = (
@@ -284,6 +292,9 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
         checks.append(Check("Temperature correction", heat.line, heat.passed))
     if any(r.section == "surge" for r in job.jurisdiction.checklist_for("service_upgrade").items):
         checks.append(surge_check(job))
+    model = service_panel_check(job)
+    if model:
+        checks.append(model)
     checks.append(interrupting_rating_check(job))
     checks.append(panel_schedule_check(job))
     gec = gec_check(job, service_amps=job.new_service_amps, material=job.material, electrodes=tuple(gecs))
@@ -292,5 +303,5 @@ def build_service_packet(job: ServiceJob) -> ServicePacket:
     return ServicePacket(
         job=job, load=load, existing_load=existing_load, conductor=conductor, gecs=gecs,
         conduit_size=conduit, checks=checks, flags=_flags(job, gecs, (drawn.note,) if drawn.note else ()),
-        heat=heat, feeder_egc=feeder_egc, raceway=raceway, emergency=emergency,
+        heat=heat, feeder_egc=feeder_egc, raceway=raceway, emergency=emergency, mast_conduit=mast_conduit,
     )

@@ -480,7 +480,8 @@ def _equipment(packet: SubpanelPacket) -> list:
     sheet = find_equipment(job.subpanel_model, "panel")
     rows = [
         ("Subpanel",
-         f"{sheet.name if sheet else job.subpanel_model or 'Add make and model'}, {job.subpanel_amps} A bus, "
+         f"{sheet.name if sheet else job.subpanel_model or 'Add make and model'}, "
+         f"{sheet.bus_amps if sheet and sheet.bus_amps else job.subpanel_amps} A bus, "
          f"{job.feeder_breaker_amps} A feeder breaker",
          sheet.listing if sheet else "Attach manufacturer data and NRTL listing"),
         ("Feeder breaker", f"{job.feeder_breaker_amps} A, 2-pole, matched to the main panel", "Listed for the panel"),

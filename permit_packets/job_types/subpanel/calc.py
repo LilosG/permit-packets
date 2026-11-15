@@ -24,6 +24,7 @@ from permit_packets.core.load_calculation import (
     calculate_load,
 )
 from permit_packets.core.property_plan import PropertyPlan
+from permit_packets.core.panel_model import subpanel_check
 from permit_packets.core.raceways import above_ground
 from permit_packets.jurisdictions import ORO_VALLEY, Jurisdiction
 
@@ -197,6 +198,9 @@ def build_subpanel_packet(job: SubpanelJob) -> SubpanelPacket:
     ]
     if feeder.heat:
         checks.append(Check("Temperature correction", feeder.heat.line, feeder.heat.passed))
+    model = subpanel_check(job)
+    if model:
+        checks.append(model)
     checks.append(interrupting_rating_check(job))
     checks.append(panel_schedule_check(job))
     gec = gec_check(job, service_amps=job.service_amps)

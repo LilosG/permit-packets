@@ -369,10 +369,10 @@ def test_an_all_number_8_gec_adds_the_protection_flag(client):
 def test_the_drop_decides_which_clearance_flag_shows(client):
     overhead = _packet(client)["flags"]
     underground = _packet(client, service_drop="underground")["flags"]
-    assert any(flag.startswith("Confirm mast, weatherhead") for flag in overhead)
+    assert any(flag.startswith("Confirm the mast size") for flag in overhead)
     assert not any(flag.startswith("Confirm the lateral") for flag in overhead)
     assert any(flag.startswith("Confirm the lateral conduit") for flag in underground)
-    assert not any(flag.startswith("Confirm mast") for flag in underground)
+    assert not any(flag.startswith("Confirm the mast") for flag in underground)
 
 
 def test_flags_come_in_the_order_the_job_needs_them(client):
@@ -453,3 +453,17 @@ def test_the_signed_in_page_loads_the_service_script_with_a_version(client):
     assert re.search(r'src="/assets/js/job-types/service-upgrade\.js\?v=[0-9a-f]{10}"', page)
     assert page.index("service-upgrade.js") < page.index("/assets/js/app.js")
     assert client.get("/assets/js/job-types/service-upgrade.js").status_code == 200
+
+
+def test_an_overhead_upgrade_draws_the_new_mast_and_a_replacement_keeps_the_old_one():
+    from permit_packets.job_types.service_upgrade.pdf import scope_of_work
+    from tests.test_local_wiring import _service
+    from permit_packets.jurisdictions import jurisdiction_by_key
+    mesa, sf = jurisdiction_by_key("mesa-az"), jurisdiction_by_key("san-francisco-ca")
+    upgrade = _service(mesa).packet
+    assert upgrade.mast_conduit and "new service mast and weatherhead" in scope_of_work(upgrade)
+    assert _service(sf).packet.mast_conduit in ('1-1/4"', '1-1/2"', '2"')  # never under SF's 1-1/4 in
+    replacement = _service(mesa, scope="replacement", existing_service_amps=200).packet
+    assert replacement.mast_conduit is None and "Keep the existing service mast" in scope_of_work(replacement)
+    underground = _service(mesa, service_drop="underground").packet
+    assert underground.mast_conduit is None and "mast" not in scope_of_work(underground)

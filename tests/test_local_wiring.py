@@ -144,3 +144,47 @@ def test_sf_subpanel_feeder_keeps_pvc_underground_only():
     packet = build("subpanel", {**complete_inputs("subpanel", SF), "conduit": "PVC", "run_ft": 80,
                                 "trench_ft": 40, "location": "detached_building"}).packet
     assert "PVC underground" in packet.raceway_text and "EMT above ground" in packet.raceway_text
+
+
+# Library panels are checked against their data sheets.
+HOM_200 = "Square D Homeline HOM3060M200PC, 200 A main breaker"
+HOM_LUG = "Square D Homeline HOM3060L225PGC, 225 A main lug"
+MILBANK = "Milbank U5168-XTL-200 meter-main, 200 A"
+
+
+def test_a_meter_main_job_needs_a_meter_main_model():
+    bad = _service(MESA, equipment="meter_main", panel_model=HOM_200, bus_amps=225, panel_bus_amps=225)
+    good = _service(MESA, equipment="meter_main", panel_model=MILBANK)
+    assert not _check(bad, "Panel model").passed and "not a meter-main" in _check(bad, "Panel model").result
+    assert _check(good, "Panel model").passed
+
+
+@pytest.mark.parametrize("changes,problem", [
+    ({"panel_model": HOM_LUG, "bus_amps": 225, "panel_bus_amps": 225}, "main lugs"),
+    ({"panel_model": HOM_200, "bus_amps": 225, "panel_bus_amps": 225, "new_service_amps": 225,
+      "existing_service_amps": 200}, "main breaker is 200 A, not 225 A"),
+    ({"panel_model": HOM_200, "bus_amps": 200, "panel_bus_amps": 200}, "bus rating entered is 200 A"),
+    ({"panel_model": HOM_200, "bus_amps": 225, "panel_bus_amps": 225, "main_outdoors": True}, "indoor (NEMA 1)"),
+])
+def test_a_main_panel_model_that_does_not_fit_fails(changes, problem):
+    result = _service(MESA, equipment="main_panel", **changes)
+    check = _check(result, "Panel model")
+    assert not check.passed and problem in check.result
+
+
+def test_the_indoor_main_panel_model_fits_inside():
+    result = _service(MESA, equipment="main_panel", panel_model=HOM_200, bus_amps=225, panel_bus_amps=225)
+    assert _check(result, "Panel model").passed
+
+
+def test_a_model_outside_the_library_adds_no_model_check():
+    result = _service(MESA, panel_model="Eaton BR2040B200")
+    assert "Panel model" not in [check.name for check in result.packet.checks]
+
+
+def test_the_subpanel_model_must_match_the_rating_entered():
+    def sub(**changes):
+        return build("subpanel", {**complete_inputs("subpanel", MESA), **changes})
+    assert not _check(sub(subpanel_model=HOM_LUG, subpanel_amps=100), "Subpanel model").passed
+    assert not _check(sub(subpanel_model=MILBANK, subpanel_amps=200), "Subpanel model").passed
+    assert _check(sub(subpanel_model=HOM_LUG, subpanel_amps=225), "Subpanel model").passed

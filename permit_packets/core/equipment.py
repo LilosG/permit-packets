@@ -34,6 +34,13 @@ class Equipment:
     listing: str
     data_sheet: str      # file name in data_sheets/
     aliases: tuple[str, ...] = ()
+    # Panels only, from the manufacturer's data sheet: bus rating, main type and size, enclosure, and
+    # whether it is a meter-main (meter socket and main breaker in one outdoor enclosure).
+    bus_amps: int | None = None
+    main: str | None = None  # "breaker" or "lug"
+    main_amps: int | None = None
+    outdoor: bool = False
+    meter_main: bool = False
 
     def data_sheet_path(self) -> Path:
         return DATA_SHEETS / self.data_sheet
@@ -53,12 +60,18 @@ CHARGERS = (
 )
 
 PANELS = (
+    # Data sheet: 225 A bus, 200 A 2-pole main breaker, NEMA 1 indoor enclosure.
     Equipment("panel", "Square D Homeline HOM3060M200PC, 200 A main breaker", 200, "UL listed, file E-6294 (UL 67)",
-              "square-d-homeline-hom3060m200pc.pdf", ("hom3060m200pc", "square d homeline 200")),
+              "square-d-homeline-hom3060m200pc.pdf", ("hom3060m200pc", "square d homeline 200"),
+              bus_amps=225, main="breaker", main_amps=200),
+    # Data sheet: 225 A bus, main lugs (no main breaker), NEMA 1 indoor enclosure.
     Equipment("panel", "Square D Homeline HOM3060L225PGC, 225 A main lug", 225, "UL listed, file E-6294 (UL 67)",
-              "square-d-homeline-hom3060l225pgc.pdf", ("hom3060l225pgc", "square d homeline 225")),
+              "square-d-homeline-hom3060l225pgc.pdf", ("hom3060l225pgc", "square d homeline 225"),
+              bus_amps=225, main="lug"),
+    # Data sheet: meter socket with a 200 A main breaker and 8 branch circuits, 200 A continuous, Type 3R.
     Equipment("panel", "Milbank U5168-XTL-200 meter-main, 200 A", 200, "UL listed, Type 3R",
-              "milbank-u5168-xtl-200.pdf", ("u5168 xtl 200", "u5168xtl200", "milbank u5168")),
+              "milbank-u5168-xtl-200.pdf", ("u5168 xtl 200", "u5168xtl200", "milbank u5168"),
+              bus_amps=200, main="breaker", main_amps=200, outdoor=True, meter_main=True),
 )
 
 LIBRARY = CHARGERS + PANELS

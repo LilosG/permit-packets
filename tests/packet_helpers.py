@@ -70,7 +70,10 @@ def plan_for(key: str, scale: int = 30, parcel: str = "482-110-22-00") -> dict:
     }
 
 
-LIBRARY_PANEL = "Square D Homeline HOM3060M200PC, 200 A main breaker"
+# Library models whose data sheets match the samples: a 200 A meter-main for the service upgrade (meter-main,
+# 200 A, 200 A bus) and a 225 A main-lug load center for the subpanel (set to 225 A below).
+LIBRARY_PANEL = "Milbank U5168-XTL-200 meter-main, 200 A"
+LIBRARY_SUBPANEL = "Square D Homeline HOM3060L225PGC, 225 A main lug"
 
 
 def complete_inputs(key: str, jurisdiction) -> dict:
@@ -93,7 +96,7 @@ def complete_inputs(key: str, jurisdiction) -> dict:
     elif key == "service_upgrade":
         payload.update(panel_model=LIBRARY_PANEL, panel_bus_amps=payload["bus_amps"], surge_protection="type_2")
     elif key == "subpanel":
-        payload.update(subpanel_model=LIBRARY_PANEL, panel_bus_amps=200)
+        payload.update(subpanel_model=LIBRARY_SUBPANEL, subpanel_amps=225, panel_bus_amps=200)
     else:
         payload.update(appliance_model="Sample Spa 4000", data_sheet_attached=True, panel_bus_amps=200)
     return payload

@@ -247,6 +247,9 @@ class Riser(Flowable):
         c.drawCentredString(utility_x, mid + 15, "Service")
         c.setFont("Helvetica", 6.8)
         c.drawCentredString(utility_x, mid + 5, "overhead drop" if _drop(packet) == "overhead" else "lateral")
+        if packet.mast_conduit:  # the contractor's mast: weatherhead down to the meter
+            c.drawCentredString(utility_x, mid - 10, f"Mast: 3 {wire_label(packet.conductor.size)} {_metal(packet)}")
+            c.drawCentredString(utility_x, mid - 20, f"in {packet.mast_conduit} RMC")
         # Service conductors run meter to main panel. In a meter-main the meter and main share an enclosure and
         # the measured run is the feeder from the main to the panel.
         run_left = xs[2] if combo else xs[1]
@@ -394,13 +397,18 @@ def scope_of_work(packet: ServicePacket) -> str:
     utility = _utility_name(packet) or "the utility"
     run = (f"{_service_wire(packet)} in {packet.conduit_size} {packet.raceway} conduit"
            if packet.conduit_size else f"{_service_wire(packet)} as cable, without conduit")
+    mast = (f"Install a new service mast and weatherhead with 3 {wire_label(packet.conductor.size)} {_metal(packet)} "
+            f"THWN-2 service-entrance conductors in {packet.mast_conduit} RMC down to the "
+            f"{'meter-main' if packet.is_meter_main else 'meter'}. " if packet.mast_conduit else "")
+    if job.service_drop == "overhead" and not packet.mast_conduit:
+        mast = "Keep the existing service mast and conductors; confirm they are rated for the service. "
     if packet.is_meter_main:
-        conductors = (f"The {job.service_drop} service lands in the meter-main. Run a feeder from the meter-main to "
+        conductors = (f"{mast}The {job.service_drop} service lands in the meter-main. Run a feeder from the meter-main to "
                       f"the panel, {run}, {job.se_length_ft} ft, with the panel's neutral isolated from ground "
                       f"(NEC 250.24(A)(5)). ")
     else:
-        conductors = (f"Run new service entrance conductors, {run}, {job.se_length_ft} ft from the meter to the main, "
-                      f"from an {job.service_drop} service. ")
+        conductors = (f"{mast}Run new service entrance conductors, {run}, {job.se_length_ft} ft from the meter to the "
+                      f"main, from an {job.service_drop} service. ")
     return (
         f"{opening}{relocated}. {conductors}{emergency_line(job, packet.emergency)}. "
         f"Ground the service with {_electrode_scope(packet)}. Bond the water pipe and the gas pipe. "
@@ -496,6 +504,11 @@ def _riser(packet: ServicePacket) -> list:
     if packet.emergency == "meter_disconnect":
         rows.insert(0, ["Meter disconnect", f"{job.new_service_amps} A, outdoor", "At the meter",
                         "Emergency disconnect (230.85(2))"])
+    if packet.mast_conduit:
+        rows.insert(0, ["Service mast, weatherhead to meter",
+                        f"3 {wire_label(packet.conductor.size)} {_metal(packet)} THWN-2, {packet.conductor.ampacity_75c} A "
+                        f"at 75\N{DEGREE SIGN}C", f"{packet.mast_conduit} RMC mast, weatherhead",
+                        "Overload protection at the main (230.90)"])
     rows += [
         [f"GEC to {ELECTRODE_LABELS[electrode].lower()}", f"1 #{size} Cu",
          "Raceway or armor (250.64(B))" if size == "8" else "Per 250.64(B)",
@@ -560,6 +573,13 @@ def _utility(packet: ServicePacket) -> list:
     ]
 
 
+def _main_text(job, sheet) -> str:
+    """The main as the data sheet has it; a main-lug panel has no main breaker to print."""
+    if sheet and sheet.main == "lug":
+        return "main lugs (no main breaker)"
+    return f"{sheet.main_amps if sheet and sheet.main_amps else job.new_service_amps} A main breaker"
+
+
 def _equipment(packet: ServicePacket) -> list:
     job = packet.job
     jurisdiction_code = job.jurisdiction.code_name
@@ -570,8 +590,9 @@ def _equipment(packet: ServicePacket) -> list:
                      f"marked \"{EMERGENCY_MARKINGS['meter_disconnect']}\"", f"{jurisdiction_code} 230.85(2)"))
     rows = [
         ("New service equipment",
-         f"{sheet.name if sheet else job.panel_model or 'Add make and model'}, {job.bus_amps} A bus, "
-         f"{job.new_service_amps} A main, {EQUIPMENT_LABELS[job.equipment].lower()}",
+         f"{sheet.name if sheet else job.panel_model or 'Add make and model'}, "
+         f"{sheet.bus_amps if sheet and sheet.bus_amps else job.bus_amps} A bus, {_main_text(job, sheet)}, "
+         f"{EQUIPMENT_LABELS[job.equipment].lower()}",
          sheet.listing if sheet else "Attach manufacturer data and NRTL listing"),
         (_run_name(packet),
          f"{_service_wire(packet)}, {_conduit_text(packet)}, {job.se_length_ft} ft",
