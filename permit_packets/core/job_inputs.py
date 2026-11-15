@@ -27,6 +27,13 @@ def property_plan(request: JobRequestBase, route_between: tuple[str, str] | None
         aerial = plan.aerial_bytes()
     except ValueError as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
+    city = jurisdiction_by_key(request.jurisdiction_key, request.city, request.state)
+    limit = city.max_plan_scale_ft_per_in
+    if limit and plan.scale_ft_per_in > limit:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"{city.name} needs the site plan at 1 in = {limit} ft or closer (it prints at 1/8 in = 1 ft). "
+            "Zoom the plan in and build again.")
     return PropertyPlan(
         scale_ft_per_in=plan.scale_ft_per_in, markers=plan.markers, route=plan.route,
         route_between=route_between,
@@ -49,6 +56,16 @@ def build_on_sheet(request: JobRequestBase, build):
 
     city = jurisdiction_by_key(request.jurisdiction_key, request.city, request.state)
     sheet = resolve_sheet(request.sheet_size, city)
+    if sheet.key == "ansi_d":
+        # Laid out on letter, then the drawing sheets go onto 22 x 34 in sheets with the city's blank
+        # area on the cover, so no separate blank sheet is added.
+        from permit_packets.core.drawing_sets import drawing_set
+        from permit_packets.core.pdf_base import collect_page_titles
+
+        with use_sheet(sheet), use_blank_area(None), collect_page_titles() as titles:
+            result = build(request)
+        pdf = drawing_set(result.pdf, titles, city.title_sheet_blank_area_in)
+        return PacketResult(pdf=pdf, body={**result.body, "sheet_size": sheet.key})
     with use_sheet(sheet), use_blank_area(city.title_sheet_blank_area_in):
         result = build(request)
         body = {**result.body, "sheet_size": sheet.key}

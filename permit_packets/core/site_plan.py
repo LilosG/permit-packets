@@ -11,7 +11,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable, Spacer, Table, TableStyle
 
-from permit_packets.core.layout import Sheet, current_sheet
+from permit_packets.core.layout import print_magnification, Sheet, current_sheet
 from permit_packets.core.property_plan import PLAN_UNITS, PLAN_WIDTH_IN, Point, PropertyPlan
 
 INK = colors.HexColor("#15212c")
@@ -45,9 +45,21 @@ def plan_print(plan: PropertyPlan, sheet: Sheet | None = None) -> tuple[float, i
     return extent_ft / ft_per_in * inch, ft_per_in
 
 
-def printed_scale(plan: PropertyPlan) -> int:
-    """The feet per inch the site plan states on the current sheet."""
-    return plan_print(plan)[1]
+def printed_scale(plan: PropertyPlan) -> int | float:
+    """The feet per inch the site plan states on the current sheet, as printed."""
+    return _magnified(plan_print(plan)[1])
+
+
+def _magnified(ft_per_in: int) -> int | float:
+    """Feet per inch once a drawing sheet prints larger than drawn (2.5x on a 22 x 34 in set)."""
+    value = ft_per_in / print_magnification()
+    return int(value) if value == int(value) else round(value, 2)
+
+
+def scale_text(ft_per_in: int) -> str:
+    printed = _magnified(ft_per_in)
+    architectural = {8: "1/8 in = 1 ft", 4: "1/4 in = 1 ft", 16: "1/16 in = 1 ft"}.get(printed)
+    return f"1 in = {printed} ft" + (f" ({architectural})" if architectural else "")
 
 
 @dataclass(frozen=True)
@@ -144,8 +156,9 @@ class AerialSitePlan(Flowable):
         bar_ft = scale
         bar_pt = inch
         bx, by = self.left + 8, 8
+        label = scale_text(scale)
         c.setFillColor(colors.white)
-        c.roundRect(bx, by, bar_pt + 88, 24, 2, stroke=1, fill=1)
+        c.roundRect(bx, by, bar_pt + max(88, 20 + stringWidth(label, "Helvetica-Bold", 7.2)), 24, 2, stroke=1, fill=1)
         c.setFillColor(INK)
         c.rect(bx + 7, by + 7, bar_pt / 2, 4, stroke=0, fill=1)
         c.rect(bx + 7 + bar_pt / 2, by + 7, bar_pt / 2, 4, stroke=1, fill=0)
@@ -153,7 +166,7 @@ class AerialSitePlan(Flowable):
         c.drawString(bx + 7, by + 14, "0")
         c.drawRightString(bx + 7 + bar_pt, by + 14, f"{bar_ft} ft")
         c.setFont("Helvetica-Bold", 7.2)
-        c.drawString(bx + bar_pt + 13, by + 9, f'1 in = {scale} ft')
+        c.drawString(bx + bar_pt + 13, by + 9, label)
 
     def draw(self) -> None:
         c = self.canv
@@ -236,7 +249,8 @@ def site_plan_page(
 
     sheet = current_sheet()
     side, ft_per_in = plan_print(plan, sheet)
-    measures = [*measures, f"Scale 1 in = {ft_per_in} ft when printed at 100%",
+    printed_on = " on the 22 x 34 in sheet" if print_magnification(sheet) != 1 else ""
+    measures = [*measures, f"Scale {scale_text(ft_per_in)}{printed_on} when printed at 100%",
                 "Not a survey. Field verify all dimensions."]
     credit = _p(". ".join(credit.rstrip(".") for credit in plan.credits) + ".", CREDIT)
     drawing = AerialSitePlan(plan, markers=markers, underground=underground,

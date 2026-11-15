@@ -693,7 +693,11 @@ def assemble_property(
     extent, frame_center = _extent_ft(frame) if frame else (0, anchor)
     if not lot:
         extent = max(extent, 150)
-    view = PlanView(*(center or frame_center), scale or plan_scale(extent))
+    jurisdiction = jurisdiction_for(city, state)
+    chosen = scale or plan_scale(extent)
+    if jurisdiction.max_plan_scale_ft_per_in:  # e.g. San Francisco: no smaller than 1/8 in = 1 ft as printed
+        chosen = min(chosen, jurisdiction.max_plan_scale_ft_per_in)
+    view = PlanView(*(center or frame_center), chosen)
 
     buildings: list[list[Point]] = []
     primary_index = None
@@ -713,7 +717,7 @@ def assemble_property(
     on_record = parcel.house_number if parcel else ""
     return FoundProperty(
         address=address, city=city, state=state, county_fips=county_fips, house_number=house_number,
-        jurisdiction=jurisdiction_for(city, state), anchor=anchor, located_by=located_by,
+        jurisdiction=jurisdiction, anchor=anchor, located_by=located_by,
         address_confirmed=(on_record == house_number) if on_record and house_number else None,
         parcel_house_number=on_record, view=view, buildings=buildings, primary_building=primary_index,
         lot=[view.to_plan(lat, lon) for lat, lon in lot],

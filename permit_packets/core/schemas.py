@@ -68,7 +68,7 @@ class JobRequestBase(BaseModel):
     jurisdiction_key: str | None = Field(default=None, max_length=40)
     plan: PropertyPlanRequest | None = None
     existing_circuits: list[ExistingCircuitRequest] = Field(default_factory=list, max_length=60)
-    sheet_size: Literal["letter", "tabloid"] | None = None  # None: the city's preference
+    sheet_size: Literal["letter", "tabloid", "ansi_d"] | None = None  # None: the city's preference
     # The utility's available fault current at the service, and the panel and breaker interrupting rating.
     available_fault_current_a: int | None = Field(default=None, ge=1, le=200_000)
     equipment_aic_ka: int = Field(default=10, ge=1, le=200)

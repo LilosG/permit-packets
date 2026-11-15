@@ -34,7 +34,7 @@ def sheet_number(index: int) -> str:
     return f"E-{index}"
 
 
-def _fit(c, text: str, font: str, width: float, size: float, lines: int, floor: float = 5.6):
+def _fit(c, text: str, font: str, width: float, size: float, lines: int, floor: float = 6.4):
     """Wrapped lines that fit the width in at most `lines` lines, shrinking the font if needed."""
     while True:
         wrapped = [line for part in text.split("\n") for line in simpleSplit(part, font, size, width) or [""]]
@@ -48,7 +48,7 @@ def _cell(c, x, y, w, h, label, value, *, font="Helvetica-Bold", size=8.2, lines
     c.setLineWidth(0.5)
     c.rect(x, y, w, h, stroke=1, fill=0)
     c.setFillColor(COPPER)
-    c.setFont("Helvetica-Bold", 5.6)
+    c.setFont("Helvetica-Bold", 6.4)
     c.drawString(x + pad, y + h - 7.4, label)
     wrapped, size = _fit(c, value, font, w - 2 * pad, size, lines)
     c.setFillColor(INK)
@@ -63,7 +63,7 @@ def _signature_cell(c, x, y, w, h, *, pad=4):
     c.setLineWidth(0.5)
     c.rect(x, y, w, h, stroke=1, fill=0)
     c.setFillColor(COPPER)
-    c.setFont("Helvetica-Bold", 5.6)
+    c.setFont("Helvetica-Bold", 6.4)
     c.drawString(x + pad, y + h - 7.4, "ELECTRICIAN (DESIGNER OF RECORD)")
     base = y + 5
     fields = (("Prepared by", 0.36), ("Signature", 0.40), ("Date", 0.24))
@@ -100,7 +100,7 @@ def draw_title_block(c, sheet: Sheet, block: TitleBlock, *, title: str, number: 
         c.setLineWidth(0.5)
         c.rect(x, y, cw, ch, stroke=1, fill=0)
         c.setFillColor(COPPER)
-        c.setFont("Helvetica-Bold", 5.6)
+        c.setFont("Helvetica-Bold", 6.4)
         c.drawString(x + 4, y + ch - 7.4, "SHEET")
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 17 if not sheet.landscape else 20)

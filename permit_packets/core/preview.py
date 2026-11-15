@@ -14,11 +14,16 @@ RENDERS = ((2.0, 85, 0), (2.0, 75, 0), (1.5, 80, 2), (1.5, 65, 2))
 PREVIEW_BUDGET_BYTES = 2_500_000
 
 
+LETTER_WIDTH_PT = 612.0
+
+
 def _render(document: pypdfium2.PdfDocument, scale: float, quality: int, subsampling: int) -> list[bytes]:
     images = []
     for page in document:
         buffer = BytesIO()
-        page.render(scale=scale).to_pil().convert("RGB").save(
+        # Every page previews at the width a letter page gets, so a 22 x 34 in sheet stays a sane size.
+        page_scale = scale * min(1.0, LETTER_WIDTH_PT / page.get_width())
+        page.render(scale=page_scale).to_pil().convert("RGB").save(
             buffer, format="JPEG", quality=quality, subsampling=subsampling,
         )
         images.append(buffer.getvalue())

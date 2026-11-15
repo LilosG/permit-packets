@@ -109,6 +109,10 @@ def test_the_stamp_box_exists_when_the_city_reserves_one(jurisdiction, key):
     if jurisdiction.stamp_box_in is None:
         assert "Reserved for city stamp" not in cover
         return
+    if jurisdiction.sheet_size == "ansi_d":  # every drawing sheet carries it: tests/test_drawing_sets.py
+        assert "Reserved for" in cover and "DBI stamp" in cover
+        assert any(abs(w - 144) < 2.5 and abs(h - 144) < 2.5 for w, h in sides), "a true-size 2 in square"
+        return
     assert "Reserved for city stamp" in cover
     side = jurisdiction.stamp_box_in * 72
     assert any(abs(w - side) < 2.5 and abs(h - side) < 2.5 for w, h in sides), "a true-size square is drawn"
@@ -125,6 +129,9 @@ def test_the_page_size_matches_the_cities_sheet_size(jurisdiction, key):
         sizes = {(round(p.get_width()), round(p.get_height())) for i, p in enumerate(document) if i not in attached}
     finally:
         document.close()
+    if jurisdiction.sheet_size == "ansi_d":  # drawing sheets 22 x 34, supplemental pages 8.5 x 11
+        assert sizes == {(1584, 2448), SHEET_POINTS["letter"]}
+        return
     assert sizes == {SHEET_POINTS[jurisdiction.sheet_size]}
 
 

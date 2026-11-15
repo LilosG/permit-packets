@@ -79,7 +79,7 @@ def complete_inputs(key: str, jurisdiction) -> dict:
     payload = {
         **sample(key),
         "jurisdiction_key": jurisdiction.key, "city": jurisdiction.name, "state": jurisdiction.state,
-        "plan": plan_for(key),
+        "plan": plan_for(key, scale=jurisdiction.max_plan_scale_ft_per_in or 30),
         "existing_circuits": [{"label": "Kitchen counter", "amps": 20, "poles": 1},
                               {"label": "Range", "amps": 50, "poles": 2},
                               {"label": "Dryer", "amps": 30, "poles": 2}],

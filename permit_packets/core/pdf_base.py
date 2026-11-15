@@ -155,6 +155,20 @@ class SheetMark(Flowable):
         self.canv._sheet_title = self.title
 
 
+# The sheet title of each page as it is drawn, for laying the pages out as a drawing set afterwards.
+PAGE_TITLES: ContextVar[list[str] | None] = ContextVar("page_titles", default=None)
+
+
+@contextmanager
+def collect_page_titles():
+    titles: list[str] = []
+    token = PAGE_TITLES.set(titles)
+    try:
+        yield titles
+    finally:
+        PAGE_TITLES.reset(token)
+
+
 class NumberedCanvas(Canvas):
     """Holds each page until the end, so the title block can say the real page count."""
 
@@ -171,8 +185,11 @@ class NumberedCanvas(Canvas):
 
     def save(self) -> None:
         total = len(self._pages)
+        titles = PAGE_TITLES.get()
         for page in self._pages:
             self.__dict__.update(page)
+            if titles is not None:
+                titles.append(self._sheet_title)
             draw_title_block(self, self._sheet, self._block, title=self._sheet_title,
                              number=self._pageNumber, total=total)
             super().showPage()
@@ -321,6 +338,11 @@ class StampBox(Flowable):
         c.drawCentredString(self.side / 2, 6, f"{inches:g} in x {inches:g} in")
 
 
+# On a 22 x 34 in drawing set the flags are the electrician's to-dos, not drawings: they move from the
+# cover to the Pre-Submittal Review page (a supplemental 8.5 x 11 in page), so the cover keeps full-size text.
+MOVED_FLAGS: ContextVar[list[str] | None] = ContextVar("moved_flags", default=None)
+
+
 def cover_page(
     *,
     title: str,
@@ -340,6 +362,12 @@ def cover_page(
     """
     sheet = current_sheet()
     width, height = sheet.content_w, sheet.content_h
+    if sheet.key == "ansi_d":
+        # The drawing set puts the 2 x 2 in stamp area on every sheet at true size (core/drawing_sets.py).
+        stamp_box_in = None
+        if flags:
+            MOVED_FLAGS.set(list(flags))
+            flags = [f"{len(flags)} items for the electrician are on the Pre-Submittal Review page."]
     head = [_p(title, H1), _p(address, BODY)]
     logo = CONTRACTOR_LOGO.get()
     if logo:
@@ -426,7 +454,13 @@ def cover_page(
 
 
 def review_page(items: list[str]) -> list:
-    """The pre-submittal review: a sign-off table and the approval block."""
+    """The pre-submittal review: a sign-off table and the approval block, and the cover's flags when a
+    drawing set moved them here."""
+    moved = MOVED_FLAGS.get()
+    flagged = ([Spacer(1, 14), _p("Flagged for your review", H2)] + [_p(f"[  ]  {flag}", FLAG) for flag in moved]
+               if moved else [])
+    if moved:
+        MOVED_FLAGS.set(None)
     return [
         _p("Pre-Submittal Review", H1),
         _p("Complete before sending this packet to the city.", SMALL),
@@ -438,7 +472,7 @@ def review_page(items: list[str]) -> list:
         _p("Approval", H2),
         _table([[_p("Reviewed by"), _p("")], [_p("Signature"), _p("")], [_p("Date"), _p("")]],
                [2 * inch, content_w() - 2 * inch], head=False),
-    ]
+    ] + flagged
 
 
 def application_page(

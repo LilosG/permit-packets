@@ -64,7 +64,9 @@ class Jurisdiction:
     needs_parcel_number: bool = False
     utility: str = ""
     utility_short: str = ""
-    sheet_size: str = "letter"  # "tabloid" where the city wants 11" x 17" sheets
+    sheet_size: str = "letter"  # "tabloid" for 11" x 17" sheets; "ansi_d" for a 22" x 34" drawing set
+    # The largest site plan scale the city accepts, in feet per inch as drawn on letter. None: any.
+    max_plan_scale_ft_per_in: int | None = None
     # Side, in inches, of the empty square the city reserves for its stamp on the cover sheet.
     stamp_box_in: float | None = None
     # (width, height) in inches of the empty area the city reserves on the title sheet for agency stamps.

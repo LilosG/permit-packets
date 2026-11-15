@@ -38,7 +38,16 @@ class Sheet:
 
 LETTER = Sheet("letter", 612.0, 792.0)  # 8.5 x 11, portrait
 TABLOID = Sheet("tabloid", 1224.0, 792.0, block_h=58.0)  # 11 x 17, landscape
-SHEETS = {"letter": LETTER, "tabloid": TABLOID}
+# A 22 x 34 in drawing set: pages are laid out on letter, then the drawing sheets are printed at
+# PRINT_MAGNIFICATION on 22 x 34 sheets (core/drawing_sets.py). Supplemental pages stay 8.5 x 11.
+ANSI_D = Sheet("ansi_d", 612.0, 792.0)
+SHEETS = {"letter": LETTER, "tabloid": TABLOID, "ansi_d": ANSI_D}
+PRINT_MAGNIFICATION = {"ansi_d": 2.5}
+
+
+def print_magnification(sheet: "Sheet | None" = None) -> float:
+    """How much larger than drawn a drawing sheet prints: 2.5 on a 22 x 34 set, else 1."""
+    return PRINT_MAGNIFICATION.get((sheet or current_sheet()).key, 1.0)
 
 
 def resolve_sheet(asked: str | None, jurisdiction) -> Sheet:

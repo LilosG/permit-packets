@@ -13,6 +13,9 @@ EV_CHARGER = "ev_charger"
 
 # DBI Information Sheet E-02 (December 21, 2020), hosted by SFMTA. It still cites the 2019 codes.
 E02_URL = "https://sfmta.com/media/36888/download"
+# DBI Information Sheet E-01 (2019), page 2: electrical plans for DBI electrical review are scaled at no
+# smaller than 1/8 in = 1 ft, on sheets no smaller than 11 x 17 in, with text at least 1/8 in tall, stamped
+# and signed by an electrical engineer, a California architect or a C-10 contractor.
 E01_URL = "https://SF.gov/sites/default/files/2022-08/IS%20E-01.pdf"
 WORKSHEET_URL = "https://media.api.sf.gov/documents/DBI_Worksheet_for_Electrical_Permits.pdf"
 DBI_URL = "https://www.sf.gov/departments--department-building-inspection"
@@ -51,9 +54,14 @@ SAN_FRANCISCO = Jurisdiction(
     # drawings go in as a single PDF; every sheet carries the preparer's scanned signature and PDF stamp;
     # each title block reserves a stamp area at least 2 in wide by 2 in tall in the same place on every
     # sheet; the title sheet carries a blank 8.5 x 11 in area for agency stamps. stamp_box_in is the 2 in
-    # title-block stamp area; title_sheet_blank_area_in is the 8.5 x 11 in area, which no cover sheet here
-    # can hold beside the checklist, so the packet ends with a sheet that is that area. DBI states no minimum sheet size on those pages (it accepts sheets larger than 22 x 34 in,
-    # 11 x 17 in for signs only, and 8.5 x 11 in for supplemental forms), so sheet_size stays at the default.
+    # title-block stamp area and title_sheet_blank_area_in the 8.5 x 11 in area. DBI's PDF page accepts
+    # drawing sheets "larger than 22 x 34 in" (11 x 17 in for signs only) and E-01 sets an 11 x 17 in minimum
+    # for electrical plans, so the drawing sheets go out as a 22 x 34 in set: each sheet printed at 2.5x
+    # (text at least 1/8 in tall, a 1 in = 20 ft site plan at exactly 1/8 in = 1 ft), the 8.5 x 11 in area on
+    # the cover at true size, and a 2 x 2 in stamp area in the same spot on every sheet. Forms, data sheets
+    # and the review page are supplemental documents and stay 8.5 x 11 in (PDF_RULES_URL).
+    sheet_size="ansi_d",
+    max_plan_scale_ft_per_in=20,  # E-01: no smaller than 1/8 in = 1 ft; 1 in = 20 ft prints at 1 in = 8 ft
     stamp_box_in=2.0,
     title_sheet_blank_area_in=(8.5, 11.0),
     # ASHRAE 2% annual cooling dry-bulb design temperature, San Francisco International (WMO 724940).
@@ -98,8 +106,8 @@ SAN_FRANCISCO = Jurisdiction(
             code_note=CODE_NOTE,
             notes=(
                 Note("always", "DBI's plan-prep pages ask for an empty 8.5 x 11 in area on the title sheet for agency "
-                     "stamps. It does not fit beside this cover, so the last page of the packet is that blank area, "
-                     "drawn at true size. Move it up to the title sheet if DBI wants it there.", PLANS_URL),
+                     "stamps and a 2 x 2 in stamp area in the same place on every sheet. Both are on the 22 x 34 in "
+                     "drawing sheets at true size. Sign and stamp every sheet.", PLANS_URL),
                 Note("indoor", "San Francisco Building Code 106A.1.16.1: store the charger's coupling means (the "
                      "connector) not less than 18 in and not more than 48 in above the finished floor.", SFBC_EVSE_URL),
                 Note("outdoor", "San Francisco Building Code 106A.1.16.1: outdoors, store the charger's coupling means "

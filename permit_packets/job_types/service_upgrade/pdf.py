@@ -224,10 +224,12 @@ class Riser(Flowable):
             box(xs[1], "METER-MAIN", ["Meter socket", "and main breaker", "in one enclosure"])
             box(xs[2], f"MAIN {job.new_service_amps} A",
                 [f"{job.new_service_amps} A, 2-pole", "Main breaker", "in the meter-main"], SOFT)
-        elif packet.emergency == "meter_disconnect":
-            box(xs[1], "METER + DISCONNECT", ["Meter socket", f"{job.new_service_amps} A meter", "disconnect, outdoors"])
         else:
-            box(xs[1], "METER", ["Utility meter", "Meter socket"])
+            if packet.emergency == "meter_disconnect":
+                box(xs[1], "METER + DISCONNECT",
+                    ["Meter socket", f"{job.new_service_amps} A meter", "disconnect, outdoors"])
+            else:
+                box(xs[1], "METER", ["Utility meter", "Meter socket"])
             box(xs[2], f"MAIN {job.new_service_amps} A",
                 [f"{job.new_service_amps} A, 2-pole", "Main breaker", "outdoor main panel" if job.main_outdoors
                  else "in the main panel"], SOFT)
@@ -472,7 +474,10 @@ def _site_plan(packet: ServicePacket) -> list:
 
 
 def _emergency_legend(packet: ServicePacket) -> list[str]:
-    return [f"Emergency disconnect: {emergency_line(packet.job, packet.emergency)}"]
+    """One short line: the full marking is in the checks, the scope and the equipment page."""
+    if packet.emergency == "main":
+        return ["Emergency disconnect: the main breaker, outdoors (230.85(1))"]
+    return ["Emergency disconnect: meter disconnect, outdoors (230.85(2))"]
 
 
 def _surge_line(job) -> list[str]:
