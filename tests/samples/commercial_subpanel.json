@@ -1,0 +1,32 @@
+{
+  "customer": "Sample Tenant LLC",
+  "address": "123 Sample St",
+  "contractor": "Sample Electric, LLC",
+  "license_number": "000000",
+  "jurisdiction_key": "chico-ca",
+  "city": "Chico",
+  "state": "CA",
+  "system": "208y120",
+  "service_amps": 200,
+  "existing_demand_kva": 20,
+  "demand_basis": "utility_12_month",
+  "open_breaker_spaces": 4,
+  "building_use": "Retail tenant space",
+  "location": "inside_building",
+  "subpanel_amps": 100,
+  "feeder_breaker_amps": 100,
+  "material": "copper",
+  "conduit": "EMT",
+  "run_ft": 60,
+  "trench_ft": 0,
+  "loads": [
+    {"label": "Kitchen equipment", "kva": 10, "continuous": false},
+    {"label": "Lighting", "kva": 5, "continuous": true}
+  ],
+  "available_fault_current_a": 10000,
+  "equipment_aic_ka": 10,
+  "existing_circuits": [
+    {"label": "Lighting", "amps": 20, "poles": 1},
+    {"label": "Rooftop unit", "amps": 50, "poles": 3}
+  ]
+}

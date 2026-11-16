@@ -289,6 +289,7 @@ def _job_type_json(job_type: JobType) -> dict:
         "uses_home_loads": job_type.uses_home_loads,
         "documents": [asdict(document) for document in job_type.documents],
         "feature_page": job_type.feature_page,
+        "occupancy": job_type.occupancy,
     }
 
 

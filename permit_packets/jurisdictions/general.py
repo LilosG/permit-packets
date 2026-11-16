@@ -38,6 +38,20 @@ GENERAL_CHECKLISTS: dict[str, Checklist] = {
         Requirement("Load calculation", "load"),
         Requirement("Manufacturer specifications and listing", "equipment"),
     )),
+    "commercial_subpanel": Checklist(items=(
+        Requirement("Permit application", "application"),
+        Requirement("Site plan showing the main panel, subpanel and feeder route", "site_plan"),
+        Requirement("One-line diagram with feeder conductors, EGC and grounding", "one_line"),
+        Requirement("Load calculation", "load"),
+        Requirement("Panel specifications and listing", "equipment"),
+    )),
+    "commercial_ev_charger": Checklist(items=(
+        Requirement("Permit application", "application"),
+        Requirement("Site plan showing the EV charging spaces and the electrical panel", "site_plan"),
+        Requirement("One-line diagram", "one_line"),
+        Requirement("Load calculation", "load"),
+        Requirement("Charger specifications and listing", "equipment"),
+    )),
 }
 
 # What a state adds to every permit in it, on top of a city's own checklist or the general one. A city

@@ -40,6 +40,9 @@ details .grid { margin-top: 12px; }
 .chips button { padding: 7px 12px; font-size: 14px; }
 .planned-row, .sub-load-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 10px; align-items: end; margin-top: 10px; }
 .planned-row button, .sub-load-row button { padding: 10px 14px; }
+.com-load-row { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto auto; gap: 10px; align-items: end; margin-top: 10px; }
+.com-load-row button { padding: 10px 14px; }
+.com-load-row .choice { padding: 10px 12px; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 24px; }
 button, a.button { display: inline-block; padding: 12px 20px; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: #fff; font: 600 15px "IBM Plex Sans", system-ui, sans-serif; text-decoration: none; cursor: pointer; }
 button.quiet, a.quiet { background: #fff; color: var(--ink); }
@@ -116,6 +119,10 @@ ul.plain { margin: 0; padding: 0; list-style: none; }
 pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background: #fff; font: 15px/1.5 "IBM Plex Sans", system-ui, sans-serif; white-space: pre-wrap; }
 .note { margin-top: 16px; color: var(--muted); font-size: 14px; }
 /* Job type step: one card per type the client bought */
+.occupancy { display: inline-flex; margin-top: 18px; border: 1.5px solid var(--ink); border-radius: 2px; overflow: hidden; }
+.occupancy button { padding: 10px 22px; border: 0; border-radius: 0; background: #fff; color: var(--ink); font: 600 15px "IBM Plex Sans", system-ui, sans-serif; }
+.occupancy button + button { border-left: 1.5px solid var(--ink); }
+.occupancy button[aria-checked="true"] { background: var(--ink); color: #fff; }
 .types { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
 .type-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; padding: 16px; border: 1.5px solid var(--rule); border-radius: 2px; background: #fff; color: var(--ink); text-align: left; font: inherit; }
 .type-card:hover { border-color: var(--ink); }
@@ -135,6 +142,7 @@ pre.email { margin: 0; padding: 14px; border: 1px solid var(--rule); background:
   h1 { font-size: 30px; }
   .grid, .grid.three, .types { grid-template-columns: minmax(0, 1fr); }
   .planned-row, .sub-load-row { grid-template-columns: minmax(0, 1fr) 110px auto; }
+  .com-load-row { grid-template-columns: minmax(0, 1fr) 100px; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats div:nth-child(3) { border-left: 0; }
   .stats div:nth-child(n+3) { border-top: 1px solid var(--rule); }

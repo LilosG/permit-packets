@@ -416,7 +416,7 @@ def test_sample_mode_hides_the_address_and_parcel(client):
 
 
 def test_the_job_types_list_has_ev_service_and_subpanel(client):
-    job_types = client.get("/api/job-types").json()["job_types"]
+    job_types = [t for t in client.get("/api/job-types").json()["job_types"] if t["occupancy"] == "residential"]
     assert [job_type["key"] for job_type in job_types] == ["ev_charger", "service_upgrade", "subpanel", "appliance_circuit"]
     subpanel = job_types[2]
     assert (subpanel["slug"], subpanel["label"], subpanel["short_label"], subpanel["icon"]) == (

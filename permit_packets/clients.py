@@ -6,11 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from permit_packets.job_types import REGISTRY
-from permit_packets.jurisdictions import KNOWN
+from permit_packets.jurisdictions import COMMERCIAL_JOB_TYPES, KNOWN
 
 DEFAULT_CLIENT = "demo"
 
 
+# The residential set every client gets. Commercial job types (COMMERCIAL_JOB_TYPES) are added per client.
 ALL_JOB_TYPES = ("ev_charger", "service_upgrade", "subpanel", "appliance_circuit")
 LOGO_DIR = Path(__file__).parent / "static" / "assets" / "logos"
 
@@ -50,7 +51,7 @@ def _client(key: str, company: str, website: str, logo: str, city: str, *, cad: 
 
 CLIENTS: dict[str, Client] = {
     # The demo sees every city, plus the general fallback for any other address.
-    "demo": Client("demo", "", ALL_JOB_TYPES, jurisdiction_keys=tuple(j.key for j in KNOWN.values()) + ("general",)),
+    "demo": Client("demo", "", ALL_JOB_TYPES + COMMERCIAL_JOB_TYPES, jurisdiction_keys=tuple(j.key for j in KNOWN.values()) + ("general",)),
     "erke": _client("erke", "Erke Electric", "https://er-ke.com", "erke.png", "nashville-tn", cad=True),
     "elc": _client("elc", "ELC Contractor LLC", "https://electricelc.com", "elc.png", "san-francisco-ca", cad=True),
     "thee-electrician": _client(

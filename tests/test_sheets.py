@@ -29,6 +29,8 @@ def _plan(key: str, scale: int = 30) -> dict:
         "service_upgrade": {"meter": [300, 500], "panel": [400, 500]},
         "subpanel": {"panel": [400, 500], "subpanel": [700, 300]},
         "appliance_circuit": {"panel": [400, 500], "appliance": [700, 300]},
+        "commercial_subpanel": {"panel": [400, 500], "subpanel": [700, 300]},
+        "commercial_ev_charger": {"panel": [400, 500], "charger": [700, 300]},
     }[key]
     return {
         "scale_ft_per_in": scale, "markers": markers, "route": [[550, 500]],

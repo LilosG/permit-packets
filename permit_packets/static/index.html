@@ -22,6 +22,7 @@
   <section class="sheet" data-panel="0" hidden>
     <h1>Choose the job type</h1>
     <p class="lead">Each type has its own details and packet. Pick the one you're permitting.</p>
+    <div class="occupancy" id="occupancy" role="radiogroup" aria-label="Building type" hidden></div>
     <div class="types" id="type-list" role="radiogroup" aria-label="Job type"></div>
     <div class="actions"><button type="button" id="type-continue" disabled>Continue</button></div>
   </section>
@@ -274,6 +275,133 @@
       <div id="sub-rows"></div>
     </div>
     </div>
+    <div data-job-type="commercial_subpanel">
+    <div class="block">
+      <h2>The building and service</h2>
+      <fieldset><legend>Electrical system</legend><div class="choices">
+          <label class="choice"><input type="radio" name="cs_system" value="208y120" checked><span>208Y/120 V, 3-phase</span></label>
+          <label class="choice"><input type="radio" name="cs_system" value="480y277"><span>480Y/277 V, 3-phase</span></label>
+          <label class="choice"><input type="radio" name="cs_system" value="120_240"><span>120/240 V, single-phase</span></label>
+      </div></fieldset>
+      <div class="grid" style="margin-top:14px">
+        <label class="field">Building use<input name="cs_use" maxlength="80" placeholder="Retail tenant space" autocomplete="off"></label>
+        <label class="field">Service size (A)<input name="cs_service_amps" type="number" min="100" max="1200" value="400" required></label>
+        <label class="field">Existing demand (kVA)<input name="cs_demand_kva" type="number" min="0" max="2000" step="0.1" value="60" required><span class="hint">Maximum demand from the utility, or your calculated load</span></label>
+        <label class="field">Demand data<select name="cs_demand_basis"><option value="utility_12_month">Utility, 12 months (220.87)</option><option value="recorded_30_day">Recorded, 30 days (220.87)</option><option value="calculated">Calculated, Article 220</option></select></label>
+        <label class="field">Open breaker spaces<input name="cs_spaces" type="number" min="0" max="84" value="6" required></label>
+      </div>
+    </div>
+    <div class="block">
+      <h2>The subpanel</h2>
+      <fieldset><legend>Where</legend><div class="choices">
+          <label class="choice"><input type="radio" name="cs_location" value="inside_building" checked><span>Inside the building</span></label>
+          <label class="choice"><input type="radio" name="cs_location" value="exterior_wall"><span>Exterior wall</span></label>
+          <label class="choice"><input type="radio" name="cs_location" value="detached_building"><span>Detached building</span></label>
+      </div></fieldset>
+      <div class="grid" style="margin-top:14px">
+        <fieldset><legend>Subpanel size</legend><div class="choices">
+          <label class="choice"><input type="radio" name="cs_subpanel_amps" value="100"><span>100 A</span></label>
+          <label class="choice"><input type="radio" name="cs_subpanel_amps" value="125"><span>125 A</span></label>
+          <label class="choice"><input type="radio" name="cs_subpanel_amps" value="150"><span>150 A</span></label>
+          <label class="choice"><input type="radio" name="cs_subpanel_amps" value="200"><span>200 A</span></label>
+          <label class="choice"><input type="radio" name="cs_subpanel_amps" value="225" checked><span>225 A</span></label>
+          <label class="choice"><input type="radio" name="cs_subpanel_amps" value="250"><span>250 A</span></label>
+          <label class="choice"><input type="radio" name="cs_subpanel_amps" value="400"><span>400 A</span></label>
+        </div></fieldset>
+        <fieldset><legend>Feeder breaker</legend><div class="choices">
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="60"><span>60 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="70"><span>70 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="80"><span>80 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="90"><span>90 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="100"><span>100 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="125"><span>125 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="150" checked><span>150 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="175"><span>175 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="200"><span>200 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="225"><span>225 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="250"><span>250 A</span></label>
+          <label class="choice"><input type="radio" name="cs_breaker_amps" value="300"><span>300 A</span></label>
+        </div></fieldset>
+      </div>
+      <label class="field" style="margin-top:14px">Subpanel make and model<input name="cs_model" list="panel-models" placeholder="Pick a model to attach its data sheet, or type one" maxlength="120" autocomplete="off"></label>
+    </div>
+    <div class="block">
+      <h2>The feeder</h2>
+      <div class="grid">
+        <fieldset><legend>Wire</legend><div class="choices">
+          <label class="choice"><input type="radio" name="cs_material" value="copper" checked><span>Copper</span></label>
+          <label class="choice"><input type="radio" name="cs_material" value="aluminum"><span>Aluminum</span></label>
+        </div></fieldset>
+        <fieldset><legend>Conduit</legend><div class="choices">
+          <label class="choice"><input type="radio" name="cs_conduit" value="EMT" checked><span>EMT</span></label>
+          <label class="choice"><input type="radio" name="cs_conduit" value="PVC"><span>PVC</span></label>
+        </div></fieldset>
+      </div>
+      <div class="grid three" style="margin-top:14px">
+        <label class="field">Feeder run (ft)<input name="cs_run_ft" type="number" min="1" max="500" value="85" required><span class="hint" id="cs-run-hint"></span></label>
+        <label class="field">Underground part (ft)<input name="cs_trench_ft" type="number" min="0" max="500" value="0" required></label>
+      </div>
+    </div>
+    <div class="block">
+      <h2>Loads on the subpanel</h2>
+      <p class="hint" style="margin:-6px 0 10px">In kVA. Tick continuous for loads that run three hours or more (counted at 125%). Up to eight. With none listed, the feeder load is assumed at 80% of the breaker.</p>
+      <div class="chips" id="cs-chips">
+        <button type="button" class="quiet" data-load="Lighting" data-kva="8" data-continuous="1">Lighting 8 kVA</button>
+        <button type="button" class="quiet" data-load="Receptacles" data-kva="10" data-continuous="0">Receptacles 10 kVA</button>
+        <button type="button" class="quiet" data-load="Kitchen equipment" data-kva="22" data-continuous="0">Kitchen equipment 22 kVA</button>
+        <button type="button" class="quiet" data-load="HVAC" data-kva="18" data-continuous="1">HVAC 18 kVA</button>
+        <button type="button" class="quiet" data-load="EV chargers" data-kva="25" data-continuous="1">EV chargers 25 kVA</button>
+      </div>
+      <div id="cs-rows"></div>
+    </div>
+    </div>
+    <div data-job-type="commercial_ev_charger">
+    <div class="block">
+      <h2>The building and service</h2>
+      <fieldset><legend>Electrical system</legend><div class="choices">
+          <label class="choice"><input type="radio" name="ce_system" value="208y120" checked><span>208Y/120 V, 3-phase</span></label>
+          <label class="choice"><input type="radio" name="ce_system" value="120_240"><span>120/240 V, single-phase</span></label>
+      </div></fieldset>
+      <div class="grid" style="margin-top:14px">
+        <label class="field">Building use<input name="ce_use" maxlength="80" placeholder="Retail tenant space" autocomplete="off"></label>
+        <label class="field">Service size (A)<input name="ce_service_amps" type="number" min="100" max="1200" value="400" required></label>
+        <label class="field">Existing demand (kVA)<input name="ce_demand_kva" type="number" min="0" max="2000" step="0.1" value="60" required><span class="hint">Maximum demand from the utility, or your calculated load</span></label>
+        <label class="field">Demand data<select name="ce_demand_basis"><option value="utility_12_month">Utility, 12 months (220.87)</option><option value="recorded_30_day">Recorded, 30 days (220.87)</option><option value="calculated">Calculated, Article 220</option></select></label>
+        <label class="field">Open breaker spaces<input name="ce_spaces" type="number" min="0" max="84" value="10" required></label>
+      </div>
+    </div>
+    <div class="block">
+      <h2>The chargers</h2>
+      <div class="grid">
+        <label class="field">Number of chargers<input name="ce_count" type="number" min="1" max="20" value="4" required></label>
+        <label class="field">Charger make and model<input name="ce_model" list="charger-models" placeholder="Pick a model to attach its data sheet, or type one" maxlength="120" autocomplete="off"></label>
+      </div>
+      <fieldset style="margin-top:14px"><legend>Charger size</legend><div class="choices">
+          <label class="choice"><input type="radio" name="ce_amps" value="16"><span>16 A</span></label>
+          <label class="choice"><input type="radio" name="ce_amps" value="24"><span>24 A</span></label>
+          <label class="choice"><input type="radio" name="ce_amps" value="32"><span>32 A</span></label>
+          <label class="choice"><input type="radio" name="ce_amps" value="40" checked><span>40 A</span></label>
+          <label class="choice"><input type="radio" name="ce_amps" value="48"><span>48 A</span></label>
+          <label class="choice"><input type="radio" name="ce_amps" value="64"><span>64 A</span></label>
+          <label class="choice"><input type="radio" name="ce_amps" value="80"><span>80 A</span></label>
+      </div></fieldset>
+      <fieldset style="margin-top:14px"><legend>Where</legend><div class="choices">
+          <label class="choice"><input type="radio" name="ce_location" value="parking_lot" checked><span>Parking lot</span></label>
+          <label class="choice"><input type="radio" name="ce_location" value="parking_garage"><span>Parking garage</span></label>
+          <label class="choice"><input type="radio" name="ce_location" value="building_wall"><span>Building wall</span></label>
+      </div></fieldset>
+      <div class="grid three" style="margin-top:14px">
+        <label class="field">Longest circuit run (ft)<input name="ce_run_ft" type="number" min="1" max="500" value="120" required><span class="hint" id="ce-run-hint"></span></label>
+        <label class="field">Underground part (ft)<input name="ce_trench_ft" type="number" min="0" max="500" value="90" required></label>
+        <label class="field">Accessible charging spaces<input name="ce_accessible" type="number" min="0" max="20" placeholder="CBC 11B-228.3"><span class="hint">Leave blank until you know</span></label>
+      </div>
+      <label class="flag" style="margin-top:14px"><input type="checkbox" name="ce_managed" id="ce-managed"><span>An energy management system limits the chargers (625.42)</span></label>
+      <div class="grid" id="ce-managed-field" style="margin-top:10px" hidden>
+        <label class="field">Held to (A, line current)<input name="ce_managed_amps" type="number" min="10" max="1200" value="100"></label>
+      </div>
+      <label class="field" id="ce-venting-field" style="margin-top:14px" hidden>Does the charger need ventilation indoors? (625.52)<select name="ce_venting"><option value="">Not answered</option><option value="no">Not required</option><option value="yes">Required</option></select></label>
+    </div>
+    </div>
     <div data-job-type="appliance_circuit">
     <div class="block">
       <h2>The appliance</h2>
@@ -465,6 +593,8 @@
 <script src="/assets/js/job-types/service-upgrade.js?v={{ASSET_VERSION}}"></script>
 <script src="/assets/js/job-types/subpanel.js?v={{ASSET_VERSION}}"></script>
 <script src="/assets/js/job-types/appliance-circuit.js?v={{ASSET_VERSION}}"></script>
+<script src="/assets/js/job-types/commercial-subpanel.js?v={{ASSET_VERSION}}"></script>
+<script src="/assets/js/job-types/commercial-ev.js?v={{ASSET_VERSION}}"></script>
 <script src="/assets/js/app.js?v={{ASSET_VERSION}}"></script>
 </body>
 </html>

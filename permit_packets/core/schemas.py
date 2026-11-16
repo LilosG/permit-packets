@@ -52,8 +52,8 @@ class PropertyPlanRequest(BaseModel):
 class ExistingCircuitRequest(BaseModel):
     """One circuit already in the panel, for the panel schedule."""
     label: str = Field(min_length=1, max_length=60)
-    amps: int = Field(ge=15, le=200)
-    poles: int = Field(default=1, ge=1, le=2)
+    amps: int = Field(ge=15, le=400)
+    poles: int = Field(default=1, ge=1, le=3)
 
 
 class JobRequestBase(BaseModel):

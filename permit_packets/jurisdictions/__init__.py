@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 
 DEFAULT_CODE_NOTE = "Confirm the adopted code edition."
+# Job types for a building that is not a dwelling. State amendments written for dwellings don't apply to them.
+COMMERCIAL_JOB_TYPES = ("commercial_subpanel", "commercial_ev_charger")
 
 
 @dataclass(frozen=True)
@@ -122,7 +124,8 @@ class Jurisdiction:
                         "checklist."  # the code note is its own flag (checklist.code_note), so it is not repeated here
                     ),) + self.fallback_notes,
                 )
-        added = tuple(note for note in STATE_AMENDMENTS.get(self.state, ()) if note not in base.notes)
+        amendments = () if job_type in COMMERCIAL_JOB_TYPES else STATE_AMENDMENTS.get(self.state, ())
+        added = tuple(note for note in amendments if note not in base.notes)
         return replace(base, notes=base.notes + added) if added else base
 
     def known_for(self, job_type: str) -> bool:
@@ -133,6 +136,7 @@ class Jurisdiction:
 # The city modules import the classes above, so they come after them.
 from permit_packets.jurisdictions.bellevue_wa import BELLEVUE  # noqa: E402
 from permit_packets.jurisdictions.chandler_az import CHANDLER  # noqa: E402
+from permit_packets.jurisdictions.chico_ca import CHICO  # noqa: E402
 from permit_packets.jurisdictions.charlotte_nc import CHARLOTTE  # noqa: E402
 from permit_packets.jurisdictions.el_cajon_ca import EL_CAJON  # noqa: E402
 from permit_packets.jurisdictions.general import GENERAL_CHECKLISTS, STATE_AMENDMENTS  # noqa: E402
@@ -142,7 +146,7 @@ from permit_packets.jurisdictions.nashville_tn import NASHVILLE  # noqa: E402
 from permit_packets.jurisdictions.oro_valley_az import ORO_VALLEY  # noqa: E402
 from permit_packets.jurisdictions.san_francisco_ca import SAN_FRANCISCO  # noqa: E402
 
-KNOWN = {(j.name.lower(), j.state): j for j in (ORO_VALLEY, EL_CAJON, NASHVILLE, SAN_FRANCISCO, CHARLOTTE, MESA, CHANDLER, BELLEVUE, LAS_VEGAS)}
+KNOWN = {(j.name.lower(), j.state): j for j in (ORO_VALLEY, EL_CAJON, NASHVILLE, SAN_FRANCISCO, CHARLOTTE, MESA, CHANDLER, BELLEVUE, LAS_VEGAS, CHICO)}
 
 
 def jurisdiction_for(city: str | None, state: str | None) -> Jurisdiction:
