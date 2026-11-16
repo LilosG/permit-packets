@@ -28,15 +28,27 @@ def sign_in(key: str) -> TestClient:
     return session
 
 
-def test_only_jacob_has_cad_files():
-    assert [key for key, client in CLIENTS.items() if client.cad] == ["jacob"]
+def test_every_client_login_has_cad_files_but_the_demo_does_not():
+    assert {key for key, client in CLIENTS.items() if client.cad} == set(PASSWORDS)
     assert sign_in("jacob").get("/api/client").json()["cad"] is True
-    assert sign_in("erke").get("/api/client").json()["cad"] is False
+    demo = TestClient(app)
+    assert demo.post("/api/signin", json={"password": "demo-password"}).status_code == 200
+    assert demo.get("/api/client").json()["cad"] is False
 
 
-def test_a_client_without_cad_is_refused():
+def test_the_demo_is_refused():
+    demo = TestClient(app)
+    demo.post("/api/signin", json={"password": "demo-password"})
     payload = complete_inputs("ev_charger", BY_KEY["nashville-tn"])
-    assert sign_in("erke").post("/api/jobs/ev-charger/cad", json=payload).status_code == 404
+    assert demo.post("/api/jobs/ev-charger/cad", json=payload).status_code == 404
+
+
+@pytest.mark.parametrize("key, city", [("erke", "nashville-tn"), ("elc", "san-francisco-ca"), ("jbee", "chandler-az")])
+def test_other_cities_export(key, city):
+    payload = complete_inputs("ev_charger", BY_KEY[city])
+    response = sign_in(key).post("/api/jobs/ev-charger/cad", json=payload)
+    assert response.status_code == 200, response.text
+    assert len(zipfile.ZipFile(io.BytesIO(response.content)).namelist()) == 3
 
 
 @pytest.mark.parametrize("job_type, slug, sheets", [

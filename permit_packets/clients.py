@@ -51,16 +51,16 @@ def _client(key: str, company: str, website: str, logo: str, city: str, *, cad: 
 CLIENTS: dict[str, Client] = {
     # The demo sees every city, plus the general fallback for any other address.
     "demo": Client("demo", "", ALL_JOB_TYPES, jurisdiction_keys=tuple(j.key for j in KNOWN.values()) + ("general",)),
-    "erke": _client("erke", "Erke Electric", "https://er-ke.com", "erke.png", "nashville-tn"),
-    "elc": _client("elc", "ELC Contractor LLC", "https://electricelc.com", "elc.png", "san-francisco-ca"),
+    "erke": _client("erke", "Erke Electric", "https://er-ke.com", "erke.png", "nashville-tn", cad=True),
+    "elc": _client("elc", "ELC Contractor LLC", "https://electricelc.com", "elc.png", "san-francisco-ca", cad=True),
     "thee-electrician": _client(
-        "thee-electrician", "Thee Electrician", "https://theeelectrician.co", "thee.png", "san-francisco-ca"),
+        "thee-electrician", "Thee Electrician", "https://theeelectrician.co", "thee.png", "san-francisco-ca", cad=True),
     # One city for the trial: Chandler, checked against Chandler's published requirements. More cities are
     # added if JBee signs on.
-    "jbee": _client("jbee", "JBee Industries", "https://jbindustrieshvac.com", "jbee.png", "chandler-az"),
-    "volta": _client("volta", "Volta Electrical", "https://www.voltaelectricians.com", "volta.png", "bellevue-wa"),
+    "jbee": _client("jbee", "JBee Industries", "https://jbindustrieshvac.com", "jbee.png", "chandler-az", cad=True),
+    "volta": _client("volta", "Volta Electrical", "https://www.voltaelectricians.com", "volta.png", "bellevue-wa", cad=True),
     "jacob": _client("jacob", "Jacob Electric", "", "jacob.png", "bellevue-wa", cad=True),
-    "luckycat": _client("luckycat", "Lucky Cat Electric", "https://luckycatelectric.com", "luckycat.png", "bellevue-wa"),
+    "luckycat": _client("luckycat", "Lucky Cat Electric", "https://luckycatelectric.com", "luckycat.png", "bellevue-wa", cad=True),
 }
 
 
