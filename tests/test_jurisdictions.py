@@ -112,7 +112,7 @@ def test_a_contractor_logo_goes_on_the_packet_and_bad_logos_are_refused():
 
     client = TestClient(app)
     assert client.post("/api/signin", json={"password": "test-password"}).status_code == 200
-    case = json.loads((Path(__file__).parent / "golden/cases/las_vegas_general_sample_mode.json").read_text())
+    case = json.loads((Path(__file__).parent / "golden/cases/henderson_general_sample_mode.json").read_text())
     case.pop("plan")
     buffer = BytesIO()
     Image.new("RGBA", (300, 120), (240, 120, 20, 255)).save(buffer, format="PNG")
