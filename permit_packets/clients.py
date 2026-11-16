@@ -63,6 +63,8 @@ CLIENTS: dict[str, Client] = {
     "jacob": _client("jacob", "Jacob Electric", "", "jacob.png", "bellevue-wa", cad=True),
     "luckycat": _client("luckycat", "Lucky Cat Electric", "https://luckycatelectric.com", "luckycat.png", "bellevue-wa", cad=True),
     "bigred": _client("bigred", "Big Red Electric Company", "https://www.bigredelectriccompany.com", "bigred.png", "las-vegas-nv", cad=True),
+    # Residential and commercial, both in Chico. No logo on file, so the packets print the company name.
+    "ross": Client("ross", "Ross Constructors Inc", ALL_JOB_TYPES + COMMERCIAL_JOB_TYPES, "", "", ("chico-ca",), cad=True),
 }
 
 

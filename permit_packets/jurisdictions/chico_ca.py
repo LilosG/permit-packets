@@ -15,8 +15,12 @@ Plan format: Chico publishes no sheet size or scale for electrical plans, so non
 """
 from __future__ import annotations
 
-from permit_packets.jurisdictions import Checklist, Jurisdiction, Note, Requirement
+from permit_packets.jurisdictions import SURGE_PROTECTION, Checklist, Jurisdiction, Note, Requirement
 
+EV_CHARGER = "ev_charger"
+SERVICE_UPGRADE = "service_upgrade"
+SUBPANEL = "subpanel"
+APPLIANCE_CIRCUIT = "appliance_circuit"
 COMMERCIAL_SUBPANEL = "commercial_subpanel"
 COMMERCIAL_EV_CHARGER = "commercial_ev_charger"
 
@@ -25,6 +29,16 @@ FORMS_URL = "https://chicoca.gov/Departments/Community-Development/Building-Divi
 ETRAKIT_URL = "https://chicoca.gov/Departments/Community-Development/eTRAKiT-Help-and-Resources/"
 PERMITS_ONLINE_URL = "https://chico.ca.us/__catapult_pages/9841b45d-4814-4071-91c1-f2dadb8f0387/Permits-Online.html"
 DIGITAL_URL = "https://chico.ca.us/Departments/Community-Development/Building-Division/Digital-Plan-Submittal/index.html"
+
+RESIDENTIAL_SOURCE_LABEL = ("Chico publishes no residential {job} checklist: its Electric Service Questionnaire and "
+                            "online permit types, plus the general NEC items")
+
+
+def _application_residential(subtype: str) -> Requirement:
+    return Requirement(
+        f"Permit application: eTRAKiT online permit, type Electrical Residential, {subtype}, or the application at "
+        "the Permit Counter", "application", PERMITS_ONLINE_URL)
+
 
 CODE_NOTE = (
     "California enforces the 2025 California Electrical Code (Title 24, Part 3, based on the 2023 NEC), effective "
@@ -80,6 +94,22 @@ EV_FRAMEWORK = Note(
     "for. Confirm them with the Building Division.",
 )
 
+PANEL_SCHEDULE = Requirement("Panel schedule with the panel's existing and new circuits (NEC 408.4)", "panel_details")
+SITE_PLAN_HOME = Requirement(
+    "Site plan showing the property, the buildings and the electrical equipment", "site_plan", FORMS_URL)
+LOAD_HOME = Requirement(
+    "Load calculation (Chico: load calculations may be required for a service or panel project)", "load", FORMS_URL)
+ONE_LINE_HOME = Requirement("One-line diagram with conductors, breaker and grounding", "one_line")
+
+
+def _residential(job: str, application: Requirement, *extra: Requirement, trench: bool = False) -> Checklist:
+    items = (application, SITE_PLAN_HOME, ONE_LINE_HOME, LOAD_HOME, FAULT_CURRENT, PANEL_SCHEDULE, *extra)
+    if trench:
+        items += (BURIAL,)
+    return Checklist(items=items, source_url=FORMS_URL, source_label=RESIDENTIAL_SOURCE_LABEL.format(job=job),
+                     code_note=CODE_NOTE, notes=(SUBMITTAL, UTILITY, SERVICE_QUESTIONNAIRE))
+
+
 CHICO = Jurisdiction(
     key="chico-ca", name="Chico", state="CA", known=True,
     # Approximate extent of the city (west, south, east, north) and (lon, lat), used only to keep address suggestions
@@ -99,6 +129,17 @@ CHICO = Jurisdiction(
     utility="Pacific Gas & Electric",
     utility_short="PG&E",
     checklists={
+        EV_CHARGER: _residential(
+            "EV charger", _application_residential("subtype EV Car Charging Station"), trench=True),
+        SERVICE_UPGRADE: _residential(
+            "service upgrade", _application_residential("subtype Upgrade Electrical Main"),
+            Requirement("Utility service request to PG&E", "utility"), SURGE_PROTECTION),
+        SUBPANEL: _residential(
+            "subpanel", _application_residential("with the subtype that fits (Chico's list has no subpanel subtype: "
+                                                 "ask the Building Division)"), trench=True),
+        APPLIANCE_CIRCUIT: _residential(
+            "240 V appliance circuit",
+            _application_residential("subtype New Wiring Circuit, or Spa Single Outlet for a spa")),
         COMMERCIAL_SUBPANEL: Checklist(
             items=(APPLICATION, SITE_PLAN_SUBPANEL, ONE_LINE_SUBPANEL, LOAD, FAULT_CURRENT, EQUIPMENT, BURIAL),
             source_url=FORMS_URL, source_label=SOURCE_LABEL.format(job="subpanel"), code_note=CODE_NOTE,
