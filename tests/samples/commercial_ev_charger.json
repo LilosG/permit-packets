@@ -1,0 +1,26 @@
+{
+  "customer": "Sample Tenant LLC",
+  "address": "123 Sample St",
+  "contractor": "Sample Electric, LLC",
+  "license_number": "000000",
+  "jurisdiction_key": "chico-ca",
+  "city": "Chico",
+  "state": "CA",
+  "system": "208y120",
+  "service_amps": 200,
+  "existing_demand_kva": 20,
+  "demand_basis": "utility_12_month",
+  "open_breaker_spaces": 6,
+  "building_use": "Retail center",
+  "charger_count": 2,
+  "charger_amps": 40,
+  "location": "parking_lot",
+  "run_ft": 80,
+  "trench_ft": 50,
+  "available_fault_current_a": 10000,
+  "equipment_aic_ka": 10,
+  "existing_circuits": [
+    {"label": "Lighting", "amps": 20, "poles": 1},
+    {"label": "Rooftop unit", "amps": 50, "poles": 3}
+  ]
+}

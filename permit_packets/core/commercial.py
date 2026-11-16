@@ -38,6 +38,7 @@ CONTINUOUS_FACTOR = 1.25
 MAX_VOLTAGE_DROP_PERCENT = 3.0
 EGC_TOLERANCE = 0.99  # published circular mils are rounded, so a ratio within 1% counts
 MEASURED_DEMAND_FACTOR = 1.25  # NEC 220.87
+ASSUMED_LOAD_FACTOR = 0.8  # the feeder load when no loads are listed: 80% of the breaker
 LARGEST_SIZE = "500"
 
 
@@ -228,3 +229,30 @@ def new_load_line(label: str, va: float, *, continuous: bool, basis: str = "Name
     if continuous:
         return LoadLine(label, f"{basis} x 125%, continuous", va * CONTINUOUS_FACTOR)
     return LoadLine(label, f"{basis} x 100%", va)
+
+
+def gec_check_for(job):
+    """The existing grounding electrode conductor against Table 250.66, when one was entered and the service is a
+    size the table lookup covers. Larger services stay a hand check, flagged, rather than a failed check."""
+    from permit_packets.core.panel_data import gec_check, required_gec
+
+    if not job.gec_size or required_gec(job.service_amps) is None:
+        return None
+    return gec_check(job, service_amps=job.service_amps)
+
+
+def panel_flags_for(job) -> list[str]:
+    """Flags for the panel details a commercial packet still needs, and for a grounding conductor that is too small."""
+    flags = []
+    check = gec_check_for(job)
+    if check is not None and not check.passed:
+        flags.append(f"Existing grounding electrode conductor: {check.result}. Upsize it or replace it before submitting.")
+    elif check is None:
+        flags.append("Confirm the existing grounding electrode conductor against Table 250.66 for the service "
+                     "conductors.")
+    missing = [label for label, value in (
+        ("location", job.panel_location), ("bus rating", job.panel_bus_amps), ("main type", job.panel_main),
+        ("grounding electrode conductor size", job.gec_size)) if not value]
+    if missing:
+        flags.append("Enter the panel's " + ", ".join(missing) + " for the panel schedule and one-line.")
+    return flags

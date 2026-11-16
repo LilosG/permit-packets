@@ -14,7 +14,8 @@ from tests.test_ev_golden import GOLDEN, to_current_request
 SAMPLES = Path(__file__).parent / "samples"
 SAMPLE_FILES = {
     "ev_charger": "oro_valley_attached_no_plan", "service_upgrade": "service_upgrade", "subpanel": "subpanel",
-    "appliance_circuit": "appliance_circuit",
+    "appliance_circuit": "appliance_circuit", "commercial_subpanel": "commercial_subpanel",
+    "commercial_ev_charger": "commercial_ev_charger",
 }
 
 
@@ -61,6 +62,8 @@ def plan_for(key: str, scale: int = 30, parcel: str = "482-110-22-00") -> dict:
         "service_upgrade": {"meter": [300, 500], "panel": [400, 500]},
         "subpanel": {"panel": [400, 500], "subpanel": [700, 300]},
         "appliance_circuit": {"panel": [400, 500], "appliance": [700, 300]},
+        "commercial_subpanel": {"panel": [400, 500], "subpanel": [700, 300]},
+        "commercial_ev_charger": {"panel": [400, 500], "charger": [700, 300]},
     }[key]
     return {
         "scale_ft_per_in": scale, "markers": markers, "route": [[550, 500]],
@@ -100,6 +103,11 @@ def complete_inputs(key: str, jurisdiction) -> dict:
         payload.update(panel_model=model, panel_bus_amps=payload["bus_amps"], surge_protection="type_2")
     elif key == "subpanel":
         payload.update(subpanel_model=LIBRARY_SUBPANEL, subpanel_amps=225, panel_bus_amps=200)
+    elif key == "commercial_subpanel":
+        payload.update(subpanel_model=LIBRARY_SUBPANEL, subpanel_amps=225, panel_bus_amps=200)
+    elif key == "commercial_ev_charger":
+        payload.update(charger_model="Tesla Wall Connector", charger_venting_required=False, accessible_spaces=1,
+                       panel_bus_amps=200)
     else:
         payload.update(appliance_model="Sample Spa 4000", data_sheet_attached=True, panel_bus_amps=200)
     return payload

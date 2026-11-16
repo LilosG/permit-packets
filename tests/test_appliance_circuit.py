@@ -453,7 +453,7 @@ def test_oro_valley_falls_back_to_the_general_checklist():
 
 
 def test_the_job_types_list_has_the_four_types_in_order(client):
-    job_types = client.get("/api/job-types").json()["job_types"]
+    job_types = [t for t in client.get("/api/job-types").json()["job_types"] if t["occupancy"] == "residential"]
     assert [job_type["key"] for job_type in job_types] == [
         "ev_charger", "service_upgrade", "subpanel", "appliance_circuit"]
     circuit = job_types[3]

@@ -35,6 +35,7 @@
   let lastJob = null;
   let lastResult = null;
   let lastType = null;
+  let occupancy = 'residential';
 
   const emptyMarks = () => ({ points: {}, bends: [] });
   const modules = () => window.PermitJobTypes.modules;
@@ -110,6 +111,9 @@
     $$('[data-uses]').forEach((element) => { element.hidden = !current[`uses_${element.dataset.uses}`]; });
     $$('[data-hide-for]').forEach((element) => { element.hidden = element.dataset.hideFor === current.key; });
     [...form.elements].forEach((field) => { field.disabled = Boolean(field.closest('[data-job-type][hidden], [data-uses][hidden], [data-hide-for][hidden]')); });
+    const customer = form.elements.customer;
+    const sampleCustomers = { residential: 'Sample Homeowner', commercial: 'Sample Tenant LLC' };
+    if (Object.values(sampleCustomers).includes(customer.value)) customer.value = sampleCustomers[current.occupancy || 'residential'];
     $('#details-summary').textContent = current.uses_home_loads ? 'Exact nameplate values and contractor' : 'Contractor';
     renderTools();
     tool = firstTool();
@@ -135,10 +139,38 @@
     $('#type-continue').disabled = false;
   }
 
-  function renderTypeCards() {
-    $('#type-list').innerHTML = jobTypes.map((type, index) =>
-      `<button type="button" class="type-card" role="radio" aria-checked="false" tabindex="${index === 0 ? 0 : -1}" data-type="${esc(type.key)}">${ICONS[type.icon] || FALLBACK_ICON}<span class="type-title">${esc(type.label)}</span><span class="type-blurb">${esc(type.blurb)}</span></button>`).join('');
+  /* A client with both residential and commercial types picks one first; with one kind, no choice is shown. */
+  const occupancies = () => [...new Set(jobTypes.map((type) => type.occupancy || 'residential'))];
+  const shownTypes = () => (occupancies().length > 1 ? jobTypes.filter((type) => (type.occupancy || 'residential') === occupancy) : jobTypes);
+  const OCCUPANCY_LABELS = { residential: 'Residential', commercial: 'Commercial' };
+
+  function renderOccupancy() {
+    const kinds = occupancies();
+    const holder = $('#occupancy');
+    holder.hidden = kinds.length < 2;
+    holder.innerHTML = kinds.map((kind) =>
+      `<button type="button" role="radio" aria-checked="${kind === occupancy}" data-occupancy="${esc(kind)}">${esc(OCCUPANCY_LABELS[kind] || kind)}</button>`).join('');
   }
+
+  function renderTypeCards() {
+    const types = shownTypes();
+    $('#type-list').innerHTML = types.map((type, index) =>
+      `<button type="button" class="type-card" role="radio" aria-checked="false" tabindex="${index === 0 ? 0 : -1}" data-type="${esc(type.key)}">${ICONS[type.icon] || FALLBACK_ICON}<span class="type-title">${esc(type.label)}</span><span class="type-blurb">${esc(type.blurb)}</span></button>`).join('');
+    const selected = current && types.some((type) => type.key === current.key);
+    $$('.type-card').forEach((card) => {
+      const on = Boolean(selected) && card.dataset.type === current.key;
+      card.setAttribute('aria-checked', String(on));
+      card.tabIndex = on ? 0 : -1;
+    });
+    $('#type-continue').disabled = !selected;
+  }
+  $('#occupancy').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-occupancy]');
+    if (!button || button.dataset.occupancy === occupancy) return;
+    occupancy = button.dataset.occupancy;
+    renderOccupancy();
+    renderTypeCards();
+  });
   $('#type-list').addEventListener('click', (event) => {
     const card = event.target.closest('.type-card');
     if (card) chooseType(card.dataset.type);
@@ -481,8 +513,8 @@
   function parseCircuits(text) {
     return text.split('\n').map((line) => line.split(',').map((part) => part.trim())).flatMap(([label, amps, poles]) => {
       const breaker = parseInt(amps, 10);
-      if (!label || !(breaker >= 15 && breaker <= 200)) return [];
-      return [{ label: label.slice(0, 60), amps: breaker, poles: poles === '2' ? 2 : 1 }];
+      if (!label || !(breaker >= 15 && breaker <= 400)) return [];
+      return [{ label: label.slice(0, 60), amps: breaker, poles: ['2', '3'].includes(poles) ? Number(poles) : 1 }];
     }).slice(0, 60);
   }
 
@@ -734,8 +766,10 @@
     renderSteps();
     $('#change-type').hidden = !multiple();
     renderHeader();
-    if (multiple()) renderTypeCards();
-    else chooseType(jobTypes[0].key);
+    if (multiple()) {
+      renderOccupancy();
+      renderTypeCards();
+    } else chooseType(jobTypes[0].key);
     show(firstStep());
   }
   const ready = start();
