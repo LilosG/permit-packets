@@ -666,6 +666,25 @@
       button.disabled = false;
     }
   });
+  $('#cad').addEventListener('click', async () => {
+    const button = $('#cad');
+    $('#documents-error').hidden = true;
+    button.disabled = true;
+    try {
+      const response = await api(`/api/jobs/${lastType.slug}/cad`, lastJob);
+      const named = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') || '');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(await response.blob());
+      link.download = named ? named[1] : `${lastType.short_label.toLowerCase()}-permit-cad.zip`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      $('#documents-error').textContent = error.message;
+      $('#documents-error').hidden = false;
+    } finally {
+      button.disabled = false;
+    }
+  });
   document.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-copy], #email-copy');
     if (!button) return;
@@ -682,6 +701,7 @@
       const me = await fetch('/api/client');
       if (me.ok) {
         client = await me.json();
+        $('#cad').hidden = !client.cad;
         const first = client.cities[0];
         if (!client.demo && first) {
           SAMPLE = { address: first.sample_address, jurisdiction_key: first.key, label: first.label };

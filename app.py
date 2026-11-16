@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from permit_packets.clients import CLIENTS, DEFAULT_CLIENT, Client, validate
+from permit_packets.core.cad import collect_cad, dxf_files, zip_files
 from permit_packets.core.pdf_base import COMPANY_NAME, CONTRACTOR_LOGO, DEMO_MARKS
 from permit_packets.core.preview import packet_documents_zip, packet_page_images
 from permit_packets.jurisdictions import KNOWN, jurisdiction_by_key
@@ -179,6 +180,7 @@ def client_info(client: Client = Depends(require_session)) -> dict:
         "website": client.website,
         "logo": f"/assets/logos/{client.logo}" if client.logo else "",
         "demo": client.is_demo,
+        "cad": client.cad,
         "sheet_size": client.sheet_size or "",
         "cities": [
             {"key": c.key, "name": c.name, "state": c.state, "label": c.label, "sample_address": _sample_address(c.key)}
@@ -359,6 +361,26 @@ def packet_pdf(slug: str, payload: dict[str, Any] = Body(...), client: Client = 
         content=result.pdf,
         media_type="application/pdf",
         headers={"Content-Disposition": "inline", "Cache-Control": "private, no-store"},
+    )
+
+
+@app.post("/api/jobs/{slug}/cad", dependencies=[Depends(require_session)])
+def packet_cad(slug: str, payload: dict[str, Any] = Body(...), client: Client = Depends(require_session)) -> Response:
+    """The packet's drawings as DXF files in a ZIP, built only when asked for and only for clients who have it."""
+    if not client.cad:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CAD files aren't set up for this account")
+    with collect_cad() as cad:
+        job_type, _ = _build(slug, payload, client)
+    files = dxf_files(cad, f"{job_type.slug}-permit")
+    if not files:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This packet has no drawings to export")
+    return Response(
+        content=zip_files(files),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{job_type.slug}-permit-cad.zip"',
+            "Cache-Control": "private, no-store",
+        },
     )
 
 

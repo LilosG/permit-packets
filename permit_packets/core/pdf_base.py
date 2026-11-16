@@ -14,7 +14,8 @@ from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen.canvas import Canvas
 
-from permit_packets.core.layout import Sheet, content_w, current_sheet
+from permit_packets.core.cad import CAD_SINK, CadPage, CadRecording
+from permit_packets.core.layout import Sheet, content_w, current_sheet, print_magnification
 from permit_packets.core.title_block import TitleBlock, draw_title_block
 from reportlab.platypus import (
     KeepInFrame,
@@ -169,7 +170,7 @@ def collect_page_titles():
         PAGE_TITLES.reset(token)
 
 
-class NumberedCanvas(Canvas):
+class NumberedCanvas(CadRecording, Canvas):
     """Holds each page until the end, so the title block can say the real page count."""
 
     def __init__(self, *args, block: TitleBlock, sheet: Sheet, **kwargs) -> None:
@@ -178,9 +179,11 @@ class NumberedCanvas(Canvas):
         self._block = block
         self._sheet = sheet
         self._sheet_title = ""
+        self._cad_init()
 
     def showPage(self) -> None:
         self._pages.append(dict(self.__dict__))
+        self._cad_reset()
         self._startPage()
 
     def save(self) -> None:
@@ -190,8 +193,14 @@ class NumberedCanvas(Canvas):
             self.__dict__.update(page)
             if titles is not None:
                 titles.append(self._sheet_title)
+            self._cad_layer = "G-TTLB"
             draw_title_block(self, self._sheet, self._block, title=self._sheet_title,
                              number=self._pageNumber, total=total)
+            self._cad_layer = None
+            sink = CAD_SINK.get()
+            if sink is not None:
+                sink.magnification = print_magnification(self._sheet)
+                sink.pages.append(CadPage(self._sheet_title, self._cad_ops, tuple(self._pagesize), self._cad_site))
             super().showPage()
         super().save()
 
