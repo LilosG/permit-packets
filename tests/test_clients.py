@@ -13,11 +13,11 @@ from tests.packet_helpers import complete_inputs, page_texts
 from tests.api_helpers import with_pdf
 
 PASSWORDS = {key: f"pw-{key}-0123456789" for key in CLIENTS if key != "demo"}
-CITIES = {"erke": "nashville-tn", "elc": "san-francisco-ca", "thee-electrician": "san-francisco-ca", "jbee": "chandler-az"}
-LOGOS = {"erke": "erke.png", "elc": "elc.png", "thee-electrician": "thee.png", "jbee": "jbee.png"}
+CITIES = {"erke": "nashville-tn", "elc": "san-francisco-ca", "thee-electrician": "san-francisco-ca", "jbee": "chandler-az", "bigred": "las-vegas-nv"}
+LOGOS = {"erke": "erke.png", "elc": "elc.png", "thee-electrician": "thee.png", "jbee": "jbee.png", "bigred": "bigred.png"}
 BY_KEY = {j.key: j for j in KNOWN.values()}
 EXTRA_CITIES: dict[str, tuple[str, ...]] = {}
-OTHER = {"erke": "mesa-az", "elc": "nashville-tn", "thee-electrician": "mesa-az", "jbee": "san-francisco-ca"}
+OTHER = {"erke": "mesa-az", "elc": "nashville-tn", "thee-electrician": "mesa-az", "jbee": "san-francisco-ca", "bigred": "mesa-az"}
 
 
 @pytest.fixture(autouse=True)
@@ -41,7 +41,7 @@ def text_of(pdf_b64: str) -> str:
     return "\n".join(page_texts(base64.b64decode(pdf_b64)))
 
 
-def test_the_five_clients_are_set_up():
+def test_the_clients_are_set_up():
     assert set(CLIENTS) == {"demo", *PASSWORDS}
     for key, city in CITIES.items():
         client = CLIENTS[key]

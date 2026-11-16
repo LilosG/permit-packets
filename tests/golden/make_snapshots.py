@@ -70,8 +70,8 @@ def cases() -> dict[str, dict]:
             "home": {"square_feet": 3100, "range_va": 12000, "dryer_va": 5000, "water_heater_va": 4500,
                      "cooling_va": 7200, "hot_tub_or_pool_va": 1800},
         },
-        "las_vegas_general_sample_mode": {
-            **SAMPLE, "city": "Las Vegas", "state": "NV", "sample_mode": True,
+        "henderson_general_sample_mode": {
+            **SAMPLE, "city": "Henderson", "state": "NV", "sample_mode": True,
             "location": "exterior_wall", "charger_amps": 32, "run_ft": 40, "trench_ft": 0,
             "service_amps": 200, "open_breaker_spaces": 4, "home": plain_home,
             "plan": {
