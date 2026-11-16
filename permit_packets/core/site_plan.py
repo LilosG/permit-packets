@@ -11,7 +11,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable, Spacer, Table, TableStyle
 
-from permit_packets.core.cad import cad_layer, cad_site, cad_site_end
+from permit_packets.core.cad import cad_layer, cad_site, cad_site_end, cad_symbol
 from permit_packets.core.layout import print_magnification, Sheet, current_sheet
 from permit_packets.core.property_plan import PLAN_UNITS, PLAN_WIDTH_IN, Point, PropertyPlan
 
@@ -127,6 +127,7 @@ class AerialSitePlan(Flowable):
     def _marker(self, point: Point, color, text: str) -> None:
         c = self.canv
         x, y = self._xy(point)
+        cad_on, c._cad_on = getattr(c, "_cad_on", False), False  # CAD gets a symbol block, not the dot and letter
         c.setFillColor(color)
         c.setStrokeColor(colors.white)
         c.setLineWidth(1.3)
@@ -134,6 +135,8 @@ class AerialSitePlan(Flowable):
         c.setFillColor(colors.white)
         c.setFont("Helvetica-Bold", 7.4)
         c.drawCentredString(x, y - 2.6, text)
+        c._cad_on = cad_on
+        cad_symbol(c, text, x, y, 8)
         self.placed.append((x - 9, y - 9, x + 9, y + 9))
 
     def _north_and_scale(self) -> None:

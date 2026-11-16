@@ -87,6 +87,12 @@ def cad_site(canvas, left: float, side: float, ft_per_in: float) -> None:
         canvas._cad_site = {"origin": canvas._cad_point(left, 0), "side": side, "ft_per_in": ft_per_in}
 
 
+def cad_symbol(canvas, letter: str, x: float, y: float, radius: float):
+    """Record an equipment symbol (meter, panel, charger...) as one block instead of a dot and a letter."""
+    if getattr(canvas, "_cad_on", False):
+        canvas._cad_note("symbol", at=canvas._cad_point(x, y), letter=letter, radius=radius * canvas._cad_scale())
+
+
 def cad_site_end(canvas) -> None:
     if getattr(canvas, "_cad_on", False):
         canvas._cad_space = ""
@@ -246,9 +252,13 @@ def _emit(ops: list[dict], target, to_xy, length: float, ltscale: float) -> None
 
     aligns = {"l": TextEntityAlignment.BOTTOM_LEFT, "c": TextEntityAlignment.BOTTOM_CENTER,
               "r": TextEntityAlignment.BOTTOM_RIGHT}
+    ops = _without_halos(ops)
     for op in ops:
         layer = _layer_for(op)
         base = {"layer": layer}
+        if op["kind"] == "symbol":
+            _symbol(target, op, to_xy, length)
+            continue
         if op["kind"] == "text":
             if not op["text"].strip():
                 continue
@@ -262,14 +272,16 @@ def _emit(ops: list[dict], target, to_xy, length: float, ltscale: float) -> None
             continue
         stroke, fill = op["stroke"], op["fill"]
         outline = {**base, "lineweight": _lineweight(op["width"]), **_color_attrs(stroke)}
-        if op["dash"]:
+        if layer == "C-PROP-LINE":
+            outline.update(linetype="DASHDOT", ltscale=ltscale)  # the property line convention
+        elif op["dash"]:
             outline.update(linetype="DASHED", ltscale=ltscale)
         drawn_stroke = op.get("stroked") and stroke != (255, 255, 255)  # white strokes are halos on the photo
         # Pale panel fills are left out: behind text they would hide it on AutoCAD's black screen.
         drawn_fill = op.get("filled") and fill is not None and _luminance(fill) < 0.85
         if op["kind"] == "circle":
             cx, cy = to_xy(op["at"])
-            radius = op["radius"] * length
+            radius = op["radius"] * length * 1.6  # drawn larger than the dot so the symbol reads
             if drawn_fill:
                 hatch = target.add_hatch(dxfattribs={**base, **_color_attrs(fill)})
                 hatch.paths.add_edge_path().add_arc((cx, cy), radius, 0, 360)
@@ -282,6 +294,60 @@ def _emit(ops: list[dict], target, to_xy, length: float, ltscale: float) -> None
             hatch.paths.add_polyline_path(points, is_closed=True)
         if drawn_stroke:
             target.add_lwpolyline(points, close=op["closed"], dxfattribs=outline)
+
+
+def _without_halos(ops: list[dict]) -> list[dict]:
+    """A line drawn twice over the same points (a dark casing under a coloured line) is one line in CAD."""
+    kept: list[dict] = []
+    for index, op in enumerate(ops):
+        following = ops[index + 1] if index + 1 < len(ops) else None
+        if (op["kind"] == "poly" and following and following["kind"] == "poly"
+                and op["pts"] == following["pts"] and op["closed"] == following["closed"]):
+            continue
+        kept.append(op)
+    return kept
+
+
+SYMBOLS = {  # letter on the plan -> (block name, label)
+    "M": ("SYM-METER", "M"), "P": ("SYM-PANEL", "P"), "M/P": ("SYM-PANEL", "M/P"),
+    "EV": ("SYM-EVSE", "EV"), "D": ("SYM-DISCONNECT", "D"), "S": ("SYM-SUBPANEL", "SP"), "A": ("SYM-LOAD", "A"),
+}
+
+
+def _define_symbols(doc) -> None:
+    """Unit-size blocks (radius 1) so each is inserted at the size the plan shows."""
+    attrs = {"layer": "E-ANNO-SYMB"}
+    for name in ("SYM-METER", "SYM-PANEL", "SYM-EVSE", "SYM-DISCONNECT", "SYM-SUBPANEL", "SYM-LOAD"):
+        if name in doc.blocks:
+            continue
+        block = doc.blocks.new(name)
+        if name == "SYM-METER":
+            block.add_circle((0, 0), 1, dxfattribs=attrs)
+        elif name in ("SYM-PANEL", "SYM-SUBPANEL"):
+            block.add_lwpolyline([(-1, -1), (1, -1), (1, 1), (-1, 1)], close=True, dxfattribs=attrs)
+            if name == "SYM-PANEL":
+                block.add_line((-1, -1), (1, 1), dxfattribs=attrs)
+        elif name == "SYM-EVSE":
+            block.add_lwpolyline([(-1, -0.7), (1, -0.7), (1, 0.7), (-1, 0.7)], close=True, dxfattribs=attrs)
+            block.add_lwpolyline([(-0.45, -0.7), (-0.45, -1.1), (0.45, -1.1), (0.45, -0.7)], dxfattribs=attrs)
+        elif name == "SYM-DISCONNECT":
+            block.add_lwpolyline([(-1, -1), (1, -1), (1, 1), (-1, 1)], close=True, dxfattribs=attrs)
+            block.add_line((-0.6, -0.6), (0.6, 0.6), dxfattribs=attrs)
+        else:
+            block.add_lwpolyline([(0, -1), (1, 0), (0, 1), (-1, 0)], close=True, dxfattribs=attrs)
+
+
+def _symbol(target, op: dict, to_xy, length: float) -> None:
+    name, label = SYMBOLS.get(op["letter"], ("SYM-LOAD", op["letter"]))
+    doc = target.doc
+    _define_symbols(doc)
+    x, y = to_xy(op["at"])
+    radius = op["radius"] * length * 1.6  # drawn larger than the dot so the symbol reads
+    target.add_blockref(name, (x, y), dxfattribs={"layer": "E-ANNO-SYMB", "xscale": radius, "yscale": radius,
+                                                  "zscale": radius})
+    text = target.add_text(label, height=radius * 0.55, dxfattribs={"layer": "E-ANNO-TEXT", "style": "LILOS-BOLD",
+                                                                    "color": 7})
+    text.set_placement((x, y), align=__import__("ezdxf").enums.TextEntityAlignment.MIDDLE_CENTER)
 
 
 def _luminance(color: tuple[int, int, int]) -> float:
@@ -330,7 +396,7 @@ def _sheet_dxf(page: CadPage, mag: float) -> bytes:
         view_center_point=(side / 2 / 72 * ft, side / 2 / 72 * ft),
         view_height=side / 72 * ft,
     )
-    doc.layout = layout  # open on the sheet
+    doc.layouts.set_active_layout("SHEET")  # open on the sheet
     return _doc_bytes(doc)
 
 
