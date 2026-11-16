@@ -11,6 +11,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable, Spacer, Table, TableStyle
 
+from permit_packets.core.cad import cad_layer, cad_site, cad_site_end
 from permit_packets.core.layout import print_magnification, Sheet, current_sheet
 from permit_packets.core.property_plan import PLAN_UNITS, PLAN_WIDTH_IN, Point, PropertyPlan
 
@@ -137,6 +138,7 @@ class AerialSitePlan(Flowable):
 
     def _north_and_scale(self) -> None:
         c = self.canv
+        cad_layer(c, "G-ANNO-NPLT")
         x0, top = self.left + 8, self.side - 8
         c.setFillColor(colors.white)
         c.setStrokeColor(INK)
@@ -172,6 +174,7 @@ class AerialSitePlan(Flowable):
     def draw(self) -> None:
         c = self.canv
         plan = self.plan
+        cad_site(c, self.left, self.side, self.ft_per_in)
         c.saveState()
         clip = c.beginPath()
         clip.rect(self.left, 0, self.side, self.side)
@@ -183,6 +186,7 @@ class AerialSitePlan(Flowable):
             c.rect(self.left, 0, self.side, self.side, stroke=0, fill=1)
 
         # The photo already shows the buildings, and outline data can sit a few feet off.
+        cad_layer(c, "A-BLDG-OTLN")
         if not plan.aerial_jpeg:
             for index, building in enumerate(plan.buildings):
                 c.setStrokeColor(INK)
@@ -198,6 +202,7 @@ class AerialSitePlan(Flowable):
             c.setLineWidth(1.4)
             self._polyline(house, close=True)
 
+        cad_layer(c, "C-PROP-LINE")
         if plan.lot:
             c.setStrokeColor(INK)
             c.setLineWidth(2.6)
@@ -209,6 +214,7 @@ class AerialSitePlan(Flowable):
             c.setDash()
 
         points = plan.route_points
+        cad_layer(c, "E-POWR-WIRE")
         if points:
             c.setStrokeColor(colors.white)
             c.setLineWidth(4.6)
@@ -221,10 +227,12 @@ class AerialSitePlan(Flowable):
             self._polyline(points)
             c.setDash()
 
+        cad_layer(c, "E-ANNO-SYMB")
         for marker in self.markers:
             self._marker(marker.point, marker.color, marker.letter)
 
         self._north_and_scale()
+        cad_layer(c, None)
 
         if len(points) > 1:
             a, b = max(zip(points, points[1:]), key=lambda pair: math.dist(*pair))
@@ -244,9 +252,11 @@ class AerialSitePlan(Flowable):
                 if self._label(x, y, f"{edge.length_ft} ft"):
                     break
         c.restoreState()
+        cad_layer(c, "G-ANNO-BORD")
         c.setStrokeColor(INK)
         c.setLineWidth(0.8)
         c.rect(self.left, 0, self.side, self.side, stroke=1, fill=0)
+        cad_site_end(c)
 
 
 def site_plan_page(

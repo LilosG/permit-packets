@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from reportlab.lib.units import inch
 from reportlab.platypus import KeepInFrame, Spacer, Table, TableStyle
 
+from permit_packets.core.cad import note_panels
 from permit_packets.core.checks import Check
 from permit_packets.core.layout import current_sheet
 from permit_packets.core.pdf_base import BODY, CELL_BOLD, H1, H2, SMALL, TIGHT, _heads, _p, _table, content_w
@@ -121,6 +122,7 @@ def panel_schedule_page(panels: list[tuple[str, list[ScheduleRow]]], *, entered:
     """One table per panel. `panels` pairs a heading (e.g. "Main panel, 200 A") with its rows.
 
     Rows are the new work and, when `entered`, the existing circuits as the electrician gave them."""
+    note_panels(panels, header, entered, current_sheet().landscape, spaces_note)
     story = [
         _p("Panel Schedule", H1),
         _p("Circuit directory with the new work marked. "

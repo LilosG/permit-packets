@@ -25,6 +25,7 @@ class Client:
     jurisdiction_keys: tuple[str, ...] = ()  # the only cities the client can pick; the first is the default
     sheet_size: str | None = None  # overrides the city's sheet size
     single_pdf_only: bool | None = None  # overrides the city's one-PDF rule
+    cad: bool = False  # offers the drawings as DXF files; off unless the client asked for it
 
     @property
     def is_demo(self) -> bool:
@@ -43,8 +44,8 @@ class Client:
         return jurisdiction.single_pdf_only if self.single_pdf_only is None else self.single_pdf_only
 
 
-def _client(key: str, company: str, website: str, logo: str, city: str) -> Client:
-    return Client(key, company, ALL_JOB_TYPES, website, logo, (city,))
+def _client(key: str, company: str, website: str, logo: str, city: str, *, cad: bool = False) -> Client:
+    return Client(key, company, ALL_JOB_TYPES, website, logo, (city,), cad=cad)
 
 
 CLIENTS: dict[str, Client] = {
@@ -58,7 +59,7 @@ CLIENTS: dict[str, Client] = {
     # added if JBee signs on.
     "jbee": _client("jbee", "JBee Industries", "https://jbindustrieshvac.com", "jbee.png", "chandler-az"),
     "volta": _client("volta", "Volta Electrical", "https://www.voltaelectricians.com", "volta.png", "bellevue-wa"),
-    "jacob": _client("jacob", "Jacob Electric", "", "jacob.png", "bellevue-wa"),
+    "jacob": _client("jacob", "Jacob Electric", "", "jacob.png", "bellevue-wa", cad=True),
     "luckycat": _client("luckycat", "Lucky Cat Electric", "https://luckycatelectric.com", "luckycat.png", "bellevue-wa"),
 }
 
