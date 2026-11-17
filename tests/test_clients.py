@@ -1,6 +1,7 @@
 """Each client signs in with their own password and sees only their own cities, logo and job types."""
 import json
 import os
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -203,3 +204,30 @@ def test_sign_out_is_in_the_header_of_every_page_and_lets_a_different_client_sig
 def test_signing_out_when_not_signed_in_still_goes_to_the_sign_in_page():
     response = TestClient(app).post("/api/signout", follow_redirects=False)
     assert response.status_code == 303 and response.headers["location"] == "/"
+
+
+def _commercial_payload(key: str) -> dict:
+    sample = json.loads((Path(__file__).parent / "samples" / f"{key}.json").read_text())
+    return {**sample, "jurisdiction_key": "chico-ca", "city": "Chico", "state": "CA"}
+
+
+def test_ross_gets_residential_and_commercial_in_chico_only():
+    session = sign_in(PASSWORDS["ross"])
+    info = session.get("/api/client").json()
+    assert info["key"] == "ross" and info["company_name"] == "Ross Constructors Inc" and info["demo"] is False
+    assert [c["key"] for c in info["cities"]] == ["chico-ca"]
+    types = session.get("/api/job-types").json()["job_types"]
+    assert [t["occupancy"] for t in types] == ["residential"] * 4 + ["commercial"] * 2
+    assert session.post("/api/jobs/ev-charger/packet", json=payload("mesa-az")).status_code == 403
+    for slug, key in (("commercial-subpanel", "commercial_subpanel"), ("commercial-ev-charger", "commercial_ev_charger")):
+        body = with_pdf(session, f"/api/jobs/{slug}/packet", _commercial_payload(key))
+        assert "DEMO PACKET: NOT FOR SUBMISSION" not in text_of(body["pdf"])
+        assert body["jurisdiction"]["name"] == "Chico"
+        assert session.post(f"/api/jobs/{slug}/cad", json=_commercial_payload(key)).status_code == 200
+    residential = with_pdf(session, "/api/jobs/ev-charger/packet", payload("chico-ca"))
+    assert residential["jurisdiction"]["name"] == "Chico"
+
+
+def test_existing_clients_never_see_commercial():
+    for key in CITIES:
+        assert not set(CLIENTS[key].job_types) & {"commercial_subpanel", "commercial_ev_charger"}
