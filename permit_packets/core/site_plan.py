@@ -76,8 +76,10 @@ class AerialSitePlan(Flowable):
     def __init__(
         self, plan: PropertyPlan, *, markers: list[PlanMarker], underground: bool, width: float,
         side: float | None = None, ft_per_in: int | None = None, outline_over_aerial: bool = False,
+        runs: list[list[Point]] | None = None,
     ) -> None:
         super().__init__()
+        self.runs = runs or []
         self.plan = plan
         self.outline_over_aerial = outline_over_aerial
         self.markers = markers
@@ -229,6 +231,17 @@ class AerialSitePlan(Flowable):
                 c.setDash(8, 4)
             self._polyline(points)
             c.setDash()
+        for run in self.runs:
+            c.setStrokeColor(colors.white)
+            c.setLineWidth(4.6)
+            c.setLineCap(1)
+            self._polyline(run)
+            c.setStrokeColor(COPPER)
+            c.setLineWidth(2.6)
+            if self.underground:
+                c.setDash(8, 4)
+            self._polyline(run)
+            c.setDash()
 
         cad_layer(c, "E-ANNO-SYMB")
         for marker in self.markers:
@@ -265,6 +278,7 @@ class AerialSitePlan(Flowable):
 def site_plan_page(
     *, address: str, plan: PropertyPlan, markers: list[PlanMarker], underground: bool,
     legend: list[str], measures: list[str], outline_over_aerial: bool = False,
+    runs: list[list[Point]] | None = None,
 ) -> list:
     """The whole site plan sheet. On letter the plan sits over its legend; on tabloid it sits
     beside it, printed as large as the sheet allows with its scale stated for that size."""
@@ -281,7 +295,7 @@ def site_plan_page(
         legend = [*legend, "White outline: house footprint"]
     drawing = AerialSitePlan(plan, markers=markers, underground=underground,
                              width=side if sheet.landscape else sheet.content_w, side=side, ft_per_in=ft_per_in,
-                             outline_over_aerial=bool(outlined))
+                             outline_over_aerial=bool(outlined), runs=runs)
     head = [_p("Site Plan", H1), _p(address + (f". Parcel {plan.parcel_number}." if plan.parcel_number else "."), SMALL),
             Spacer(1, 6)]
     if not sheet.landscape:

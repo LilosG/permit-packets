@@ -742,8 +742,14 @@ def _site_plan(packet: ServicePacket) -> list:
     setback = plan.distance_to_lot_line_ft(plan.markers["panel"])
     if setback is not None:
         measures.append(f"Panel to nearest lot line: {setback} ft")
+    runs = []
+    if job.dual and "panel_two" in plan.markers:
+        runs.append([plan.markers["meter"], plan.markers["panel_two"]])
+    if packet.ev and "charger" in plan.markers:
+        runs.append([plan.markers["panel_two"] if job.dual and "panel_two" in plan.markers else plan.markers["panel"],
+                     plan.markers["charger"]])
     return site_plan_page(
-        address=job.address, plan=plan, markers=_plan_markers(packet), underground=job.service_drop == "underground",
+        runs=runs, address=job.address, plan=plan, markers=_plan_markers(packet), underground=job.service_drop == "underground",
         legend=legend, measures=measures, outline_over_aerial=job.jurisdiction.outline_over_aerial,
     )
 
