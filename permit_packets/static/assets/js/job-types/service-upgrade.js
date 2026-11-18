@@ -56,6 +56,23 @@
     boxes[0].setCustomValidity(boxes.some((box) => box.checked) ? '' : 'Pick at least one grounding electrode.');
   }
 
+  /* 400 A is a Class 320 meter-main with two 200 A mains, so ask for the two panels they feed. */
+  function syncDual() {
+    const dual = field('new_service_amps').value === '400';
+    document.getElementById('dual-block').hidden = !dual;
+    radios('equipment').forEach((box) => { box.disabled = dual && box.value !== 'meter_main'; });
+    if (dual) radios('equipment').find((box) => box.value === 'meter_main').checked = true;
+    field('dp2_feeder_ft').required = dual;
+    syncEquipment();
+  }
+
+  function syncEv() {
+    const on = document.getElementById('ev-on').checked;
+    document.getElementById('ev-fields').hidden = !on;
+    field('ev_run_ft').required = on;
+    field('ev_trench_ft').required = on;
+  }
+
   function syncSolar() {
     const on = document.getElementById('solar').checked;
     document.getElementById('pv-field').hidden = !on;
@@ -111,7 +128,8 @@
       context = ctx;
       const { form } = ctx;
       ['scope', 'existing_service_amps'].forEach((name) => radios(name).forEach((box) => box.addEventListener('change', syncService)));
-      radios('new_service_amps').forEach((box) => box.addEventListener('change', syncService));
+      radios('new_service_amps').forEach((box) => box.addEventListener('change', () => { syncService(); syncDual(); }));
+      document.getElementById('ev-on').addEventListener('change', syncEv);
       field('bus_amps').addEventListener('input', () => { busEdited = true; });
       field('se_length_ft').addEventListener('input', () => { wireEdited = true; });
       radios('electrodes').forEach((box) => box.addEventListener('change', syncElectrodes));
@@ -136,11 +154,14 @@
       syncElectrodes();
       syncSolar();
       syncEquipment();
+      syncDual();
+      syncEv();
     },
     /* A new property starts a new plan, so the wire length is ours to fill in again. */
     onProperty() { wireEdited = false; },
     onDetails() {
       syncService();
+      syncDual();
       syncWire();
     },
     onSample() {
@@ -164,11 +185,35 @@
       ['existing_service_amps', 'new_service_amps', 'se_length_ft', 'bus_amps'].forEach((name) => {
         job[name] = Number(data.get(name));
       });
-      /* The panel's bus is asked for once, in the service block above. */
-      return { ...job, ...window.PermitJobTypes.electricalFields(data), panel_bus_amps: job.bus_amps };
+      const electrical = window.PermitJobTypes.electricalFields(data);
+      let panelBus = job.bus_amps;
+      if (job.new_service_amps === 400) {
+        /* Panel 1 uses the panel location and wire length above; panel 2 has its own. */
+        job.panels = [
+          { model: data.get('dp1_model').trim(), bus_amps: Number(data.get('dp1_bus')), location: (data.get('panel_location') || '').trim(),
+            feeder_ft: job.se_length_ft, existing: data.has('dp1_existing') },
+          { model: data.get('dp2_model').trim(), bus_amps: Number(data.get('dp2_bus')), location: data.get('dp2_location').trim(),
+            feeder_ft: Number(data.get('dp2_feeder_ft')) },
+        ];
+        panelBus = job.panels[0].bus_amps;
+      }
+      if (data.has('ev_on')) {
+        const venting = data.get('ev_venting');
+        job.ev_charger = {
+          charger_model: data.get('ev_model').trim(), charger_amps: Number(data.get('ev_amps')),
+          run_ft: Number(data.get('ev_run_ft')), trench_ft: Number(data.get('ev_trench_ft')),
+          location: data.get('ev_location'), connection: data.get('ev_connection'),
+          venting_required: venting ? venting === 'yes' : null,
+        };
+      }
+      /* The panel's bus is asked for once: in the service block above, or for 400 A on panel 1. */
+      return { ...job, ...electrical, panel_bus_amps: panelBus };
     },
     planFields(marks) {
-      return { markers: { meter: marks.points.meter, panel: marks.points.panel }, route: marks.bends };
+      const markers = { meter: marks.points.meter, panel: marks.points.panel };
+      if (marks.points.panel_two && field('new_service_amps').value === '400') markers.panel_two = marks.points.panel_two;
+      if (marks.points.charger && document.getElementById('ev-on').checked) markers.charger = marks.points.charger;
+      return { markers, route: marks.bends };
     },
   });
 })();

@@ -42,6 +42,10 @@ class Equipment:
     main_amps: int | None = None
     outdoor: bool = False
     meter_main: bool = False
+    # Meter-mains with more than one service disconnect, each in its own compartment (NEC 230.71(B)).
+    service_disconnects: int = 1
+    # A Class 320 meter socket (400 A maximum, 320 A continuous) with manual bypass provisions.
+    class_320: bool = False
 
     def data_sheet_path(self) -> Path:
         return DATA_SHEETS / self.data_sheet
@@ -78,6 +82,14 @@ PANELS = (
     Equipment("panel", "Square D Homeline SC816D200C meter-main, 200 A, ringed", 200, "UL listed, file E-6294",
               "square-d-homeline-sc816d200c.pdf", ("sc816d200c", "square d sc816d200c"),
               bus_amps=200, main="breaker", main_amps=200, outdoor=True, meter_main=True),
+    # Data sheet (Siemens flyer RPFL-NECMM-0521): 400 A meter-main, meter socket 320 A continuous, 400 A max,
+    # manual bypass, OH/UG, ring cover, two 200 A service disconnects in separate compartments (NEC 230.71),
+    # 22,000 A short-circuit rating, NEMA 3R, UL listed.
+    Equipment("panel", "Siemens MK0402L1400SCS meter-main, 400 A (Class 320), two 200 A mains", 400,
+              "UL listed, NEMA 3R, 22 kA short-circuit rating",
+              "siemens-mk0402l1400scs.pdf", ("mk0402l1400scs", "siemens mk0402l1400scs"),
+              bus_amps=400, main="breaker", main_amps=200, outdoor=True, meter_main=True,
+              service_disconnects=2, class_320=True),
 )
 
 APPLIANCES = (

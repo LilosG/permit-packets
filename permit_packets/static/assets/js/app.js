@@ -234,13 +234,15 @@
     $('#state-bend').textContent = marks.bends.length ? String(marks.bends.length) : '';
     const feet = measuredFt();
     $('#tb-route').textContent = feet === null ? 'Not marked yet' : `${feet} ft`;
-    $('#to-job').disabled = !current.markers.every((spot) => marks.points[spot.key]);
+    $('#to-job').disabled = !current.markers.every((spot) => spot.optional || marks.points[spot.key]);
   }
 
   /* After a marker, the next unplaced one in order, then bends. */
   function nextTool(key) {
     const keys = markerKeys();
-    const later = keys.slice(keys.indexOf(key) + 1).find((other) => !marks.points[other]);
+    /* Optional spots (panel 2, an EV charger) are only placed when the tech picks their tool. */
+    const optional = new Set(current.markers.filter((marker) => marker.optional).map((marker) => marker.key));
+    const later = keys.slice(keys.indexOf(key) + 1).find((other) => !marks.points[other] && !optional.has(other));
     return later || 'bend';
   }
 

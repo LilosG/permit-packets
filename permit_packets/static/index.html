@@ -123,6 +123,7 @@
           <label class="choice"><input type="radio" name="new_service_amps" value="150"><span>150 A</span></label>
           <label class="choice"><input type="radio" name="new_service_amps" value="200" checked><span>200 A</span></label>
           <label class="choice"><input type="radio" name="new_service_amps" value="225"><span>225 A</span></label>
+          <label class="choice"><input type="radio" name="new_service_amps" value="400"><span>400 A (Class 320)</span></label>
         </div></fieldset>
       </div>
       <div class="grid" style="margin-top:14px">
@@ -170,7 +171,7 @@
     <div class="block">
       <h2>Equipment and utility</h2>
       <div class="grid">
-        <label class="field">New panel make and model<input name="panel_model" list="panel-models" placeholder="Pick a model to attach its data sheet, or type one" maxlength="120" autocomplete="off"><datalist id="panel-models"><option value="Square D Homeline HOM3060M200PC, 200 A main breaker"></option><option value="Square D Homeline HOM3060L225PGC, 225 A main lug"></option><option value="Milbank U5168-XTL-200 meter-main, 200 A"></option><option value="Square D Homeline SC816D200C meter-main, 200 A, ringed"></option></datalist></label>
+        <label class="field">New panel make and model<input name="panel_model" list="panel-models" placeholder="Pick a model to attach its data sheet, or type one" maxlength="120" autocomplete="off"><datalist id="panel-models"><option value="Square D Homeline HOM3060M200PC, 200 A main breaker"></option><option value="Square D Homeline HOM3060L225PGC, 225 A main lug"></option><option value="Milbank U5168-XTL-200 meter-main, 200 A"></option><option value="Square D Homeline SC816D200C meter-main, 200 A, ringed"></option><option value="Siemens MK0402L1400SCS meter-main, 400 A (Class 320), two 200 A mains"></option></datalist></label>
         <label class="field">Bus rating (A)<input name="bus_amps" type="number" min="100" max="400" value="200" required></label>
       </div>
       <fieldset style="margin-top:14px"><legend>Existing panel</legend><div class="choices">
@@ -193,6 +194,50 @@
           <label class="choice"><input type="checkbox" name="solar" id="solar"><span>This home has solar</span></label>
         </div></fieldset>
         <label class="field" id="pv-field" hidden>PV breaker (A)<input name="pv_breaker_amps" id="pv-breaker" type="number" min="1" max="100" placeholder="Example: 40"></label>
+      </div>
+    </div>
+    <div class="block" id="dual-block" hidden>
+      <h2>Panels on the two 200 A mains</h2>
+      <p class="hint" style="margin:-6px 0 10px">A 400 A service is a Class 320 meter-main with two 200 A service disconnects. Main 1 feeds panel 1, which takes the home's circuits and uses the panel location and wire length above. Main 2 feeds panel 2, which takes the EV charger and the planned loads.</p>
+      <div class="grid">
+        <label class="field">Panel 1 make and model<input name="dp1_model" list="panel-models" placeholder="Pick a model to attach its data sheet, or type one" maxlength="120" autocomplete="off"></label>
+        <label class="field">Panel 1 bus rating (A)<input name="dp1_bus" type="number" min="200" max="400" value="225"></label>
+      </div>
+      <label class="flag" style="margin-top:10px"><input type="checkbox" name="dp1_existing"><span>Panel 1 is the home's existing panel, re-fed from the new meter-main</span></label>
+      <div class="grid" style="margin-top:14px">
+        <label class="field">Panel 2 make and model<input name="dp2_model" list="panel-models" placeholder="Pick a model to attach its data sheet, or type one" maxlength="120" autocomplete="off"></label>
+        <label class="field">Panel 2 bus rating (A)<input name="dp2_bus" type="number" min="200" max="400" value="225"></label>
+        <label class="field">Panel 2 location<input name="dp2_location" maxlength="80" placeholder="Garage, north wall" autocomplete="off"></label>
+        <label class="field">Feeder to panel 2 (ft)<input name="dp2_feeder_ft" type="number" min="1" max="200" value="15"></label>
+      </div>
+    </div>
+    <div class="block">
+      <h2>EV charger with this upgrade</h2>
+      <label class="flag" style="margin-top:0"><input type="checkbox" name="ev_on" id="ev-on"><span>Install a Level 2 EV charger on this permit</span></label>
+      <div id="ev-fields" hidden>
+        <div class="grid" style="margin-top:14px">
+          <label class="field">Charger make and model<input name="ev_model" list="charger-models" placeholder="Pick a model to attach its data sheet, or type one" maxlength="120" autocomplete="off"></label>
+          <label class="field">Charger circuit run (ft)<input name="ev_run_ft" type="number" min="1" max="500" value="25"></label>
+          <label class="field">Underground part (ft)<input name="ev_trench_ft" type="number" min="0" max="500" value="0"></label>
+          <label class="field">Does the charger need venting?<select name="ev_venting"><option value="">Not answered</option><option value="no">No, sealed-battery vehicles only</option><option value="yes">Yes, a mechanical plan is needed</option></select></label>
+        </div>
+        <div class="grid" style="margin-top:14px">
+          <fieldset><legend>Charger size</legend><div class="choices">
+            <label class="choice"><input type="radio" name="ev_amps" value="32"><span>32 A</span></label>
+            <label class="choice"><input type="radio" name="ev_amps" value="40"><span>40 A</span></label>
+            <label class="choice"><input type="radio" name="ev_amps" value="48" checked><span>48 A</span></label>
+            <label class="choice"><input type="radio" name="ev_amps" value="80"><span>80 A</span></label>
+          </div></fieldset>
+          <fieldset><legend>Connection</legend><div class="choices">
+            <label class="choice"><input type="radio" name="ev_connection" value="hardwired" checked><span>Hardwired</span></label>
+            <label class="choice"><input type="radio" name="ev_connection" value="receptacle"><span>Plug-in receptacle</span></label>
+          </div></fieldset>
+        </div>
+        <fieldset style="margin-top:14px"><legend>Where it's going</legend><div class="choices">
+          <label class="choice"><input type="radio" name="ev_location" value="attached_garage" checked><span>Attached garage</span></label>
+          <label class="choice"><input type="radio" name="ev_location" value="detached_garage"><span>Detached garage</span></label>
+          <label class="choice"><input type="radio" name="ev_location" value="exterior_wall"><span>Outside wall</span></label>
+        </div></fieldset>
       </div>
     </div>
     <div class="block">

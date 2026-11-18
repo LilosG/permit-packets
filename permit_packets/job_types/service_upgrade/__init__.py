@@ -15,6 +15,8 @@ JOB_TYPE = JobType(
     markers=(
         Marker("meter", "Meter", "M", "#566572", "Tap the meter"),
         Marker("panel", "Main panel", "P", "#15212c", "Tap the main panel (same spot for a meter-main combo)"),
+        Marker("panel_two", "Panel 2", "2", "#15212c", "Tap panel 2 (400 A service only)", optional=True),
+        Marker("charger", "EV charger", "E", "#c8682a", "Tap the EV charger (if one goes in)", optional=True),
     ),
     route_between=("meter", "panel"),
     uses_home_loads=True,
