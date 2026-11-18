@@ -8,6 +8,10 @@ from permit_packets.core.panel_data import GEC_FORMAT, parse_gec
 
 MAX_VA = 60000
 MAX_AERIAL_BASE64 = 2_000_000
+MAX_PHOTOS = 6
+MAX_PHOTO_BASE64 = 900_000        # one photo, after the browser shrinks it
+MAX_PHOTOS_TOTAL_BASE64 = 3_200_000  # the host caps a request near 4.5 MB, and the PDF call repeats the photos
+MAX_PHOTO_PIXELS = 40_000_000
 PlanPoint = tuple[float, float]
 
 
@@ -49,6 +53,39 @@ class PropertyPlanRequest(BaseModel):
             raise ValueError("the aerial image is not valid") from error
 
 
+class PhotoRequest(BaseModel):
+    """A site photo the electrician attaches, for the Photos page. The label says what it shows."""
+    label: str = Field(min_length=1, max_length=60)
+    caption: str = Field(default="", max_length=120)
+    image_base64: str = Field(min_length=100, max_length=MAX_PHOTO_BASE64)
+
+    @field_validator("label", "caption")
+    @classmethod
+    def trimmed(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("image_base64")
+    @classmethod
+    def is_a_jpeg_or_png(cls, value: str) -> str:
+        from io import BytesIO
+
+        from PIL import Image, UnidentifiedImageError
+
+        try:
+            raw = base64.b64decode(value, validate=True)
+            with Image.open(BytesIO(raw)) as image:
+                if image.format not in ("JPEG", "PNG"):
+                    raise ValueError("photos must be JPEG or PNG")
+                if image.width * image.height > MAX_PHOTO_PIXELS:
+                    raise ValueError("the photo is too large")
+        except (binascii.Error, UnidentifiedImageError, OSError) as error:
+            raise ValueError("the photo is not a valid image") from error
+        return value
+
+    def image_bytes(self) -> bytes:
+        return base64.b64decode(self.image_base64)
+
+
 class ExistingCircuitRequest(BaseModel):
     """One circuit already in the panel, for the panel schedule."""
     label: str = Field(min_length=1, max_length=60)
@@ -67,6 +104,7 @@ class JobRequestBase(BaseModel):
     state: str | None = Field(default=None, max_length=2)
     jurisdiction_key: str | None = Field(default=None, max_length=40)
     plan: PropertyPlanRequest | None = None
+    photos: list[PhotoRequest] = Field(default_factory=list, max_length=MAX_PHOTOS)
     existing_circuits: list[ExistingCircuitRequest] = Field(default_factory=list, max_length=60)
     sheet_size: Literal["letter", "tabloid", "ansi_d"] | None = None  # None: the city's preference
     # The utility's available fault current at the service, and the panel and breaker interrupting rating.
@@ -80,6 +118,13 @@ class JobRequestBase(BaseModel):
     panel_bus_amps: int | None = Field(default=None, ge=60, le=800)
     panel_main: Literal["main breaker", "main lug"] | None = None
     gec_size: str = Field(default="", max_length=20)  # the existing grounding electrode conductor, e.g. "#4 Cu"
+
+    @field_validator("photos")
+    @classmethod
+    def photos_fit_in_a_request(cls, photos: list[PhotoRequest]) -> list[PhotoRequest]:
+        if sum(len(photo.image_base64) for photo in photos) > MAX_PHOTOS_TOTAL_BASE64:
+            raise ValueError("the photos are too large together. Attach fewer or smaller photos")
+        return photos
 
     @field_validator("gec_size")
     @classmethod

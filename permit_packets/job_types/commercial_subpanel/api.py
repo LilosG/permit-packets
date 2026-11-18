@@ -43,7 +43,7 @@ DOCUMENTS = (
 
 def to_job(request: CommercialSubpanelRequest) -> CommercialSubpanelJob:
     fields = request.model_dump(exclude={
-        "plan", "city", "state", "jurisdiction_key", "sample_mode", "loads", "system",
+        "plan", "city", "state", "jurisdiction_key", "sample_mode", "photos", "loads", "system",
     })
     fields["existing_circuits"] = existing_circuits(fields["existing_circuits"])
     fields.pop("sheet_size", None)  # applied to the finished PDF, not the job

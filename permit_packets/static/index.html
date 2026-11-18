@@ -533,6 +533,13 @@
         <label class="field">Existing grounding electrode conductor<input name="gec_size" maxlength="20" placeholder="#4 Cu" autocomplete="off"><span class="hint">Checked against NEC Table 250.66 for the service conductors</span></label>
       </div>
     </div>
+    <div class="block" id="photos-block">
+      <h2>Photos (optional)</h2>
+      <p class="hint">Utilities and cities often ask for photos of the existing meter and panel, the proposed location and the gas meter clearances. They print as a Photos page at the end of the packet. Up to 6.</p>
+      <div id="photo-list" class="photo-list"></div>
+      <label class="field photo-add"><span class="photo-add-label">Add photos</span><input type="file" id="photo-input" accept="image/jpeg,image/png,image/heic,image/*" multiple></label>
+      <div class="error" id="photo-error" role="alert" hidden></div>
+    </div>
     <div>
       <div class="grid" style="margin-bottom:14px">
         <label class="field">Sheet size<select name="sheet_size" id="sheet-size"><option value="">City default</option><option value="letter">Letter, 8.5 x 11</option><option value="tabloid">11 x 17, plans at full scale</option></select></label>
@@ -640,6 +647,7 @@
 <script src="/assets/js/job-types/appliance-circuit.js?v={{ASSET_VERSION}}"></script>
 <script src="/assets/js/job-types/commercial-subpanel.js?v={{ASSET_VERSION}}"></script>
 <script src="/assets/js/job-types/commercial-ev.js?v={{ASSET_VERSION}}"></script>
+<script src="/assets/js/photos.js?v={{ASSET_VERSION}}"></script>
 <script src="/assets/js/app.js?v={{ASSET_VERSION}}"></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 
 from permit_packets.core.layout import resolve_sheet, use_sheet
 from permit_packets.core.pdf_base import blank_sheet_needed, use_blank_area
+from permit_packets.core.photos import PHOTOS_TITLE, photo_page_count, use_photos
 from permit_packets.core.property_plan import PropertyPlan
 from permit_packets.core.schemas import JobRequestBase
 from permit_packets.jurisdictions import jurisdiction_by_key
@@ -62,15 +63,25 @@ def build_on_sheet(request: JobRequestBase, build):
         from permit_packets.core.drawing_sets import drawing_set
         from permit_packets.core.pdf_base import collect_page_titles
 
-        with use_sheet(sheet), use_blank_area(None), collect_page_titles() as titles:
+        with use_sheet(sheet), use_blank_area(None), use_photos(request.photos), collect_page_titles() as titles:
             result = build(request)
         pdf = drawing_set(result.pdf, titles, city.title_sheet_blank_area_in)
-        return PacketResult(pdf=pdf, body={**result.body, "sheet_size": sheet.key})
-    with use_sheet(sheet), use_blank_area(city.title_sheet_blank_area_in):
+        return PacketResult(pdf=pdf, body={**result.body, "documents": _with_photo_documents(result.body["documents"], request),
+                                           "sheet_size": sheet.key})
+    with use_sheet(sheet), use_blank_area(city.title_sheet_blank_area_in), use_photos(request.photos):
         result = build(request)
-        body = {**result.body, "sheet_size": sheet.key}
+        body = {**result.body, "sheet_size": sheet.key,
+                "documents": _with_photo_documents(result.body["documents"], request)}
         if blank_sheet_needed():
             documents = body["documents"]
             body["documents"] = [*documents, {"file_stem": f"{len(documents) + 1:02d}-reserved-for-dbi",
                                               "title": "Reserved for DBI"}]
     return PacketResult(pdf=result.pdf, body=body)
+
+
+def _with_photo_documents(documents: list[dict], request: JobRequestBase) -> list[dict]:
+    """One document per Photos page, after the packet's own pages."""
+    pages = photo_page_count(request.photos)
+    extra = [{"file_stem": f"{len(documents) + index + 1:02d}-site-photos" + (f"-{index + 1}" if pages > 1 else ""),
+              "title": PHOTOS_TITLE} for index in range(pages)]
+    return [*documents, *extra]

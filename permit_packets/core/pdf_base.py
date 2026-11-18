@@ -190,6 +190,12 @@ def build_document(sections: list[list], *, title: str, block: TitleBlock, sheet
         if index:
             story.append(PageBreak())
         story += [SheetMark(sheet_title)] + section
+    from permit_packets.core.photos import PHOTOS, PHOTOS_TITLE, photo_pages
+
+    if PHOTOS.get():
+        for page in photo_pages(PHOTOS.get()):
+            story += [PageBreak(), SheetMark(PHOTOS_TITLE)] + page
+            sheet_titles = [*sheet_titles, PHOTOS_TITLE]
     if blank_sheet_needed():
         story += [PageBreak(), SheetMark("Reserved for DBI"), BlankSheet(BLANK_AREA.get())]
         sheet_titles = [*sheet_titles, "Reserved for DBI"]
