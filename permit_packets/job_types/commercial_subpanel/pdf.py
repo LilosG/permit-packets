@@ -18,7 +18,7 @@ from permit_packets.core.panel_schedule import (
     PANEL_SCHEDULE_ITEM, ScheduleRow, existing_rows, panel_schedule_page, panel_schedule_row,
 )
 from permit_packets.core.pdf_base import (
-    H1, H2, SMALL, _heads, _p, _table, application_page, build_document, content_w, cover_page, demo_title,
+    H1, H2, SMALL, _heads, _p, _table, application_page, build_document, content_w, cover_page,
     diagram, fit_page, GREEN, INK, review_page,
 )
 from permit_packets.core.site_plan import PlanMarker, printed_scale, site_plan_page
@@ -314,7 +314,7 @@ def render_commercial_subpanel_packet_pdf(packet: CommercialSubpanelPacket) -> b
     pdf = build_document(
         [_cover(packet), _application(packet), _site_plan(packet), _one_line(packet), _feeder_schedule(packet),
          _load(packet), _panel_schedule(packet), _equipment(packet), _review(packet)],
-        title=demo_title("Commercial Subpanel Permit Packet"),
+        title="Commercial Subpanel Permit Packet",
         block=title_block_for(packet.job),
         sheet_titles=SHEET_TITLES,
     )

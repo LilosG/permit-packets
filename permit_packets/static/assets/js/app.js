@@ -106,7 +106,7 @@
   /* Shows the form sections that belong to this type, and keeps hidden fields out of the payload. */
   function applyType() {
     const slugName = current.short_label.toLowerCase();
-    $('#download').setAttribute('download', `${slugName}-permit-packet${client.demo ? '-demo' : ''}.pdf`);
+    $('#download').setAttribute('download', `${slugName}-permit-packet.pdf`);
     $$('[data-job-type]').forEach((element) => { element.hidden = element.dataset.jobType !== current.key; });
     $$('[data-uses]').forEach((element) => { element.hidden = !current[`uses_${element.dataset.uses}`]; });
     $$('[data-hide-for]').forEach((element) => { element.hidden = element.dataset.hideFor === current.key; });
@@ -688,7 +688,7 @@
       const named = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') || '');
       const link = document.createElement('a');
       link.href = URL.createObjectURL(await response.blob());
-      link.download = named ? named[1] : `${lastType.short_label.toLowerCase()}-permit-documents${client.demo ? '-demo' : ''}.zip`;
+      link.download = named ? named[1] : `${lastType.short_label.toLowerCase()}-permit-documents.zip`;
       link.click();
       URL.revokeObjectURL(link.href);
     } catch (error) {

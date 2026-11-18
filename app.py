@@ -20,7 +20,7 @@ from pydantic import ValidationError
 
 from permit_packets.clients import CLIENTS, DEFAULT_CLIENT, Client, validate
 from permit_packets.core.cad import collect_cad, dxf_files, zip_files
-from permit_packets.core.pdf_base import COMPANY_NAME, CONTRACTOR_LOGO, DEMO_MARKS
+from permit_packets.core.pdf_base import COMPANY_NAME, CONTRACTOR_LOGO
 from permit_packets.core.preview import packet_documents_zip, packet_page_images
 from permit_packets.jurisdictions import KNOWN, jurisdiction_by_key
 from permit_packets.core.property_lookup import (
@@ -332,7 +332,6 @@ def _build(slug: str, payload: dict[str, Any], client: Client) -> tuple[JobType,
         raise RequestValidationError(error.errors(include_url=False)) from error
     tokens = (
         (CONTRACTOR_LOGO, CONTRACTOR_LOGO.set(logo)),
-        (DEMO_MARKS, DEMO_MARKS.set(client.is_demo)),
         (COMPANY_NAME, COMPANY_NAME.set(client.company_name)),
     )
     try:
@@ -396,7 +395,7 @@ def packet_documents(slug: str, payload: dict[str, Any] = Body(...), client: Cli
             f"{city.name} takes one combined PDF and does not accept plan sheets as separate files",
         )
     job_type, result = _build(slug, payload, client)
-    zip_name = job_type.zip_name if client.is_demo else job_type.zip_name.replace("-demo.zip", ".zip")
+    zip_name = job_type.zip_name
     stems = tuple(document.file_stem for document in job_type.documents)
     return Response(
         content=packet_documents_zip(result.pdf, stems),

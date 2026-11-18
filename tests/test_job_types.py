@@ -82,7 +82,7 @@ def test_bad_input_is_a_422_not_a_500(client):
 
 def test_the_zip_keeps_its_name(client):
     response = client.post("/api/jobs/ev-charger/documents", json=_sample("ev_charger"))
-    assert 'filename="ev-permit-documents-demo.zip"' in response.headers["content-disposition"]
+    assert 'filename="ev-permit-documents.zip"' in response.headers["content-disposition"]
 
 
 def test_an_unknown_job_type_on_a_property_call_is_refused(client):

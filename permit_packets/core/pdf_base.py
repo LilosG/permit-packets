@@ -39,18 +39,12 @@ SOFT = colors.HexColor("#f4e4d8")
 GREEN = colors.HexColor("#1f7a58")
 PALE = colors.HexColor("#eef1f3")
 WATERMARK = colors.HexColor("#e9edf0")
-WATERMARK_INK = colors.HexColor("#3a4a57")
 WIDTH, HEIGHT = letter
 # The contractor's logo for the packet being built, as PNG/JPEG bytes. Set per request.
 CONTRACTOR_LOGO: ContextVar[bytes | None] = ContextVar("contractor_logo", default=None)
-# A client login prints no demo marks and shows the company name where there is no logo.
-DEMO_MARKS: ContextVar[bool] = ContextVar("demo_marks", default=True)
+# Printed where there is no logo.
 COMPANY_NAME: ContextVar[str] = ContextVar("company_name", default="")
 
-
-def demo_title(title: str) -> str:
-    """A packet's PDF title: marked "(demo)" only for the demo login."""
-    return f"{title} (demo)" if DEMO_MARKS.get() else title
 HEADER_LOGO_H = 0.3 * inch
 COVER_LOGO_W = 1.9 * inch
 COVER_LOGO_H = 1.0 * inch
@@ -107,28 +101,10 @@ def _heads(*labels: str) -> list[Paragraph]:
     return [_p(label, CELL_BOLD) for label in labels]
 
 
-def _watermark(canvas, doc) -> None:
-    """Drawn after the page content and see-through, so table fills can't hide part of it."""
-    if not DEMO_MARKS.get():
-        return
-    sheet = current_sheet()
-    canvas.saveState()
-    canvas.setFillColor(WATERMARK_INK)
-    canvas.setFillAlpha(0.09)
-    canvas.setFont("Helvetica-Bold", 58)
-    canvas.translate(sheet.width / 2, sheet.height / 2)
-    canvas.rotate(38)
-    canvas.drawCentredString(0, -20, "DEMO")
-    canvas.restoreState()
-
-
 def _page(canvas, doc) -> None:
     sheet = current_sheet()
     canvas.saveState()
     canvas.setFont("Helvetica-Bold", 8)
-    if DEMO_MARKS.get():
-        canvas.setFillColor(COPPER)
-        canvas.drawString(sheet.margin, sheet.height - 0.42 * inch, "DEMO PACKET: NOT FOR SUBMISSION")
     canvas.setFillColor(MUTED)
     canvas.setFont("Helvetica", 8)
     logo = CONTRACTOR_LOGO.get()
@@ -225,7 +201,7 @@ def build_document(sections: list[list], *, title: str, block: TitleBlock, sheet
     )
     frame = Frame(sheet.margin, sheet.frame_y, sheet.content_w, sheet.content_h,
                   leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
-    doc.addPageTemplates([PageTemplate(id="page", frames=[frame], onPage=_page, onPageEnd=_watermark)])
+    doc.addPageTemplates([PageTemplate(id="page", frames=[frame], onPage=_page)])
 
     def canvas_maker(*args, **kwargs):
         return NumberedCanvas(*args, block=block, sheet=sheet, **kwargs)
