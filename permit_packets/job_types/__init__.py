@@ -20,6 +20,7 @@ class Marker:
     letter: str
     color: str
     prompt: str
+    optional: bool = False  # the tech can go on without placing it
 
 
 @dataclass(frozen=True)

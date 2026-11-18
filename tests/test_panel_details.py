@@ -34,7 +34,8 @@ def test_wire_sizes_read_the_way_electricians_write_them():
 
 
 def test_table_250_66_by_service_size():
-    assert required_gec(100) == "8" and required_gec(200) == "4" and required_gec(300) == "2" and required_gec(400) is None
+    assert required_gec(100) == "8" and required_gec(200) == "4" and required_gec(300) == "2" and required_gec(400) == "1/0"
+    assert required_gec(800) is None
     assert required_gec(200, electrodes=("rods",)) == "6"
     assert required_gec(200, electrodes=("rods", "water_pipe")) == "4"
 

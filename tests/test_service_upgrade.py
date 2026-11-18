@@ -436,8 +436,9 @@ def test_the_job_types_list_is_ev_then_service(client):
     service = job_types[1]
     assert (service["slug"], service["label"], service["short_label"], service["icon"]) == (
         "service-upgrade", "Panel / service upgrade", "Service", "panel")
-    assert [marker["letter"] for marker in service["markers"]] == ["M", "P"]
-    assert [marker["key"] for marker in service["markers"]] == ["meter", "panel"]
+    assert [marker["letter"] for marker in service["markers"]] == ["M", "P", "2", "E"]
+    assert [marker["optional"] for marker in service["markers"]] == [False, False, True, True]
+    assert [marker["key"] for marker in service["markers"]] == ["meter", "panel", "panel_two", "charger"]
     assert service["route_between"] == ["meter", "panel"]
     assert service["uses_home_loads"] is True
     assert service["feature_page"] == 2

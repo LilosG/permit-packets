@@ -11,6 +11,7 @@ from permit_packets.core.site_plan import printed_scale
 from permit_packets.core.preview import pdf_page_count
 from permit_packets.job_types import Document, PacketResult
 from permit_packets.job_types.service_upgrade.calc import (
+    FedPanel,
     MATERIAL_ABBREVIATIONS,
     PlannedLoadLine,
     ServiceJob,
@@ -23,6 +24,7 @@ from permit_packets.job_types.service_upgrade.pdf import (
     render_service_packet_pdf,
     scope_of_work,
 )
+from permit_packets.job_types.service_upgrade.ev_addon import EvAddOn
 from permit_packets.job_types.service_upgrade.schema import ServiceUpgradeRequest
 from permit_packets.jurisdictions import jurisdiction_by_key, jurisdiction_json
 
@@ -44,6 +46,7 @@ DOCUMENTS = (
 def to_job(request: ServiceUpgradeRequest) -> ServiceJob:
     fields = request.model_dump(exclude={
         "home", "plan", "city", "state", "jurisdiction_key", "sample_mode", "planned_loads", "electrodes",
+        "panels", "ev_charger",
     })
     fields["existing_circuits"] = existing_circuits(fields["existing_circuits"])
     fields.pop("sheet_size", None)  # applied to the finished PDF, not the job
@@ -57,6 +60,8 @@ def to_job(request: ServiceUpgradeRequest) -> ServiceJob:
         home=HomeLoads(**request.home.model_dump()),
         planned_loads=tuple(PlannedLoadLine(load.label, load.va) for load in request.planned_loads),
         electrodes=tuple(request.electrodes),
+        panels=tuple(FedPanel(**panel.model_dump()) for panel in request.panels),
+        ev=EvAddOn(**request.ev_charger.model_dump()) if request.ev_charger else None,
         jurisdiction=jurisdiction_by_key(request.jurisdiction_key, request.city, request.state),
         plan=plan,
         **fields,
@@ -67,11 +72,18 @@ def _wire(packet: ServicePacket) -> str:
     return f"{wire_label(packet.conductor.size)} {MATERIAL_ABBREVIATIONS[packet.job.material]}"
 
 
+def _feeder_wire(packet: ServicePacket) -> str:
+    feeder = packet.feeders[0]
+    return f"2 x {wire_label(feeder.conductor.size)} {MATERIAL_ABBREVIATIONS[packet.job.material]}"
+
+
 def _summary(packet: ServicePacket) -> list[dict]:
+    wire = ({"label": "Feeders", "value": _feeder_wire(packet)} if packet.job.dual
+            else {"label": "Service wire", "value": _wire(packet)})
     return [
         {"label": "Calculated load", "value": f"{display_number(round(packet.load.computed_amps, 1))} A"},
         {"label": "New service", "value": f"{packet.job.new_service_amps} A"},
-        {"label": "Service wire", "value": _wire(packet)},
+        wire,
         {"label": "GEC", "value": f"#{packet.largest_gec} Cu"},
     ]
 
@@ -85,7 +97,10 @@ def _build_steps(packet: ServicePacket, checklist_items: int, page_count: int) -
     return [
         f"{job.jurisdiction.label} checklist applied, {checklist_items} items",
         f"Load calculation: {display_number(round(packet.load.computed_amps, 1))} A on the new {job.new_service_amps} A service",
-        f"Service conductors sized: 3 {_wire(packet)}",
+        (f"Two 200 A feeders sized: 3 {_feeder_wire(packet)[4:]} each" if job.dual
+         else f"Service conductors sized: 3 {_wire(packet)}"),
+        *([f"EV charger circuit sized: {packet.ev.circuit.breaker} A, #{packet.ev.circuit.wire.size} Cu"]
+          if packet.ev else []),
         "Grounding electrode conductor sized",
         site,
         f"Permit and utility data filled in, {page_count} pages built",
@@ -95,6 +110,8 @@ def _build_steps(packet: ServicePacket, checklist_items: int, page_count: int) -
 def _submission_email(packet: ServicePacket) -> dict:
     job = packet.job
     kind = "service upgrade" if job.scope == "upgrade" else "panel replacement"
+    if packet.ev:
+        kind += " with an EV charger"
     return {
         "subject": f"{kind.capitalize()} permit submittal: {job.address}",
         "body": (

@@ -44,6 +44,9 @@ _SIZES = (
     ("250", 255, 205, 250000, 0.3970),
     ("300", 285, 230, 300000, 0.4608),
     ("350", 310, 250, 350000, 0.5242),
+    ("400", 335, 270, 400000, 0.5863),
+    ("500", 380, 310, 500000, 0.7073),
+    ("600", 420, 340, 600000, 0.8676),
 )
 
 # NEC 310.16 75 C column, Chapter 9 Table 8 circular mils, Chapter 9 Table 5 THWN-2 area.
@@ -54,13 +57,13 @@ _TABLES = {"copper": COPPER_75C, "aluminum": ALUMINUM_75C}
 # NEC Chapter 9 Table 4, 40% fill for three or more conductors.
 SERVICE_CONDUIT_FILL_SQ_IN = {
     "PVC": (('3/4"', 0.203), ('1"', 0.333), ('1-1/4"', 0.581), ('1-1/2"', 0.794),
-            ('2"', 1.316), ('2-1/2"', 1.878), ('3"', 2.907)),
+            ('2"', 1.316), ('2-1/2"', 1.878), ('3"', 2.907), ('3-1/2"', 3.895), ('4"', 5.022)),
     "EMT": (('3/4"', 0.213), ('1"', 0.346), ('1-1/4"', 0.598), ('1-1/2"', 0.814),
-            ('2"', 1.342), ('2-1/2"', 2.343), ('3"', 3.538)),
+            ('2"', 1.342), ('2-1/2"', 2.343), ('3"', 3.538), ('3-1/2"', 4.618), ('4"', 5.901)),
     "RMC": (('3/4"', 0.220), ('1"', 0.355), ('1-1/4"', 0.610), ('1-1/2"', 0.829),
-            ('2"', 1.363), ('2-1/2"', 1.946), ('3"', 3.000)),
+            ('2"', 1.363), ('2-1/2"', 1.946), ('3"', 3.000), ('3-1/2"', 4.004), ('4"', 5.153)),
 }
-TRADE_SIZES = ('3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"')
+TRADE_SIZES = ('3/4"', '1"', '1-1/4"', '1-1/2"', '2"', '2-1/2"', '3"', '3-1/2"', '4"')
 
 
 def at_least(size: str, minimum: str | None) -> str:
@@ -71,11 +74,11 @@ def at_least(size: str, minimum: str | None) -> str:
 
 # NEC 250.66 Table: the grounding electrode conductor (copper) by service conductor size.
 # Each row is (largest service conductor size it covers, GEC size).
-_GEC_COPPER_SERVICE = (("2", "8"), ("1/0", "6"), ("3/0", "4"), ("350", "2"))
-_GEC_ALUMINUM_SERVICE = (("1/0", "8"), ("3/0", "6"), ("250", "4"), ("350", "2"))
+_GEC_COPPER_SERVICE = (("2", "8"), ("1/0", "6"), ("3/0", "4"), ("350", "2"), ("600", "1/0"))
+_GEC_ALUMINUM_SERVICE = (("1/0", "8"), ("3/0", "6"), ("250", "4"), ("500", "2"), ("600", "1/0"))
 # NEC 250.66(A) and (B): the most a rod or a concrete-encased electrode needs.
 _ELECTRODE_LIMIT = {"rods": "6", "concrete_encased": "4"}
-_GEC_ORDER = ("2", "4", "6", "8")  # largest first
+_GEC_ORDER = ("1/0", "2", "4", "6", "8")  # largest first
 
 
 def _order(table: tuple[Conductor, ...], size: str) -> int:

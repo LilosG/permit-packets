@@ -98,6 +98,7 @@ FOOTPRINT_SHIFT_FT: tuple[tuple[tuple[float, float, float, float], float, float]
     ((-111.90, 33.245, -111.78, 33.365), 6.0, 5.0),   # Chandler
     ((-117.02, 32.735, -116.90, 32.855), 4.0, -3.0),  # El Cajon
     ((-111.01, 32.356, -110.89, 32.476), 2.0, 3.0),   # Oro Valley
+    ((-122.0052, 37.2265, -121.9694, 37.2527), 6.0, -5.0),  # Monte Sereno (698 pairs, spread 0.5 ft)
 )
 # AERIAL_SHIFT_FT: where a picture shows a building, relative to the parcel base. It is the aerial-to-outline
 # shift minus the outline-to-parcel shift above, so the outlines' own error drops out. The server is asked for
@@ -197,6 +198,16 @@ COUNTIES = {
         lambda number, street: f"ADDR_HN='{_quoted(number)}' AND ADDR_FULL LIKE '{_quoted(number)} %{_quoted(street.upper())}%'",
         lambda attributes: str(attributes.get("ADDR_HN") or "").strip(),
         lambda street_type: f"ADDR_FULL LIKE '% {_quoted(street_type.upper())}%'",
+    ),
+    "06085": County(
+        # County of Santa Clara GIS, property/SCCProperty layer 0 "Parcels" (FY2026). APN is the 8-digit
+        # assessor's parcel number; the situs fields hold the house number and street name separately.
+        "https://maps.santaclaracounty.gov/server/rest/services/property/SCCProperty/MapServer/0/query",
+        "APN", "Lot lines: County of Santa Clara GIS, Parcels", "SITUS_HOUSE_NUMBER,SITUS_STREET_NAME",
+        lambda number, street: (f"SITUS_HOUSE_NUMBER='{_quoted(number)}' AND "
+                                f"SITUS_STREET_NAME='{_quoted(street.upper())}'"),
+        lambda attributes: str(attributes.get("SITUS_HOUSE_NUMBER") or "").strip(),
+        lambda street_type: f"SITUS_STREET_TYPE='{_quoted(street_type.upper())}'",
     ),
     "06073": County(
         "https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",

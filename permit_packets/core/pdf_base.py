@@ -326,6 +326,8 @@ class StampBox(Flowable):
 # On a 22 x 34 in drawing set the flags are the electrician's to-dos, not drawings: they move from the
 # cover to the Pre-Submittal Review page (a supplemental 8.5 x 11 in page), so the cover keeps full-size text.
 MOVED_FLAGS: ContextVar[list[str] | None] = ContextVar("moved_flags", default=None)
+# Above this much flag text the cover would shrink below a readable size, so the flags move to the review page.
+COVER_FLAG_CHARS = 3000
 
 
 def cover_page(
@@ -350,9 +352,10 @@ def cover_page(
     if sheet.key == "ansi_d":
         # The drawing set puts the 2 x 2 in stamp area on every sheet at true size (core/drawing_sets.py).
         stamp_box_in = None
-        if flags:
-            MOVED_FLAGS.set(list(flags))
-            flags = [f"{len(flags)} items for the electrician are on the Pre-Submittal Review page."]
+    # A long flag list would shrink the whole cover to fit; it goes to the review page at full size instead.
+    if flags and (sheet.key == "ansi_d" or sum(len(flag) for flag in flags) > COVER_FLAG_CHARS):
+        MOVED_FLAGS.set(list(flags))
+        flags = [f"{len(flags)} items for the electrician are on the Pre-Submittal Review page."]
     head = [_p(title, H1), _p(address, BODY)]
     logo = CONTRACTOR_LOGO.get()
     if logo:
@@ -446,7 +449,8 @@ def review_page(items: list[str]) -> list:
                if moved else [])
     if moved:
         MOVED_FLAGS.set(None)
-    return [
+    # One page, like every other sheet: the moved flags shrink to fit rather than adding a page.
+    return fit_page([
         _p("Pre-Submittal Review", H1),
         _p("Complete before sending this packet to the city.", SMALL),
         Spacer(1, 10),
@@ -457,7 +461,7 @@ def review_page(items: list[str]) -> list:
         _p("Approval", H2),
         _table([[_p("Reviewed by"), _p("")], [_p("Signature"), _p("")], [_p("Date"), _p("")]],
                [2 * inch, content_w() - 2 * inch], head=False),
-    ] + flagged
+    ] + flagged)
 
 
 def application_page(

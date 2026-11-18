@@ -11,11 +11,37 @@ class PlannedLoad(BaseModel):
     va: int = Field(ge=1, le=60000)
 
 
+class FedPanelRequest(BaseModel):
+    """400 A only: a panel fed from one of the meter-main's two 200 A service disconnects."""
+    model: str = Field(default="", max_length=120)
+    bus_amps: int = Field(default=200, ge=100, le=400)
+    location: str = Field(default="", max_length=80)
+    feeder_ft: int = Field(ge=1, le=200)
+    existing: bool = False  # the home's existing panel, re-fed from the new meter-main
+
+
+class EvChargerAddOnRequest(BaseModel):
+    """An EV charger installed with the upgrade, on the panel the upgrade installs."""
+    charger_model: str = Field(default="", max_length=120)
+    charger_amps: Literal[32, 40, 48, 80]
+    run_ft: int = Field(ge=1, le=500)
+    location: Literal["attached_garage", "detached_garage", "exterior_wall"] = "attached_garage"
+    connection: Literal["hardwired", "receptacle"] = "hardwired"
+    trench_ft: int = Field(default=0, ge=0, le=500)
+    venting_required: bool | None = None
+
+    @model_validator(mode="after")
+    def trench_fits_the_run(self) -> "EvChargerAddOnRequest":
+        if self.trench_ft > self.run_ft:
+            raise ValueError("the EV charger's underground part can't be longer than its run")
+        return self
+
+
 class ServiceUpgradeRequest(JobRequestBase):
     home: HomeLoadsRequest
     scope: Literal["upgrade", "replacement"]
     existing_service_amps: Literal[60, 100, 125, 150, 200]
-    new_service_amps: Literal[100, 125, 150, 200, 225]
+    new_service_amps: Literal[100, 125, 150, 200, 225, 400]
     equipment: Literal["meter_main", "main_panel"]
     service_drop: Literal["overhead", "underground"]
     relocated: bool = False
@@ -33,6 +59,26 @@ class ServiceUpgradeRequest(JobRequestBase):
     surge_protection: Literal["type_1", "type_2"] | None = None  # the service SPD (NEC 230.67)
     pv_breaker_amps: int = Field(default=0, ge=0, le=100)
     planned_loads: list[PlannedLoad] = Field(default_factory=list, max_length=4)
+    panels: list[FedPanelRequest] = Field(default_factory=list, max_length=2)  # 400 A: panel 1, then panel 2
+    ev_charger: EvChargerAddOnRequest | None = None
+
+    @model_validator(mode="after")
+    def four_hundred_amps_is_two_disconnects(self) -> "ServiceUpgradeRequest":
+        if self.new_service_amps == 400:
+            if self.equipment != "meter_main":
+                raise ValueError("a 400 A service is a Class 320 meter-main with two 200 A service disconnects")
+            if len(self.panels) != 2:
+                raise ValueError("a 400 A service needs the two panels its service disconnects feed")
+        elif self.panels:
+            raise ValueError("panels fed from two service disconnects are only for a 400 A service")
+        return self
+
+    @model_validator(mode="after")
+    def ev_charger_is_entered_once(self) -> "ServiceUpgradeRequest":
+        if self.ev_charger and any(load.label.strip().lower().startswith(("ev", "electric vehicle"))
+                                   for load in self.planned_loads):
+            raise ValueError("the EV charger is entered twice: remove it from the planned loads")
+        return self
 
     @model_validator(mode="after")
     def scope_matches_the_service_sizes(self) -> "ServiceUpgradeRequest":
@@ -68,6 +114,7 @@ class ServiceUpgradeRequest(JobRequestBase):
 
     @model_validator(mode="after")
     def panel_bus_is_entered_once(self) -> "ServiceUpgradeRequest":
-        if self.panel_bus_amps is not None and self.panel_bus_amps != self.bus_amps:
+        expected = self.panels[0].bus_amps if self.new_service_amps == 400 and self.panels else self.bus_amps
+        if self.panel_bus_amps is not None and self.panel_bus_amps != expected:
             raise ValueError("the panel bus rating is entered twice with different values")
         return self

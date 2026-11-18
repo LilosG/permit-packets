@@ -28,9 +28,9 @@ def interrupting_rating_check(job) -> Check:
 
 
 # Smallest to largest, so a later size is the bigger wire.
-SIZE_ORDER = ("14", "12", "10", "8", "6", "4", "3", "2", "1", "1/0", "2/0", "3/0", "4/0", "250", "300", "350")
+SIZE_ORDER = ("14", "12", "10", "8", "6", "4", "3", "2", "1", "1/0", "2/0", "3/0", "4/0", "250", "300", "350", "400", "500", "600")
 # NEC 250.66: the aluminum GEC that goes with each copper size.
-ALUMINUM_FOR_COPPER = {"8": "6", "6": "4", "4": "2", "2": "1/0"}
+ALUMINUM_FOR_COPPER = {"8": "6", "6": "4", "4": "2", "2": "1/0", "1/0": "3/0"}
 GEC_FORMAT = "Enter it like #4 Cu"
 _GEC = re.compile(r"^#?\s*(\d{1,3}(?:/0)?)\s*(?:awg|kcmil|mcm)?\s*(cu|copper|al|aluminum)?\.?$", re.I)
 

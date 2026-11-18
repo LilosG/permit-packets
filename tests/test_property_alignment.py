@@ -33,6 +33,7 @@ CASES = {
     "las_vegas": ("32003", "Clark County / City of Las Vegas parcels", "NV East State Plane ft (EPSG:3421)"),
     "charlotte": ("37119", "Mecklenburg County parcels", "NC State Plane ft (EPSG:2264)"),
     "bellevue": ("53033", "King County GIS parcels", "Web Mercator (EPSG:3857)"),
+    "monte_sereno": ("06085", "County of Santa Clara GIS parcels", "Web Mercator (EPSG:3857)"),
 }
 
 
