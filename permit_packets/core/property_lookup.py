@@ -99,6 +99,7 @@ FOOTPRINT_SHIFT_FT: tuple[tuple[tuple[float, float, float, float], float, float]
     ((-117.02, 32.735, -116.90, 32.855), 4.0, -3.0),  # El Cajon
     ((-111.01, 32.356, -110.89, 32.476), 2.0, 3.0),   # Oro Valley
     ((-122.0052, 37.2265, -121.9694, 37.2527), 6.0, -5.0),  # Monte Sereno (698 pairs, spread 0.5 ft)
+    ((-121.90, 39.69, -121.78, 39.78), 3.0, 10.0),    # Chico (472 pairs, spread 0.8 ft)
 )
 # AERIAL_SHIFT_FT: where a picture shows a building, relative to the parcel base. It is the aerial-to-outline
 # shift minus the outline-to-parcel shift above, so the outlines' own error drops out. The server is asked for
@@ -208,6 +209,14 @@ COUNTIES = {
                                 f"SITUS_STREET_NAME='{_quoted(street.upper())}'"),
         lambda attributes: str(attributes.get("SITUS_HOUSE_NUMBER") or "").strip(),
         lambda street_type: f"SITUS_STREET_TYPE='{_quoted(street_type.upper())}'",
+    ),
+    "06007": County(
+        # Butte County parcels (Assessor tax maps, via Butte County GIS). SITUS reads "226 W 5TH AVE, CHICO CA 95926".
+        # The maps are not survey grade, so lot lines are drawn as a guide only.
+        "https://services1.arcgis.com/0j6vZbECadDEXdAS/ArcGIS/rest/services/CA_ButteCounty_Parcel/FeatureServer/0/query",
+        "APN", "Lot lines: Butte County GIS, Assessor tax maps", "SITUS",
+        lambda number, street: f"SITUS LIKE '{_quoted(number)} %{_quoted(street.upper())}%'",
+        lambda attributes: str(attributes.get("SITUS") or "").split(" ", 1)[0],
     ),
     "06073": County(
         "https://gis-public.sandiegocounty.gov/arcgis/rest/services/DPW/LEAMS_Reference/MapServer/16/query",

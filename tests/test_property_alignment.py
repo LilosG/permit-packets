@@ -34,6 +34,7 @@ CASES = {
     "charlotte": ("37119", "Mecklenburg County parcels", "NC State Plane ft (EPSG:2264)"),
     "bellevue": ("53033", "King County GIS parcels", "Web Mercator (EPSG:3857)"),
     "monte_sereno": ("06085", "County of Santa Clara GIS parcels", "Web Mercator (EPSG:3857)"),
+    "chico": ("06007", "Butte County GIS parcels", "Web Mercator (EPSG:3857)"),
 }
 
 
