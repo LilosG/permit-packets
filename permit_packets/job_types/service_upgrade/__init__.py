@@ -22,5 +22,5 @@ JOB_TYPE = JobType(
     feature_page=FEATURE_PAGE,
     request_model=ServiceUpgradeRequest,
     build_response=build_response,
-    zip_name="service-upgrade-permit-documents-demo.zip",
+    zip_name="service-upgrade-permit-documents.zip",
 )

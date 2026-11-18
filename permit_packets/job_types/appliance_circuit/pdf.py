@@ -14,7 +14,6 @@ from permit_packets.core.panel_schedule import (
     PANEL_SCHEDULE_ITEM, ScheduleRow, existing_rows, panel_schedule_page, panel_schedule_row,
 )
 from permit_packets.core.pdf_base import (
-    demo_title,
     CONTENT, COPPER, CREDIT, GREEN, H1, H2, INK, MUTED, PALE, SMALL, SOFT,
     diagram, fit_page, heat_block, _heads, _p, _table, content_w, application_page, build_document, cover_page, load_page, review_page,
 )
@@ -544,7 +543,7 @@ def render_appliance_packet_pdf(packet: AppliancePacket) -> bytes:
     pdf = build_document(
         [_cover(packet), _application(packet), _site_plan(packet), _one_line(packet),
          _load(packet), _panel_schedule(packet), _equipment(packet), _review(packet)],
-        title=demo_title(f"{APPLIANCE_TITLES[packet.job.appliance]} Circuit Permit Packet"),
+        title=f"{APPLIANCE_TITLES[packet.job.appliance]} Circuit Permit Packet",
         block=title_block_for(packet.job),
         sheet_titles=["Checklist and Checks","Permit Application Data","Site Plan","One-Line Diagram","Load Calculation","Panel Schedule","Equipment Data","Pre-Submittal Review"],
     )

@@ -15,7 +15,6 @@ from permit_packets.core.panel_schedule import (
     PANEL_SCHEDULE_ITEM, ScheduleRow, existing_rows, panel_schedule_page, panel_schedule_row,
 )
 from permit_packets.core.pdf_base import (
-    demo_title,
     CELL_BOLD, CONTENT, COPPER, CREDIT, GREEN, H1, H2, INK, MUTED, PALE, SMALL, SOFT,
     diagram, fit_page, heat_block, _heads, _p, _table, content_w, application_page, build_document, cover_page, load_page, review_page,
 )
@@ -655,7 +654,7 @@ def render_service_packet_pdf(packet: ServicePacket) -> bytes:
     pdf = build_document(
         [_cover(packet), _application(packet), _site_plan(packet), _riser(packet),
          _load(packet), _panel_schedule(packet), _utility(packet), _equipment(packet), _review(packet)],
-        title=demo_title(f"{_title(packet)}"),
+        title=_title(packet),
         block=title_block_for(packet.job),
         sheet_titles=["Checklist and Checks","Permit Application Data","Site Plan","Riser Diagram","Load Calculation","Panel Schedule","Utility Service Request","Equipment Data","Pre-Submittal Review"],
     )

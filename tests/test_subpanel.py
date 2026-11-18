@@ -246,7 +246,7 @@ def test_the_pdf_carries_the_subpanel_pages(client):
     for heading in ("Subpanel Permit Packet", "Permit Application Data", "Site Plan", "One-Line Diagram",
                     "Feeder Schedule", "Load Calculation", "Equipment Data", "Pre-Submittal Review"):
         assert heading in text
-    assert "DEMO PACKET: NOT FOR SUBMISSION" in text
+    assert "DEMO" not in text
     assert "100 A subpanel, detached building" in text
     assert "Underground" in text
     assert "Grounding electrode and disconnect at the building" in text
@@ -257,7 +257,7 @@ def test_the_pdf_carries_the_subpanel_pages(client):
 def test_zip_has_one_file_per_page_and_keeps_its_name(client):
     response = client.post(DOCUMENTS_URL, json=_payload())
     assert response.status_code == 200
-    assert 'filename="subpanel-permit-documents-demo.zip"' in response.headers["content-disposition"]
+    assert 'filename="subpanel-permit-documents.zip"' in response.headers["content-disposition"]
     assert ZipFile(BytesIO(response.content)).namelist() == [f"{stem}.pdf" for stem in STEMS]
 
 
@@ -430,7 +430,7 @@ def test_the_job_types_list_has_ev_service_and_subpanel(client):
     assert [document["title"] for document in subpanel["documents"]] == [
         "Checklist and checks", "Permit data", "Site plan", "One-line diagram", "Feeder schedule",
         "Load calculation", "Panel schedule", "Equipment data", "Pre-submittal review"]
-    assert REGISTRY["subpanel"].zip_name == "subpanel-permit-documents-demo.zip"
+    assert REGISTRY["subpanel"].zip_name == "subpanel-permit-documents.zip"
 
 
 def test_the_signed_in_page_loads_the_subpanel_script_with_a_version(client):

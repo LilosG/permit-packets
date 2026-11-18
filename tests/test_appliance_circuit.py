@@ -377,7 +377,7 @@ def test_the_route_returns_seven_pages_the_stems_and_the_zip_name(client):
     assert [document["file_stem"] for document in body["documents"]] == STEMS
     assert body["feature_page"] == 2
     response = client.post(DOCUMENTS_URL, json=_payload())
-    assert 'filename="appliance-circuit-permit-documents-demo.zip"' in response.headers["content-disposition"]
+    assert 'filename="appliance-circuit-permit-documents.zip"' in response.headers["content-disposition"]
     names = ZipFile(BytesIO(response.content)).namelist()
     assert [name.split(".")[0] for name in names] == STEMS
 
@@ -394,7 +394,7 @@ def test_the_title_follows_the_appliance(client, changes, title):
     assert title in _text(body)
     document = pypdfium2.PdfDocument(base64.b64decode(body["pdf"]))
     try:
-        assert document.get_metadata_dict()["Title"] == f"{title} (demo)"
+        assert document.get_metadata_dict()["Title"] == title
     finally:
         document.close()
 
@@ -468,7 +468,7 @@ def test_the_job_types_list_has_the_four_types_in_order(client):
     assert [document["title"] for document in circuit["documents"]] == [
         "Checklist and checks", "Permit data", "Site plan", "One-line diagram", "Load calculation",
         "Panel schedule", "Equipment data", "Pre-submittal review"]
-    assert REGISTRY["appliance_circuit"].zip_name == "appliance-circuit-permit-documents-demo.zip"
+    assert REGISTRY["appliance_circuit"].zip_name == "appliance-circuit-permit-documents.zip"
 
 
 def test_the_signed_in_page_loads_the_script_with_a_version(client):

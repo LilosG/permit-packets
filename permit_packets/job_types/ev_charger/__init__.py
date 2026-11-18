@@ -22,5 +22,5 @@ JOB_TYPE = JobType(
     feature_page=FEATURE_PAGE,
     request_model=EvChargerRequest,
     build_response=build_response,
-    zip_name="ev-permit-documents-demo.zip",
+    zip_name="ev-permit-documents.zip",
 )

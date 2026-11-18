@@ -88,13 +88,14 @@ def test_client_packet_has_no_demo_marks_and_names_the_company(key):
     assert "NOT FOR SUBMISSION" not in text
 
 
-def test_demo_login_keeps_its_demo_marks_and_every_city():
+def test_demo_login_has_every_city_and_no_demo_marks():
     session = sign_in("demo-password")
     info = session.get("/api/client").json()
     assert info["demo"] is True
     assert {c["key"] for c in info["cities"]} == set(BY_KEY)
-    assert "DEMO PACKET: NOT FOR SUBMISSION" in text_of(
-        with_pdf(session, "/api/jobs/ev-charger/packet", payload("oro-valley-az"))["pdf"])
+    text = text_of(with_pdf(session, "/api/jobs/ev-charger/packet", payload("oro-valley-az"))["pdf"])
+    assert "DEMO" not in text
+    assert "NOT FOR SUBMISSION" not in text
 
 
 def test_a_session_cannot_be_moved_to_another_client():
@@ -134,17 +135,18 @@ def _title(pdf_b64: str) -> str:
     ("ev_charger", "ev-charger"), ("service_upgrade", "service-upgrade"),
     ("subpanel", "subpanel"), ("appliance_circuit", "appliance-circuit"),
 ])
-def test_demo_in_titles_and_zip_names_is_for_the_demo_login_only(job_type, slug):
+def test_no_login_puts_demo_in_titles_or_zip_names(job_type, slug):
     client_session, demo_session = sign_in(PASSWORDS["erke"]), sign_in("demo-password")
     mine = with_pdf(client_session, f"/api/jobs/{slug}/packet", payload("nashville-tn", job_type))
     demo = with_pdf(demo_session, f"/api/jobs/{slug}/packet", payload("nashville-tn", job_type))
     assert "demo" not in _title(mine["pdf"]).lower()
-    assert _title(demo["pdf"]).endswith("(demo)")
+    assert "demo" not in _title(demo["pdf"]).lower()
     mine_zip = client_session.post(f"/api/jobs/{slug}/documents", json=payload("nashville-tn", job_type))
     demo_zip = demo_session.post(f"/api/jobs/{slug}/documents", json=payload("nashville-tn", job_type))
     assert "demo" not in mine_zip.headers["content-disposition"]
     assert mine_zip.headers["content-disposition"].endswith('-documents.zip"')
-    assert "-demo.zip" in demo_zip.headers["content-disposition"]
+    assert "demo" not in demo_zip.headers["content-disposition"]
+    assert demo_zip.headers["content-disposition"].endswith('-documents.zip"')
 
 
 def _sheet_size(response) -> str:

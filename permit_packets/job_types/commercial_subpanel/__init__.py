@@ -22,6 +22,6 @@ JOB_TYPE = JobType(
     feature_page=FEATURE_PAGE,
     request_model=CommercialSubpanelRequest,
     build_response=build_response,
-    zip_name="commercial-subpanel-permit-documents-demo.zip",
+    zip_name="commercial-subpanel-permit-documents.zip",
     occupancy="commercial",
 )

@@ -22,5 +22,5 @@ JOB_TYPE = JobType(
     feature_page=FEATURE_PAGE,
     request_model=SubpanelRequest,
     build_response=build_response,
-    zip_name="subpanel-permit-documents-demo.zip",
+    zip_name="subpanel-permit-documents.zip",
 )

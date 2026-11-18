@@ -28,19 +28,20 @@ def sign_in(key: str) -> TestClient:
     return session
 
 
-def test_every_client_login_has_cad_files_but_the_demo_does_not():
-    assert {key for key, client in CLIENTS.items() if client.cad} == set(PASSWORDS)
+def test_every_login_has_cad_files_including_the_demo():
+    assert {key for key, client in CLIENTS.items() if client.cad} == set(PASSWORDS) | {"demo"}
     assert sign_in("jacob").get("/api/client").json()["cad"] is True
     demo = TestClient(app)
     assert demo.post("/api/signin", json={"password": "demo-password"}).status_code == 200
-    assert demo.get("/api/client").json()["cad"] is False
+    assert demo.get("/api/client").json()["cad"] is True
 
 
-def test_the_demo_is_refused():
+def test_the_demo_exports_cad():
     demo = TestClient(app)
     demo.post("/api/signin", json={"password": "demo-password"})
     payload = complete_inputs("ev_charger", BY_KEY["nashville-tn"])
-    assert demo.post("/api/jobs/ev-charger/cad", json=payload).status_code == 404
+    response = demo.post("/api/jobs/ev-charger/cad", json=payload)
+    assert response.status_code == 200, response.text
 
 
 @pytest.mark.parametrize("key, city", [("erke", "nashville-tn"), ("elc", "san-francisco-ca"), ("jbee", "chandler-az")])

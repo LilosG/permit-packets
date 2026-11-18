@@ -22,5 +22,5 @@ JOB_TYPE = JobType(
     feature_page=FEATURE_PAGE,
     request_model=ApplianceCircuitRequest,
     build_response=build_response,
-    zip_name="appliance-circuit-permit-documents-demo.zip",
+    zip_name="appliance-circuit-permit-documents.zip",
 )

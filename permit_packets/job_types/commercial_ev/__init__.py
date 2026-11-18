@@ -22,6 +22,6 @@ JOB_TYPE = JobType(
     feature_page=FEATURE_PAGE,
     request_model=CommercialEvRequest,
     build_response=build_response,
-    zip_name="commercial-ev-charger-permit-documents-demo.zip",
+    zip_name="commercial-ev-charger-permit-documents.zip",
     occupancy="commercial",
 )

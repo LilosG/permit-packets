@@ -208,13 +208,13 @@ def test_the_pdf_carries_the_service_pages(client):
                     "Load Calculation", "Utility Service Request Data", "Equipment Data", "Pre-Submittal Review"):
         assert heading in text
     assert "This page is not the utility" in text
-    assert "DEMO PACKET: NOT FOR SUBMISSION" in text
+    assert "DEMO" not in text
 
 
 def test_zip_has_one_file_per_page_and_keeps_its_name(client):
     response = client.post(DOCUMENTS_URL, json=_payload())
     assert response.status_code == 200
-    assert 'filename="service-upgrade-permit-documents-demo.zip"' in response.headers["content-disposition"]
+    assert 'filename="service-upgrade-permit-documents.zip"' in response.headers["content-disposition"]
     assert ZipFile(BytesIO(response.content)).namelist() == [f"{stem}.pdf" for stem in STEMS]
 
 
@@ -445,7 +445,7 @@ def test_the_job_types_list_is_ev_then_service(client):
     assert [document["title"] for document in service["documents"]] == [
         "Checklist and checks", "Permit data", "Site plan", "Riser diagram", "Load calculation",
         "Panel schedule", "Utility request", "Equipment data", "Pre-submittal review"]
-    assert REGISTRY["service_upgrade"].zip_name == "service-upgrade-permit-documents-demo.zip"
+    assert REGISTRY["service_upgrade"].zip_name == "service-upgrade-permit-documents.zip"
 
 
 def test_the_signed_in_page_loads_the_service_script_with_a_version(client):
