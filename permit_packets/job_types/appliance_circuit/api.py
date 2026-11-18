@@ -44,7 +44,7 @@ HAS_NEUTRAL_BY_DEFAULT = ("hot_tub", "other")
 
 def to_job(request: ApplianceCircuitRequest) -> ApplianceJob:
     fields = request.model_dump(exclude={
-        "home", "plan", "city", "state", "jurisdiction_key", "sample_mode", "needs_neutral",
+        "home", "plan", "city", "state", "jurisdiction_key", "sample_mode", "photos", "needs_neutral",
     })
     fields["existing_circuits"] = existing_circuits(fields["existing_circuits"])
     fields.pop("sheet_size", None)  # applied to the finished PDF, not the job

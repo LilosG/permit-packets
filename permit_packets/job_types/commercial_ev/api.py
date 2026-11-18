@@ -39,7 +39,7 @@ DOCUMENTS = (
 
 
 def to_job(request: CommercialEvRequest) -> CommercialEvJob:
-    fields = request.model_dump(exclude={"plan", "city", "state", "jurisdiction_key", "sample_mode", "system"})
+    fields = request.model_dump(exclude={"plan", "city", "state", "jurisdiction_key", "sample_mode", "photos", "system"})
     fields["existing_circuits"] = existing_circuits(fields["existing_circuits"])
     fields.pop("sheet_size", None)  # applied to the finished PDF, not the job
     if request.sample_mode:

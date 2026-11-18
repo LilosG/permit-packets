@@ -45,7 +45,7 @@ DOCUMENTS = (
 
 def to_job(request: ServiceUpgradeRequest) -> ServiceJob:
     fields = request.model_dump(exclude={
-        "home", "plan", "city", "state", "jurisdiction_key", "sample_mode", "planned_loads", "electrodes",
+        "home", "plan", "city", "state", "jurisdiction_key", "sample_mode", "photos", "planned_loads", "electrodes",
         "panels", "ev_charger",
     })
     fields["existing_circuits"] = existing_circuits(fields["existing_circuits"])
